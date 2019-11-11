@@ -75,7 +75,6 @@ void setup()
   randomSeed(analogRead(0));
 
   Serial.begin(9600);
-  Serial.println(START_MSG);
   Serial.println("==========Current Protocol===========");
   Serial.print("Attack in 6sec : ");
   Serial.println(sa);
