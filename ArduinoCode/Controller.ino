@@ -5,7 +5,7 @@
 
 const String START_MSG =\
 "Lobsterbot Controller\n \
-Version 2.1\n \
+Version 2.2\n \
 Knowblesse 2019";
 
 // Assign Pin Numbers
@@ -122,22 +122,30 @@ void setup()
   }
 
   // Setup : Prompt Attack in 6sec percentage
-  Serial.println("=======Select Attack in 6sec %=======");
-
-  // Setup : Read Attack in 6sec percentage
-  invalidInput = true;
-  Serial.println("Percentage? : ");
-  while (invalidInput)
+  if (mode == "at")
   {
-    if (Serial.available())
+    Serial.println("=======Select Attack in 6sec %=======");
+
+    // Setup : Read Attack in 6sec percentage
+    invalidInput = true;
+    Serial.println("Percentage? : ");
+    while (invalidInput)
     {
-      percentage_attack_in_6sec = Serial.parseInt();
-      if (percentage_attack_in_6sec >= 0 && percentage_attack_in_6sec <=100)
+      if (Serial.available())
       {
-        invalidInput = false;
+        percentage_attack_in_6sec = Serial.parseInt();
+        if (percentage_attack_in_6sec >= 0 && percentage_attack_in_6sec <=100)
+        {
+          invalidInput = false;
+        }
       }
     }
   }
+  else if (mode == "tr")
+  {
+    Serial.println("No attack : Training Mode");
+  }
+
   // Setup : Time limit
   invalidInput = true;
   Serial.println("Duration? (in minutes): ");
@@ -151,12 +159,21 @@ void setup()
     }
   }
 
+
   // Review current protocol
   Serial.println("==========Current Protocol===========");
-  Serial.print("Attack in 6sec : ");
-  Serial.println(percentage_attack_in_6sec);
-  Serial.print("Attack in 3sec : ");
-  Serial.println(100-percentage_attack_in_6sec);
+  if (mode == "at")
+  {
+    Serial.print("Attack in 6sec : ");
+    Serial.println(percentage_attack_in_6sec);
+    Serial.print("Attack in 3sec : ");
+    Serial.println(100-percentage_attack_in_6sec);
+    
+  }
+  else if (mode == "tr")
+  {
+    Serial.println("Training Mode");
+  }
   Serial.println("=====================================");
 }
 
