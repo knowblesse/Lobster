@@ -30,20 +30,28 @@ bool isBlock = false;
 bool isDoorClosed = true;
 bool isTrial = false;
 
-bool isAttackArmed = false;
+bool isLickedInThisTrial = false;
 bool isAttacked = false;
 
-bool timelimitreached = false;
+bool isTimeLimitReached = false;
+bool isAutoflushEnabled;
 
 // Time variable
-unsigned long blockOnSetTime = 0;
-unsigned long attackOnSetTime = 0;
-unsigned long attackOffsetTime;
-
+unsigned long blockOnSetTime;
 unsigned long accumLickTime = 0; // accum licking time 
-unsigned long lickStartTime = 0;
-unsigned long timelimit = 0;     // duration of each Trials
+unsigned long lickOnsetTime = 0;
+unsigned long timelimit = 0; // timer function
 
+// Time variable : shuttling
+unsigned long doorCloseTime; 
+unsigned long doorCloseDelay; 
+
+// Time variable : attack
+unsigned long attackOnsetTime;
+unsigned long attackDelay;
+
+// Time variable : autoflush
+unsigned long pumpStopTime;
 
 // Etc.
 int percentage_attack_in_6sec = 70; //six second attack probability
@@ -86,12 +94,13 @@ void setup()
 
   // Setup : Prompt Experiment Mode
   Serial.println("==============Select Mode============");
-  Serial.println("+--------------+");
-  Serial.println("|      mode    |");
-  Serial.println("+---------+----+");
-  Serial.println("| train:  | tr |");
-  Serial.println("| attack: | at |");
-  Serial.println("+---------+----+");
+  Serial.println("+------------------+");
+  Serial.println("|        mode      |");
+  Serial.println("+-------------+----+");
+  Serial.println("| train:      | tr |");
+  Serial.println("| shuttling:  | sh |");
+  Serial.println("| attack:     | at |");
+  Serial.println("+-------------+----+");
   
   // Setup : Read Experiment Mode
   bool invalidInput = true;
@@ -102,14 +111,49 @@ void setup()
     {
       mode = Serial.readString();
       
-      if (mode == "at")
-      {
-        Serial.println("==============Attack Mode============");
-        invalidInput = false;
-      }
-      else if (mode == "tr")
+      if (mode == "tr")
       {
         Serial.println("=============Training Mode===========");
+        Serial.println("No attack : Training Mode");
+        invalidInput = false;
+      }
+      else if (mode == "sh")
+      {
+        Serial.println("=============Shuttling Mode==========");
+        bool invalidInput1 = true;
+        Serial.println("Lick Limit Time? (sec) : ");
+        while (invalidInput1)
+        {
+          if (Serial.available())
+          {
+            doorCloseDelay = Serial.parseInt() * 1000;
+            invalidInput1 = false;
+          }
+        }
+        invalidInput = false;
+      }
+      else if (mode == "at")
+      {
+        Serial.println("==============Attack Mode============");
+        // Setup : Read Attack in 6sec percentage
+        Serial.println("=======Select Attack in 6sec %=======");
+        bool invalidInput1 = true;
+        Serial.println("Percentage? : ");
+        while (invalidInput1)
+        {
+          if (Serial.available())
+          {
+            percentage_attack_in_6sec = Serial.parseInt();
+            if (percentage_attack_in_6sec >= 0 && percentage_attack_in_6sec <=100)
+            {
+              invalidInput1 = false;
+            }
+            else
+            {
+              Serial.println("Wrong Percentage");
+            }
+          }
+        }
         invalidInput = false;
       }
       else
@@ -121,32 +165,7 @@ void setup()
     }
   }
 
-  // Setup : Prompt Attack in 6sec percentage
-  if (mode == "at")
-  {
-    Serial.println("=======Select Attack in 6sec %=======");
-
-    // Setup : Read Attack in 6sec percentage
-    invalidInput = true;
-    Serial.println("Percentage? : ");
-    while (invalidInput)
-    {
-      if (Serial.available())
-      {
-        percentage_attack_in_6sec = Serial.parseInt();
-        if (percentage_attack_in_6sec >= 0 && percentage_attack_in_6sec <=100)
-        {
-          invalidInput = false;
-        }
-      }
-    }
-  }
-  else if (mode == "tr")
-  {
-    Serial.println("No attack : Training Mode");
-  }
-
-  // Setup : Time limit
+  // Setup : Time limit (optional. notify when the designated time has passed)
   invalidInput = true;
   Serial.println("Duration? (in minutes): ");
   while (invalidInput)
@@ -159,22 +178,61 @@ void setup()
     }
   }
 
+  // Setup : Ask auto flush
+  invalidInput = true;
+  Serial.println("Autoflush(30 lick) ? (y/n): ");
+  while (invalidInput)
+  {
+    if (Serial.available())
+    {
+      if (Serial.readString() == "y")
+      {
+        isAutoflushEnabled = true;
+        Serial.println("Autoflush every 30 licks");
+        invalidInput = false;
+      }
+      else
+      {
+        isAutoflushEnabled = false;
+        Serial.println("Autoflush disabled");
+        invalidInput = false;
+      }
+    }
+  }
 
   // Review current protocol
   Serial.println("==========Current Protocol===========");
-  if (mode == "at")
+  if (mode == "tr")
   {
+    Serial.println("Training Mode");
+  }
+  else if (mode == "sh")
+  {
+    Serial.println("Shuttling Mode");
+    Serial.print("Door close after ");
+    Serial.print(doorCloseDelay);
+    Serial.println("ms");
+  }
+  else if (mode == "at")
+  {
+    Serial.println("Attack Mode");
     Serial.print("Attack in 6sec : ");
     Serial.println(percentage_attack_in_6sec);
     Serial.print("Attack in 3sec : ");
     Serial.println(100-percentage_attack_in_6sec);
-    
-  }
-  else if (mode == "tr")
-  {
-    Serial.println("Training Mode");
   }
   Serial.println("=====================================");
+
+  // Check whether the block key is on
+  if (digitalRead(PIN_BLOCK_INPUT) == HIGH)
+  {
+    Serial.println("Warning : Block Lever is in the Open position!");
+    delay(2000);
+  }
+  else
+  {
+    Serial.println("Experiment Ready.");
+  }
 }
 
 void loop() 
@@ -183,32 +241,37 @@ void loop()
   /********Block********/
   /*********************/
   isBlockSwitchOn = digitalRead(PIN_BLOCK_INPUT);
-  if(!isBlock) // not in block
+  if (!isBlock) // not in block
   {
-    if(isBlockSwitchOn == HIGH) // block digital switch on
+    if (isBlockSwitchOn == HIGH) // block digital switch on
     {
       digitalWrite(PIN_BLOCK_OUTPUT,HIGH);
-      Serial.println("Block started");
       isBlockEverStarted = true;
       blockOnSetTime = millis();
-      isBlock = true;
-      timelimitreached = false;
       
       // Init. all variables
       numLick = 0;
       trial = 0;
       accumLickTime = 0;
+      isTimeLimitReached = false;
+
+      isBlock = true;
+      Serial.println("Block started");
     }
   }
   else // in block
   {
-    if(isBlockSwitchOn == LOW && blockOnSetTime + 500 < millis()/* + 500 for jittering*/) // block digital switch off
+    if (isBlockSwitchOn == LOW && blockOnSetTime + 500 < millis()/* + 500 for jittering*/) // block digital switch off
     {
       digitalWrite(PIN_BLOCK_OUTPUT,LOW);
       Serial.println("Block ended");
       if (isBlockEverStarted)
       {
         Serial.println("##########Experiment Finished##########");
+        Serial.print("Experiment Duration : ");
+        Serial.print((millis() - blockOnSetTime) / 60000);
+        Serial.print(":");
+        Serial.println(((millis() - blockOnSetTime) % 60000) / 1000);
         Serial.print("Number of Total Trials : ");
         Serial.println(trial);
         Serial.print("Number of Total Licks : ");
@@ -225,56 +288,73 @@ void loop()
   /********Trial********/
   /*********************/
   isDoorClosed = digitalRead(PIN_TRIAL_INPUT);
-  if(!isDoorClosed) // Door opened = trial started
+  if (!isDoorClosed) // Door opened = trial started
   {
-    if(!isTrial) // Start Trial
+    if (!isTrial) // Start Trial
     {
       trial = trial+1;
       digitalWrite(PIN_TRIAL_OUTPUT,HIGH);
-
-      if(random(100) < percentage_attack_in_6sec)   //decide long or short attack onset time
-        attackOffsetTime = 6000;
-      else
-        attackOffsetTime = 3000;
       
       // Print Trial Info
       Serial.print("trial : ");
       Serial.println(trial);
-      
-      Serial.print("Attack in ");
-      Serial.print(attackOffsetTime);
-      Serial.println("ms sec");
+
+      // Decide attack time in at mode
+      if (mode == "at")
+      {
+        if (random(100) < percentage_attack_in_6sec)   
+          attackDelay = 6000;
+        else
+          attackDelay = 3000;
+        
+        Serial.print("Attack in ");
+        Serial.print(attackDelay);
+        Serial.println("ms sec");
+      }
       
       isTrial = true;
     }
     
-    if(!isAttacked) // not attacked
+    if (!isAttacked) // not attacked
     {
-      if(!isAttackArmed) // not armed
+      if (!isLickedInThisTrial) // not armed
       {
-        if(digitalRead(PIN_LICK_INPUT)) // licked
+        if (digitalRead(PIN_LICK_INPUT)) // licked
         {
-          isAttackArmed = true;
-          attackOnSetTime = millis() + attackOffsetTime;
+          isLickedInThisTrial = true;
           Serial.println(" Licked");
+          if (mode == "sh")
+          {
+            doorCloseTime = millis() + doorCloseDelay;
+          }
+          else if (mode == "at")
+          {
+            attackOnsetTime = millis() + attackDelay;  
+          }
         }
       }
       else // armed
       {
-        if(attackOnSetTime < millis()) // Attack Onset Time reached
+        if (mode == "sh" && doorCloseTime < millis())
+        {
+          closeDoor();
+        }
+
+        if (mode == "at" && attackOnsetTime < millis()) // Attack Onset Time reached
         {
           Serial.println("######Attacked!!######");
           attack();
+          closeDoor();
         }
       }
     }
   }
   else // Door closed
   {
-    if(isTrial) // finish trial
+    if (isTrial) // finish trial
     {
       isTrial = false;
-      isAttackArmed = false;
+      isLickedInThisTrial = false;
       isAttacked = false;
       digitalWrite(PIN_TRIAL_OUTPUT,LOW);
       if (trial%2==0)
@@ -297,13 +377,13 @@ void loop()
   	if (mode == "at")
   	{
   		digitalWrite(PIN_MANUAL_SUC_OUTPUT, LOW);
-  		if(digitalRead(PIN_MANUAL_BUTTON_INPUT) == HIGH)
+  		if (digitalRead(PIN_MANUAL_BUTTON_INPUT) == HIGH)
   		{
         Serial.println("Manual Attack");
         attack();
   		}
   	}
-    else if (mode == "tr")
+    else if (mode == "tr" || mode == "sh")
     {
     	digitalWrite(PIN_MANUAL_SUC_OUTPUT, digitalRead(PIN_MANUAL_BUTTON_INPUT));
     }
@@ -311,23 +391,25 @@ void loop()
   }
   
   //Num Lick Count
-  if(digitalRead(PIN_LICK_INPUT)==HIGH)
+  if (digitalRead(PIN_LICK_INPUT)==HIGH)
   {
-    if(!lickToggle)
+    if (!lickToggle)
     {
       lickToggle = true;
       numLick++;
 
-      lickStartTime = millis(); // add lick start time
+      lickOnsetTime = millis(); // add lick start time
 
-      if(numLick%10 == 0)
+      if (numLick%10 == 0)
       {
-        if(numLick%20 == 0)
+        if (numLick%30 == 0)
         { 
           unsigned long timepassed = millis() - blockOnSetTime;
           Serial.print(long(timepassed / 1000 / 60));
           Serial.print(":");
           Serial.println((timepassed - long(timepassed / 1000 / 60) * 1000 * 60)/1000);
+
+          pumpStopTime = millis() + 500;
         }
         Serial.println(numLick);
       }
@@ -335,27 +417,45 @@ void loop()
   }
   else
   {
-    if(lickToggle)
+    if (lickToggle)
     {
       lickToggle = false;
-      accumLickTime += millis() - lickStartTime;
+      accumLickTime += millis() - lickOnsetTime;
     }
   }
+
+  // Autoflush
+  if (isAutoflushEnabled)
+  {
+    if (millis() < pumpStopTime)
+    {
+      digitalWrite(PIN_PUMP_OUTPUT, HIGH);
+    }
+    else
+    {
+      digitalWrite(PIN_PUMP_OUTPUT, LOW);
+    }
+  }
+
   //Time alert when set amount of time has passed
-  if (timelimitreached == false && millis() - blockOnSetTime>timelimit)
+  if (isTimeLimitReached == false && millis() - blockOnSetTime>timelimit)
   {
     Serial.println("###### Alert: Timelimit reached! ######");
-    timelimitreached = true;
+    isTimeLimitReached = true;
   }
 }
 
 void attack()
 {
   digitalWrite(PIN_ATTK_OUTPUT,HIGH);
-  digitalWrite(PIN_CLOSE_OUTPUT, HIGH); // this sig will command the door controller to close after 1 sec from this sig.
   delay(100);
   digitalWrite(PIN_ATTK_OUTPUT,LOW);
-  digitalWrite(PIN_CLOSE_OUTPUT, LOW);
-  delay(1000);
   isAttacked = true;
+}
+
+void closeDoor()
+{
+  digitalWrite(PIN_CLOSE_OUTPUT, HIGH); // this sig will command the door controller to close after 1 sec from this sig.
+  delay(100);
+  digitalWrite(PIN_CLOSE_OUTPUT, LOW);
 }
