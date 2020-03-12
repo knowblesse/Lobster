@@ -12,9 +12,15 @@ const int PIN_SERVO_ON = 13;
 Servo myservo1;
 Servo myservo2;
 
+// servo angles
+const int servo1_rest = 65;
+const int servo1_attk = 100;
+const int servo2_rest = 140;
+const int servo2_attk = 105;
+
 void setup() 
 {
-  Serial.begin(9600);
+  Serial.begin(9servo1_rest0);
   pinMode(PIN_ATTACK_IN, INPUT);
   pinMode(PIN_ATTACK_OUT, OUTPUT);
   pinMode(PIN_SERVO_ON, OUTPUT);
@@ -27,8 +33,8 @@ void setup()
 
   digitalWrite(PIN_SERVO_ON, HIGH);
   delay(50);
-  myservo1.write(60);
-  myservo2.write(145);
+  myservo1.write(servo1_rest);
+  myservo2.write(servo2_rest);
   delay(200);
   digitalWrite(PIN_SERVO_ON, LOW);
 } 
@@ -46,6 +52,10 @@ void loop()
 
     // Send Attack Info
     digitalWrite(PIN_ATTACK_OUT,LOW);
+    
+    // Re-organize the claw once again
+    myservo1.write(servo1_rest);
+    myservo2.write(servo2_rest);
   }
 }
 
@@ -53,17 +63,17 @@ void attack()
 {
   digitalWrite(PIN_SERVO_ON, HIGH);
   delay(50);
-  myservo1.write(100);               
-  myservo2.write(105);
+  myservo1.write(servo1_attk);               
+  myservo2.write(servo2_attk);
   delay(200);
-  myservo1.write(60);  
-  myservo2.write(145);
+  myservo1.write(servo1_rest);  
+  myservo2.write(servo2_rest);
   delay(200);
-  myservo1.write(100);               
-  myservo2.write(105);
+  myservo1.write(servo1_attk);               
+  myservo2.write(servo2_attk);
   delay(200);
-  myservo1.write(60);
-  myservo2.write(145);
+  myservo1.write(servo1_rest);
+  myservo2.write(servo2_rest);
   delay(200);
   digitalWrite(PIN_SERVO_ON, LOW);
 }
