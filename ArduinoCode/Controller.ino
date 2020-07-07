@@ -5,7 +5,7 @@
 
 const String START_MSG =\
 "Lobsterbot Controller\n \
-Version 2.2\n \
+Version 2.2.1\n \
 Knowblesse 2019";
 
 // Assign Pin Numbers
@@ -381,6 +381,7 @@ void loop()
   		{
         Serial.println("Manual Attack");
         attack();
+        isAttacked = false; // this line is necessary to enable normal attack after manual attack
   		}
   	}
     else if (mode == "tr" || mode == "sh")
