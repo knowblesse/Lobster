@@ -113,7 +113,11 @@ timewindow_ATTK = [timepoint_ATTK+TIMEWINDOW_LEFT,timepoint_ATTK+TIMEWINDOW_RIGH
 for f = 1 : numel(Paths) % 선택한 각각의 Unit Data에 대해서...
     %% Unit Data Load
     load(Paths{f}); % Unit data를 로드. SU 파일이 존재.
-    spikes = table2array(SU(:,1)); % spike timestamp 들을 저장.
+    if istable(SU)
+        spikes = table2array(SU(:,1)); % spike timestamp 들을 저장.
+    else
+        spikes = SU(:,1);
+    end
     clearvars SU;
     
     % Get sudo session firing rate
