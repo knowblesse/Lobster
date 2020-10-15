@@ -98,6 +98,7 @@ for f = 1 : numel(name_neur) % for each selected units,
     % Convolve gaussian kernel
     tempdata = conv(pseudo_serial_data,kernel);
     % Trim start/end point of the data to match the size
+    error('TODO : spike_kerneled and pseudo_serial_data mismatch!');
     spike_kerneled = tempdata(kernel_size/2+1:end-kernel_size/2+1);
     
     %% Divide by EVENT Marker
@@ -124,6 +125,7 @@ for f = 1 : numel(name_neur) % for each selected units,
     clearvars kernel tempdata pseudo_serial_data spikes
     
     %% Get mean and std for all binned data
+    error('TODO : why multiple -1000');
     all_data = -1000*ones(numTrial*2*binnedDataSize,1);
     for t = 1 : numTrial
         all_data(2*binnedDataSize*(t-1)+1:2*binnedDataSize*t) = ...

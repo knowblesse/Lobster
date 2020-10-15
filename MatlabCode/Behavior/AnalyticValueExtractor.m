@@ -1,4 +1,4 @@
-function behaviorResult = AnalyticValueExtractor(ParsedData, isSeparateEscape, isKeepOnlyAE)
+function behaviorResult = analyticValueExtractor(ParsedData, isSeparateEscape, isKeepOnlyAE)
 %% AnalyticValueExtractor
 % Returns Analytic Value(ie. avoid, escape) of each trials based on the
 % variable "ParsedData"
