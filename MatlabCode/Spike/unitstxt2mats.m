@@ -1,13 +1,13 @@
 function unitstxt2mats(targetfile)
 %% unitstxt2mats
 % Converts a txt file exported from the Offline Sorter into multiple .mat files
-% 2020 Knowblesse
+% Created on : 2020OCT13 Knowblesse
 
 %% Select and load txt file
 if ~exist('targetfile','var')
     [FileName,PathName] = uigetfile('*.txt');
     if FileName == 0
-        error('Error.unit txt file is not selected');
+        error('Error. Unit txt file is not selected');
     end
     targetfile = strcat(PathName, FileName);
     clearvars PathName FileName
