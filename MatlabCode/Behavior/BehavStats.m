@@ -68,7 +68,7 @@ StatArray(:,4) = InputArray(:,4) - InputArray(:,3);
 StatArray(:,5) = InputArray(:,3) - InputArray(:,1);
 StatArray(:,6) = InputArray(:,5) - InputArray(:,4);
 StatArray(:,7) = InputArray(:,5) - InputArray(:,2);
-
+% 8 and 9 is deprecated. 
 StatArray(:,10) = InputArray(:,2) - InputArray(:,3);
 StatArray(:,11) = InputArray(:,6);
 %% Draw Figures
@@ -130,19 +130,19 @@ set(fig_C,'Position',[1,1,1200,300]);
 movegui(fig_C,'center');
 
 % sequential behav pattern
-for i = 1 : numTrial
+for i = numTrial : -1 : 1
     switch(StatArray(i,11))
         case 0
-            barh(2,numTrial-i+1,'FaceColor',[0.507,0.789,0.984]); % Avoid 인 경우 파란색
+            barh(2,i,'FaceColor',[0.507,0.789,0.984]); % Avoid 인 경우 파란색
             hold on;
         case 1
-            barh(2,numTrial-i+1,'FaceColor',[0.965,0.527,0.602]); % Escape 인 경우 빨간색
+            barh(2,i,'FaceColor',[0.965,0.527,0.602]); % Escape 인 경우 빨간색
             hold on;
         case 2
-            barh(2,numTrial-i+1,'FaceColor',[0.8,0.8,0.8]); % Give Up 인 경우 회색
+            barh(2,i,'FaceColor',[0.8,0.8,0.8]); % Give Up 인 경우 회색
             hold on;
         case 3
-            barh(2,numTrial-i+1,'k'); % 1Min Out 인 경우 흰색
+            barh(2,i,'k'); % 1Min Out 인 경우 흰색
             hold on;
     end
 end
@@ -164,7 +164,7 @@ barh(1,compdat(1),'FaceColor',[0.507,0.789,0.984]);
 text(tempdat(1)/2, 1,'A','FontSize',12,'FontWeight','bold','Color','w');
 text(tempdat(2)/2 + compdat(1), 1,'E','FontSize',12,'FontWeight','bold','Color','w');
 text(tempdat(3)/2 + compdat(2), 1,'G','FontSize',12,'FontWeight','bold','Color','k');
-text(tempdat(4)/2 + compdat(3), 1,'M','FontSize',12,'FontWeight','bold','Color','k');
+text(tempdat(4)/2 + compdat(3), 1,'M','FontSize',12,'FontWeight','bold','Color','w');
 
 yticks([1,2]);
 yticklabels({'Composition','Behavior Type'});
