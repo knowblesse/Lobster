@@ -5,6 +5,7 @@ PythonCode/\.idea/
 ~$*.*
 Apparatus/OldVersions/
 *.lck
+*.swp
 
 Apparatus/Visual/OldVersions/
 

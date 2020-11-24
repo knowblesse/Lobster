@@ -1,7 +1,8 @@
 %% Plot Behav Stats
-% BehavDataParser를 돌린 후에 해당 데이터를 사용, 그래프 등을 출력해주는 스크립트
+% Plotting behavior related data
 
-%% 행동 데이터 로드
+%% Load Behavior event data
+% for concatenating multiple files
 NUM_FILES = 1;
 ParsedData_ = {};
 behaviorResult_ = [];
@@ -9,7 +10,7 @@ numIRClusters_ = [];
 numLickClusters_ = [];
 for f = 1 : NUM_FILES
     [ParsedData, Trials, IRs, Licks, Attacks ] = BehavDataParser();
-    behaviorResult = AnalyticValueExtractor(ParsedData, false, false);
+    behaviorResult = analyticValueExtractor(ParsedData, false, false);
     ParsedData_ = [ParsedData_;ParsedData];
     behaviorResult_ = [behaviorResult_; behaviorResult];
 end
