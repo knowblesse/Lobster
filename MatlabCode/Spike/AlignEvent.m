@@ -36,12 +36,7 @@ else
         return;
     end
 end
-
-if ~isempty(dir([targetdir, filesep, '*.tsq'])) % check whether the given path is event folder or raw Tank
-    [ParsedData, ~, ~, ~, ~] = BehavDataParserTank(targetdir);
-else
-    [ParsedData, ~, ~, ~, ~] = BehavDataParser(targetdir);
-end
+[ParsedData, ~, ~, ~, ~] = BehavDataParser(targetdir);
 fprintf('Processing %s\n',pathname)
 clearvars targetdir;
 
