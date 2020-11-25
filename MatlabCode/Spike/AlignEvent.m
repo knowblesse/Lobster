@@ -1,5 +1,5 @@
 %% AlignEvent
-% Align spike data on a specific event, compute Z-score, and save into <aligned_new> folder
+% Align spike data on a specific event, compute Z-score, and save into <aligned> folder
 
 %% PARAMETERS
 TIMEWINDOW_LEFT = -1; 
@@ -130,43 +130,24 @@ for f = 1 : numel(Paths)
     end
     
     %% Save
-    if exist(strcat(pathname,'aligned_new'),'dir') == 0 % aligned 폴더가 존재하지 않으면
-        mkdir(strcat(pathname,'aligned_new')); % 만들어줌
+    if exist(strcat(pathname,'aligned'),'dir') == 0 % aligned 폴더가 존재하지 않으면
+        mkdir(strcat(pathname,'aligned')); % 만들어줌
     end
     % parse filename
     filename_date = regexp(filename{f}, '\d{6}-\d{6}_eTe1*','match');
     filename_date = filename_date{1}(3:6);
     filename_cellnum = regexp(filename{f}, '_\d{1,}.mat','match');
     filename_cellnum = filename_cellnum{1}(2:end - numel('.mat'));
-    
+    if isempty(filename_date) || filename_cellnum
+        error("File name parsing failed");
+    end
     %% Save Data
     % save data : original data location
-    save([pathname,'\aligned_new\',filename_date,'_',filename_cellnum,'_aligned.mat'],'Z');
-%     % save data : outer 'processed data' location
-%     p1 = find(pathname=='\');
-%     p2 = p1(end-2);
-%     p3 = pathname(1:p2);
-%     
-%     if isSuc % Sucrose trial 이면
-%         p = strcat(p3,'processedData','\Suc'); % Suc에 저장
-%         clearvars p1 p2 p3
-%         if exist(p,'dir') == 0 % 폴더가 존재하지 않으면
-%             mkdir(p); % 만들어줌
-%         end
-%         save(strcat(p,'\',filename_date,'_',filename_cellnum,'_aligned.mat'),'Z');
-%     else % Sucrose trial이 아니면
-%         p = strcat(p3,'processedData','\All'); % All에 저장
-%         clearvars p1 p2 p3
-%         if exist(p,'dir') == 0 % 폴더가 존재하지 않으면
-%             mkdir(p); % 만들어줌
-%         end
-%         save(strcat(p,'\',filename_date,'_',filename_cellnum,'_aligned.mat'),'Z');
-%     end
+    save([pathname,'\aligned\',filename_date,'_',filename_cellnum,'_aligned.mat'],'Z');
     clearvars filename_date temp1 temp2 filename_cellnum Z 
 end
 
-fprintf('1. %d 개의 파일이 %s에 생성되었습니다.\n',f,strcat(pathname,'aligned_new'));
-%fprintf('2. %d 개의 파일이 %s에 생성되었습니다.\n',f,p);
+fprintf('1. %d 개의 파일이 %s에 생성되었습니다.\n',f,strcat(pathname,'aligned'));
 fprintf('-----------------------------------------------------------------------------\n');
 
 if ~isSuc
