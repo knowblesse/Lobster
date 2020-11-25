@@ -140,7 +140,7 @@ for f = 1 : numel(Paths)
     filename_date = filename_date{1}(3:6);
     filename_cellnum = regexp(filename{f}, '_\d{1,}.mat','match');
     filename_cellnum = filename_cellnum{1}(2:end - numel('.mat'));
-    if isempty(filename_date) || filename_cellnum
+    if isempty(filename_date) || isempty(filename_cellnum)
         error("File name parsing failed");
     end
     %% Save Data
