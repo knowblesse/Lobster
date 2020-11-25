@@ -7,7 +7,12 @@ function [ParsedData, Trials, IRs, Licks, Attacks ] = BehavDataParser(targetdir)
 
 %% Select folder
 if exist('targetdir','var') <= 0
-    targetdir = uigetdir();
+    global CURRENT_DIR;
+    if ~isempty(CURRENT_DIR)
+        targetdir = uigetdir(CURRENT_DIR);
+    else
+        targetdir = uigetdir();
+    end
     if targetdir == 0
         error('User Cancelled');
     end

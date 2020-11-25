@@ -10,7 +10,12 @@ clearvars TIMEWINDOW_LEFT TIMEWINDOW_RIGHT
 
 %% Select Unit data (.mat) path
 if exist('targetfiles','var') == 0 % For batch script
-    [filename, pathname] = uigetfile('*.mat', 'Select Unit Data .mat', 'MultiSelect', 'on');
+    global CURRENT_DIR;
+    if ~isempty(CURRENT_DIR)
+        [filename, pathname] = uigetfile(strcat(CURRENT_DIR, '*.mat'), 'Select Unit Data .mat', 'MultiSelect', 'on');
+    else
+        [filename, pathname] = uigetfile('*.mat', 'Select Unit Data .mat', 'MultiSelect', 'on');
+    end
     if isequal(filename,0)
         clearvars filename pathname
         return;
@@ -29,14 +34,11 @@ end
 
 %% Select and load EVENT data
 if exist(strcat(pathname,'EVENTS'),'dir') > 0 
-    targetdir = strcat(pathname,'EVENTS');
+    [ParsedData, ~, ~, ~, ~] = BehavDataParser(strcat(pathname,'EVENTS'));
 else
-    targetdir = uigetdir('','Select EVENT folder or Tank'); 
-    if isequal(targetdir,0)
-        return;
-    end
+    [ParsedData, ~, ~, ~, ~] = BehavDataParser();
 end
-[ParsedData, ~, ~, ~, ~] = BehavDataParser(targetdir);
+
 fprintf('Processing %s\n',pathname)
 clearvars targetdir;
 
