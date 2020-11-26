@@ -115,7 +115,7 @@ for f = 1 : numel(Paths)
     Z.std = std(bs);
     
     for v = variables
-        eval(['Z.zscore.',v{1},' = ((sum(Z.binned_spike.',v{1},',1) ./ numel(numValidTrial)) - Z.mean ) ./ Z.std']);
+        eval(['Z.zscore.',v{1},' = ((sum(Z.binned_spike.',v{1},',1) ./ numValidTrial) - Z.mean ) ./ Z.std']);
     end
     
     %% Session Firing Rate
@@ -149,11 +149,7 @@ for f = 1 : numel(Paths)
     clearvars filename_date temp1 temp2 filename_cellnum Z 
 end
 
-fprintf('1. %d 개의 파일이 %s에 생성되었습니다.\n',f,strcat(pathname,'aligned'));
+fprintf('%d 개의 파일이\n%s에 생성되었습니다.\n',f,strcat(pathname,'aligned'));
 fprintf('-----------------------------------------------------------------------------\n');
 
-if ~isSuc
-    subAlignEvent_separateAE
-end
-fprintf('==============================================================================\n');
 clearvars f time* TIME* filename pathname Paths ParsedData
