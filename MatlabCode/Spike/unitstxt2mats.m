@@ -24,7 +24,7 @@ for chn = 1 : 4
         % Save file
         i_unit = i_unit + 1;
         [filepath,name,~] = fileparts(targetfile);
-        save(strcat(filepath, '\', name, '_', num2str(i_unit),'.mat'),'SU');
+        save(strcat(filepath, '\', name, '_', num2str(i_unit,'%02d'),'.mat'),'SU');
     end
 end
 
