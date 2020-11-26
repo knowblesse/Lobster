@@ -136,9 +136,6 @@ end
 fprintf('Data integrity test passed.\n');
 
 %% Parse data
-% +------------------------+----------------+---------------+----------------+
-% | [TRON Time, TROF Time] | [[IRON, IROF]] | [[LICK,LOFF]] | [[ATTK, ATOF]] |
-% +------------------------+----------------+---------------+----------------+
 if isTank
     Trials = [DATA.epocs.TRON.onset, DATA.epocs.TROF.onset];
     IRs = [DATA.epocs.IRON.onset,DATA.epocs.IROF.onset];
@@ -170,6 +167,23 @@ for i = 1 : numTrial
     ParsedData{i,2} = IRs(sum(and(IRs>=Trials(i,1), IRs<Trials(i,2)),2) == 2,:) - Trials(i,1);
     ParsedData{i,3} = Licks(sum(and(Licks>=Trials(i,1), Licks<Trials(i,2)),2) == 2,:) - Trials(i,1);
     ParsedData{i,4} = Attacks(sum(and(Attacks>=Trials(i,1), Attacks<Trials(i,2)),2) == 2, :) - Trials(i,1);
-
 end
+
+%% Remove invalid trials (no IRON or no LICK or no ATTK)
+numTrial = size(ParsedData,1);
+validtrial = false(numTrial,1);
+for t = 1 : numTrial
+    if isempty(ParsedData{t,2})
+        warning('Trial %d is invalid : No IR => Removed',t);
+    elseif isempty(ParsedData{t,3})
+        warning('Trial %d is invalid : No Lick => Removed',t);
+    elseif isempty(ParsedData{t,4})
+        warning('Trial %d is invalid : No Attk => Removed',t);
+    else
+        validtrial(t) =  true;
+    end
+end
+
+ParsedData = ParsedData(validtrial, :);
+numValidTrial = sum(validtrial);
 fprintf('%s : Complete\n',dataname);

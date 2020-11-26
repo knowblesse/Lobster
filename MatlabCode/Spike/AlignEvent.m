@@ -42,24 +42,8 @@ end
 fprintf('Processing %s\n',pathname)
 clearvars targetdir;
 
-%% Remove invalid trials (no IRON or no LICK or no ATTK)
-numTrial = size(ParsedData,1);
-validtrial = false(numTrial,1);
-for t = 1 : numTrial
-    if isempty(ParsedData{t,2})
-        warning('Trial %d is invalid : No IR',t);
-    elseif isempty(ParsedData{t,3})
-        warning('Trial %d is invalid : No Lick',t);
-    elseif isempty(ParsedData{t,4})
-        warning('Trial %d is invalid : No Attk',t);
-    else
-        validtrial(t) =  true;
-    end
-end
-
-numValidTrial = sum(validtrial);
-
 %% Find Time window in each trial
+numTrial = size(ParsedData,1);
 timepoint.TRON = zeros(numTrial,1);
 timepoint.first_IRON = zeros(numTrial,1);
 timepoint.valid_IRON = zeros(numTrial,1); % IRON leads to the first LICK
@@ -68,9 +52,7 @@ timepoint.valid_IROF = zeros(numTrial,1); % IROF just before/after ATTK
 timepoint.ATTK = zeros(numTrial,1);
 timepoint.TROF = zeros(numTrial,1);
 
-trials = 1 : numTrial;
-trials = trials(validtrial);
-for t = trials
+for t = 1 : numTrial
     start_time = ParsedData{t,1}(1);
     timepoint.TRON(t) = start_time;
     timepoint.first_IRON(t) = start_time + ParsedData{t,2}(1); 
@@ -96,9 +78,9 @@ for f = 1 : numel(Paths)
     %% Spike binning
     variables = {'TRON','first_IRON','valid_IRON','first_LICK','valid_IROF','ATTK','TROF'};
     for v = variables
-        eval(['Z.binned_spike.',v{1},' = zeros(numValidTrial,diff(TIMEWINDOW)/TIMEWINDOW_BIN);']);
+        eval(['Z.binned_spike.',v{1},' = zeros(numTrial,diff(TIMEWINDOW)/TIMEWINDOW_BIN);']);
         eval(['tp = timepoint.',v{1},';']);
-        for t = 1 : numValidTrial
+        for t = 1 : numTrial
             spikebin = zeros(diff(TIMEWINDOW)/TIMEWINDOW_BIN,1);
             timebin = linspace(tp(t) + TIMEWINDOW(1), tp(t) + TIMEWINDOW(2),numel(spikebin) + 1);
             for tb = 1 : numel(spikebin)
@@ -115,25 +97,29 @@ for f = 1 : numel(Paths)
     Z.std = std(bs);
     
     for v = variables
-        eval(['Z.zscore.',v{1},' = ((sum(Z.binned_spike.',v{1},',1) ./ numValidTrial) - Z.mean ) ./ Z.std']);
+        eval(['Z.zscore.',v{1},' = ((sum(Z.binned_spike.',v{1},',1) ./ numTrial) - Z.mean ) ./ Z.std;']);
     end
     
     %% Session Firing Rate
-    Z.FR = ...
-        ( find(spikes<ParsedData{end,1}(2),1,'last') - find(spikes>=ParsedData{1,1}(1),1) ) / ...
-        ( ParsedData{end,1}(2) - ParsedData{1,1}(1) ); % FR btw the first TRON and the last TROF
+    numspike = find(spikes>ParsedData{end,1}(2),1) - find(spikes>=ParsedData{1,1}(1),1);
+    if isempty(numspike)
+        numspike = 0;
+    end
+    Z.FR = numspike / ParsedData{end,1}(2) - ParsedData{1,1}(1) ; % FR btw the first TRON and the last TROF
     
     %% Trial Firing Rate
-    Z.FR_trial = zeros(numValidTrial,1);
-    for t = 1 : numValidTrial
-        Z.FR_trial(t) = ...
-            ( find(spikes<ParsedData{t,1}(2),1,'last') - find(spikes>=ParsedData{t,1}(1),1) ) / ...
-            ( ParsedData{t,1}(2) - ParsedData{t,1}(1) ); % FR btw Trial
+    Z.FR_trial = zeros(numTrial,1);
+    for t = 1 : numTrial
+        numspike = find(spikes>ParsedData{t,1}(2),1) - find(spikes>=ParsedData{t,1}(1),1);
+        if isempty(numspike)
+            numspike = 0;
+        end
+        Z.FR_trial(t) = numspike / ParsedData{t,1}(2) - ParsedData{t,1}(1); % FR btw Trial
     end
     
     %% Save
-    if exist(strcat(pathname,'aligned'),'dir') == 0 % aligned Æú´õ°¡ Á¸ÀçÇÏÁö ¾ÊÀ¸¸é
-        mkdir(strcat(pathname,'aligned')); % ¸¸µé¾îÁÜ
+    if exist(strcat(pathname,'aligned'),'dir') == 0 % aligned ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+        mkdir(strcat(pathname,'aligned')); % ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     end
     % parse filename
     filename_date = regexp(filename{f}, '\d{6}-\d{6}_eTe1*','match');
@@ -149,7 +135,7 @@ for f = 1 : numel(Paths)
     clearvars filename_date temp1 temp2 filename_cellnum Z 
 end
 
-fprintf('%d °³ÀÇ ÆÄÀÏÀÌ\n%s¿¡ »ý¼ºµÇ¾ú½À´Ï´Ù.\n',f,strcat(pathname,'aligned'));
+fprintf('%d ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½\n%sï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ç¾ï¿½ï¿½ï¿½ï¿½Ï´ï¿½.\n',f,strcat(pathname,'aligned'));
 fprintf('-----------------------------------------------------------------------------\n');
 
 clearvars f time* TIME* filename pathname Paths ParsedData
