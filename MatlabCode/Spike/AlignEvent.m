@@ -9,31 +9,34 @@ TIMEWINDOW_BIN = 0.05;
 clearvars TIMEWINDOW_LEFT TIMEWINDOW_RIGHT
 
 %% Select Unit data (.mat) path
-if exist('targetfiles','var') == 0 % For batch script
+if exist('TANK_location','var') % For batch script
+    cell_location = dir(strcat(TANK_location,'\recording\*.mat'));
+    filename = {cell_location.name};
+    pathname = strcat(getfield(cell_location,'folder'),filesep);
+else
     global CURRENT_DIR;
-    if ~isempty(CURRENT_DIR)
-        [filename, pathname] = uigetfile(strcat(CURRENT_DIR, '*.mat'), 'Select Unit Data .mat', 'MultiSelect', 'on');
-    else
-        [filename, pathname] = uigetfile('*.mat', 'Select Unit Data .mat', 'MultiSelect', 'on');
-    end
+    [filename, pathname] = uigetfile(strcat(CURRENT_DIR, '*.mat'), 'Select Unit Data .mat', 'MultiSelect', 'on');
     if isequal(filename,0)
         clearvars filename pathname
         return;
     end
-    Paths = strcat(pathname,filename);
-    if (ischar(Paths))
-        Paths = {Paths};
-        filename = {filename};
-    end
-    if contains(pathname,'suc') % if path name has 'suc' in it, consider it as sucrose training (no attk) data
-        isSuc = true;
-    else
-        isSuc = false;
-    end
+end
+Paths = strcat(pathname,filename);
+if (ischar(Paths))
+    Paths = {Paths};
+    filename = {filename};
+end
+% Sucrose Sessions (nearly deprecated)
+if contains(pathname,'suc') % if path name has 'suc' in it, consider it as sucrose training (no attk) data
+    isSuc = true;
+else
+    isSuc = false;
 end
 
 %% Select and load EVENT data
-if exist(strcat(pathname,'EVENTS'),'dir') > 0 
+if exist('TANK_location','var')
+    [ParsedData, ~, ~, ~, ~] = BehavDataParser(TANK_location);
+elseif exist(strcat(pathname,'EVENTS'),'dir') > 0 
     [ParsedData, ~, ~, ~, ~] = BehavDataParser(strcat(pathname,'EVENTS'));
 else
     [ParsedData, ~, ~, ~, ~] = BehavDataParser();
@@ -118,8 +121,8 @@ for f = 1 : numel(Paths)
     end
     
     %% Save
-    if exist(strcat(pathname,'aligned'),'dir') == 0 % aligned ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
-        mkdir(strcat(pathname,'aligned')); % ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    if exist(strcat(pathname,'aligned'),'dir') == 0 % aligned Æú´õ°¡ Á¸ÀçÇÏÁö ¾ÊÀ¸¸é
+        mkdir(strcat(pathname,'aligned')); % ¸¸µé¾îÁÜ
     end
     % parse filename
     filename_date = regexp(filename{f}, '\d{6}-\d{6}_eTe1*','match');
@@ -135,7 +138,7 @@ for f = 1 : numel(Paths)
     clearvars filename_date temp1 temp2 filename_cellnum Z 
 end
 
-fprintf('%d ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½\n%sï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ç¾ï¿½ï¿½ï¿½ï¿½Ï´ï¿½.\n',f,strcat(pathname,'aligned'));
+fprintf('%d °³ÀÇ ÆÄÀÏÀÌ\n%s¿¡ »ý¼ºµÇ¾ú½À´Ï´Ù.\n',f,strcat(pathname,'aligned'));
 fprintf('-----------------------------------------------------------------------------\n');
 
 clearvars f time* TIME* filename pathname Paths ParsedData
