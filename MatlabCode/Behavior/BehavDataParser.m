@@ -185,5 +185,4 @@ for t = 1 : numTrial
 end
 
 ParsedData = ParsedData(validtrial, :);
-numValidTrial = sum(validtrial);
 fprintf('%s : Complete\n',dataname);
