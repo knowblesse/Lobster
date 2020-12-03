@@ -22,7 +22,7 @@ bool currControllerSignal;
 bool isMotionDetected = false;
 bool currMotionSensorSignal;
 unsigned long motionOnSetTime;
-unsigned long motionCriteronTime = 1000;
+unsigned long motionCriteronTime = 800;
 bool isMotionModeOn = false;
 bool isFirstTrial = true;
 
@@ -127,7 +127,6 @@ void loop()
     }
     if (currControllerSignal == HIGH) // attack signal came. go down.
     {
-      delay(1000); // delay for attack signal
       doorStartTime = millis();
       isDirectionUp = false;
       moveDoor(isDirectionUp);  
