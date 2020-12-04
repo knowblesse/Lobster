@@ -14,5 +14,5 @@ for f = 1 : numel(workingfile)
     for fl = 1 : size(filelist,1)
         delete(strcat(filelist(fl).folder, filesep, filelist(fl).name));
     end
-    fprintf('%d files deleted in %s',size(filelist,1), f);
+    fprintf('%d files deleted in %c\n',size(filelist,1), f);
 end
