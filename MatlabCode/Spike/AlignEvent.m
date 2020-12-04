@@ -9,23 +9,8 @@ TIMEWINDOW_BIN = 0.05;
 clearvars TIMEWINDOW_LEFT TIMEWINDOW_RIGHT
 
 %% Select Unit data (.mat) path
-if exist('TANK_location','var') % For batch script
-    cell_location = dir(strcat(TANK_location,'\recording\*.mat'));
-    filename = {cell_location.name};
-    pathname = strcat(getfield(cell_location,'folder'),filesep);
-else
-    global CURRENT_DIR;
-    [filename, pathname] = uigetfile(strcat(CURRENT_DIR, '*.mat'), 'Select Unit Data .mat', 'MultiSelect', 'on');
-    if isequal(filename,0)
-        clearvars filename pathname
-        return;
-    end
-end
-Paths = strcat(pathname,filename);
-if (ischar(Paths))
-    Paths = {Paths};
-    filename = {filename};
-end
+[Paths, filename] = loadUnitData(TANK_location);
+
 % Sucrose Sessions (nearly deprecated)
 if contains(pathname,'suc') % if path name has 'suc' in it, consider it as sucrose training (no attk) data
     isSuc = true;
