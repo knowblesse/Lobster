@@ -9,7 +9,7 @@ TIMEWINDOW_BIN = 0.05;
 clearvars TIMEWINDOW_LEFT TIMEWINDOW_RIGHT
 
 %% Select Unit data (.mat) path
-[Paths, filename] = loadUnitData(TANK_location);
+[Paths, pathname, filename] = loadUnitData(TANK_location);
 
 % Sucrose Sessions (nearly deprecated)
 if contains(pathname,'suc') % if path name has 'suc' in it, consider it as sucrose training (no attk) data

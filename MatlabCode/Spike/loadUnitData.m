@@ -1,4 +1,4 @@
-function [Paths, filename] = loadUnitData(TANK_location)
+function [Paths, pathname, filename] = loadUnitData(TANK_location)
 %% loadUnitData
 % load unit data (.mat) into path variable. 
 % Created by Knowblesse 20DEC04
