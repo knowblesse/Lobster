@@ -1,4 +1,4 @@
-function behaviorResult = analyticValueExtractor(ParsedData, isSeparateEscape, isKeepOnlyAE)
+function [behaviorResult, ParsedData] = analyticValueExtractor(ParsedData, isSeparateEscape, isKeepOnlyAE)
 %% analyticValueExtractor
 % Returns Analytic Value(ie. avoid, escape) of each trials based on the
 % variable "ParsedData"
@@ -46,11 +46,18 @@ for trial = 1 : size(ParsedData,1)
 end
 
 if KEEP_ONLY_A_AND_E
+    if numel(find(behaviorResult == 'G')) ~= 0
+        fprintf('Give up Trials below. removing...\n');
+        disp(find(behaviorResult == 'G'));
+    end
+    if numel(find(behaviorResult == 'M')) ~= 0 
+        fprintf('Time up Trials below. removing...\n');
+        disp(find(behaviorResult == 'M'));
+    end
+    ParsedData(behaviorResult == 'G',:) = [];
     behaviorResult(behaviorResult == 'G') = [];
+    ParsedData(behaviorResult == 'M',:) = [];
     behaviorResult(behaviorResult == 'M') = [];
 end
-
-
-clearvars Attack IAttackIROFI IR KEEP_ONLY_A_AND_E SEPARATE_3SEC_6SEC_ESCAPE Lick MIN_1MIN_TIMEOUT_DURATION numTrial trial Trial
         
 end
