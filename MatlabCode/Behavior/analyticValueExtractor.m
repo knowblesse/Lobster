@@ -47,11 +47,11 @@ end
 
 if KEEP_ONLY_A_AND_E
     if numel(find(behaviorResult == 'G')) ~= 0
-        fprintf('Give up Trials below. removing...\n');
+        fprintf('analyticValueExtractor : Give up Trials below. removing...\n');
         disp(find(behaviorResult == 'G'));
     end
     if numel(find(behaviorResult == 'M')) ~= 0 
-        fprintf('Time up Trials below. removing...\n');
+        fprintf('analyticValueExtractor : Time up Trials below. removing...\n');
         disp(find(behaviorResult == 'M'));
     end
     ParsedData(behaviorResult == 'G',:) = [];

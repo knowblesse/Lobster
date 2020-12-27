@@ -16,19 +16,19 @@ if exist('targetdir','var') <= 0
         targetdir = uigetdir();
     end
     if targetdir == 0
-        error('User Cancelled');
+        error('BehavDataParser : User Cancelled');
     end
 end
 %% Check if it is a Tank
 if exist(strcat(targetdir,'\StoresListing.txt'))
     % the file is a tank
     if exist(targetdir,'dir') <= 0
-        error('Tank path %s not found',targetdir);
+        error('BehavDataParser : Tank path %s not found',targetdir);
     end
     if exist('TDTbin2mat','file') <= 0
-        error('Can not find TDTbin2mat function in scope.');
+        error('BehavDataParser : Can not find TDTbin2mat function in scope.');
     end
-    fprintf('Tank Found');
+    fprintf('BehavDataParser : %s Tank Found', targetdir);
     isTank = true;
 else
     % the file is a folder with .csv s
@@ -57,13 +57,12 @@ else
             fprintf('%s\n',DATALIST{i});
         end
         fprintf('file is missing\n');
-        error('csv file missing!');
+        error('BehavDataParser : csv file missing!');
     end
-    fprintf('CSV folder found');
+    fprintf('BehavDataParser : %s CSV folder found',targetdir);
     clearvars location filelist datafound i j temp nodataindex 
     isTank = false;
 end
-fprintf('Event Folder found\n');
 
 %% Load Event Data
 if isTank
@@ -84,7 +83,7 @@ else
     end
     clearvars startRow formatSpec fileID dataArray filelist filename
 end
-fprintf('Event data loaded\n');
+fprintf('BehavDataParser : %s Event Loaded\n',targetdir);
 
 
 
@@ -106,14 +105,14 @@ if isTank
         warning('%s : TRON TROF size mismatch!!',DATA.info.blockname);
         if size(DATA.epocs.TRON.onset,1) == size(DATA.epocs.TROF.onset,1) + 1
             if isfield(DATA.epocs,'BLOF')
-                warning('  Possibly the last TROF skipped. Using BLOF instead.');
+                warning('Possibly the last TROF skipped. Using BLOF instead.');
                 DATA.epocs.TROF.onset = [DATA.epocs.TROF.onset;DATA.epocs.BLOF.onset];
             else
-                warning('  Can not recover the Last TROF data from BLOF\n  Deleting the last trial');
+                warning('Can not recover the Last TROF data from BLOF\nDeleting the last trial');
                 DATA.epocs.TRON.onset = DATA.epocs.TRON.onset(1:end-1);
             end
         else
-            error('  Critical Error');
+            error('Critical Error');
         end
     end
     if size(DATA.epocs.IRON.onset,1) ~= size(DATA.epocs.IROF.onset,1)
@@ -136,7 +135,7 @@ else
     end
     clearvars i j PAIR
 end    
-fprintf('Data integrity test passed.\n');
+fprintf('BehavDataParser : Data integrity test passed.\n');
 
 %% Parse data
 if isTank
@@ -188,4 +187,4 @@ for t = 1 : numTrial
 end
 
 ParsedData = ParsedData(validtrial, :);
-fprintf('%s : Complete\n',dataname);
+fprintf('BehavDataParser : %s behavior data parsing complete\n',dataname);

@@ -20,7 +20,7 @@ else
 end
 [behaviorResult, ParsedData] = analyticValueExtractor(ParsedData, false, true);
 
-fprintf('Processing %s\n',pathname)
+fprintf('generateEventClassifierDataset : Processing %s\n',pathname)
 clearvars targetdir;
 
 %% Parse function parameters
@@ -126,4 +126,5 @@ X = cell2mat(X);
 y = [1*ones(numel(IRON),1);...
      2*ones(numel(IROF_A),1);...
      3*ones(numel(IROF_E),1)];
+fprintf('generateEventClassifierDataset : Complete %s\n',pathname)
 end
