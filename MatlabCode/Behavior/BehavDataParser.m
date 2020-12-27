@@ -1,6 +1,8 @@
 function [ParsedData, Trials, IRs, Licks, Attacks ] = BehavDataParser(targetdir)
 %% BehavDataParser
 % Import Event data from 1) Open Bridge extracted csv files or 2) Tank
+% Invalid trial is automatically removed and the remaining is concatenated.
+% Thus resulting trial number might differ from the original number.
 % Created on 2018 Knowblesse
 % Modified on 2020NOV19 Knowblesse
 %% Constants
@@ -107,7 +109,8 @@ if isTank
                 warning('  Possibly the last TROF skipped. Using BLOF instead.');
                 DATA.epocs.TROF.onset = [DATA.epocs.TROF.onset;DATA.epocs.BLOF.onset];
             else
-                error('  Can not recover the Last TROF data from BLOF');
+                warning('  Can not recover the Last TROF data from BLOF\n  Deleting the last trial');
+                DATA.epocs.TRON.onset = DATA.epocs.TRON.onset(1:end-1);
             end
         else
             error('  Critical Error');
