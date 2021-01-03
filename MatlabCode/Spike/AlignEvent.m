@@ -2,10 +2,10 @@
 % Align spike data on a specific event, compute Z-score, and save into <aligned> folder
 
 %% PARAMETERS
-TIMEWINDOW_LEFT = -1; 
-TIMEWINDOW_RIGHT = +1; 
+TIMEWINDOW_LEFT = -1000; %(ms)
+TIMEWINDOW_RIGHT = +1000; %(ms)
 TIMEWINDOW = [TIMEWINDOW_LEFT, TIMEWINDOW_RIGHT];
-TIMEWINDOW_BIN = 0.05; 
+TIMEWINDOW_BIN = 50; %(ms) 
 clearvars TIMEWINDOW_LEFT TIMEWINDOW_RIGHT
 
 %% Select Unit data (.mat) path
@@ -27,7 +27,7 @@ else
     [ParsedData, ~, ~, ~, ~] = BehavDataParser();
 end
 
-fprintf('Processing %s\n',pathname)
+fprintf('AlignEvent : Processing %s\n',pathname)
 clearvars targetdir;
 
 %% Find Time window in each trial
@@ -41,14 +41,14 @@ timepoint.ATTK = zeros(numTrial,1);
 timepoint.TROF = zeros(numTrial,1);
 
 for t = 1 : numTrial
-    start_time = ParsedData{t,1}(1);
+    start_time = ParsedData{t,1}(1) * 1000;
     timepoint.TRON(t) = start_time;
-    timepoint.first_IRON(t) = start_time + ParsedData{t,2}(1); 
-    timepoint.valid_IRON(t) = start_time + ParsedData{t,2}(find(ParsedData{t,2}(:,1) < ParsedData{t,3}(1),1,'last'),1);
-    timepoint.first_LICK(t) = start_time + ParsedData{t,3}(1);
-    timepoint.valid_IROF(t) = start_time + ParsedData{t,2}(find(ParsedData{t,2}(:,1) < ParsedData{t,4}(1),1,'last'),2);
-    timepoint.ATTK(t) = start_time + ParsedData{t,4}(1);
-    timepoint.TROF(t) = ParsedData{t,1}(2);    
+    timepoint.first_IRON(t) = start_time + ParsedData{t,2}(1) * 1000; 
+    timepoint.valid_IRON(t) = start_time + ParsedData{t,2}(find(ParsedData{t,2}(:,1) < ParsedData{t,3}(1),1,'last'),1) * 1000;
+    timepoint.first_LICK(t) = start_time + ParsedData{t,3}(1) * 1000;
+    timepoint.valid_IROF(t) = start_time + ParsedData{t,2}(find(ParsedData{t,2}(:,1) < ParsedData{t,4}(1),1,'last'),2) * 1000;
+    timepoint.ATTK(t) = start_time + ParsedData{t,4}(1) * 1000;
+    timepoint.TROF(t) = ParsedData{t,1}(2) * 1000;    
 end
 clearvars t start_time
 
@@ -61,6 +61,7 @@ for f = 1 : numel(Paths)
     else
         spikes = SU(:,1);
     end
+    spikes = spikes * 1000;
     clearvars SU;
     
     %% Spike binning
@@ -80,7 +81,7 @@ for f = 1 : numel(Paths)
     clearvars tp tb
     
     %% Calculate Zscore
-    bs = histcounts(spikes,ParsedData{1,1}(1) : TIMEWINDOW_BIN : ParsedData{end,1}(2));
+    bs = histcounts(spikes,ParsedData{1,1}(1) * 1000 : TIMEWINDOW_BIN : ParsedData{end,1}(2) * 1000);
     Z.mean = mean(bs);
     Z.std = std(bs);
     
@@ -89,7 +90,7 @@ for f = 1 : numel(Paths)
     end
     
     %% Session Firing Rate
-    numspike = find(spikes>ParsedData{end,1}(2),1) - find(spikes>=ParsedData{1,1}(1),1);
+    numspike = find(spikes>ParsedData{end,1}(2) * 1000,1) - find(spikes>=ParsedData{1,1}(1) * 1000,1);
     if isempty(numspike)
         numspike = 0;
     end
@@ -98,7 +99,7 @@ for f = 1 : numel(Paths)
     %% Trial Firing Rate
     Z.FR_trial = zeros(numTrial,1);
     for t = 1 : numTrial
-        numspike = find(spikes>ParsedData{t,1}(2),1) - find(spikes>=ParsedData{t,1}(1),1);
+        numspike = find(spikes>ParsedData{t,1}(2) * 1000,1) - find(spikes>=ParsedData{t,1}(1) * 1000,1);
         if isempty(numspike)
             numspike = 0;
         end
@@ -106,8 +107,8 @@ for f = 1 : numel(Paths)
     end
     
     %% Save
-    if exist(strcat(pathname,'aligned'),'dir') == 0 % aligned 폴더가 존재하지 않으면
-        mkdir(strcat(pathname,'aligned')); % 만들어줌
+    if exist(strcat(pathname,'aligned'),'dir') == 0 % if aligned folder does not exist,
+        mkdir(strcat(pathname,'aligned')); % make one
     end
     % parse filename
     filename_date = regexp(filename{f}, '\d{6}-\d{6}_eTe1*','match');
@@ -123,7 +124,7 @@ for f = 1 : numel(Paths)
     clearvars filename_date temp1 temp2 filename_cellnum Z 
 end
 
-fprintf('%d 개의 파일이\n%s에 생성되었습니다.\n',f,strcat(pathname,'aligned'));
+fprintf('%d files are created at \n%s\n',f,strcat(pathname,'aligned'));
 fprintf('-----------------------------------------------------------------------------\n');
 
 clearvars f time* TIME* filename pathname Paths ParsedData
