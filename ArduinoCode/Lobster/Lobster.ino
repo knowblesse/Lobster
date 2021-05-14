@@ -13,8 +13,13 @@ Servo myservo1;
 Servo myservo2;
 
 // servo angles
-const int servo1_rest = 65;
-const int servo1_attk = 100;
+// after the motor replacement, the angle value changed.
+// these are the old values
+//const int servo1_rest = 65;
+//const int servo1_attk = 100;
+
+const int servo1_rest = 50;
+const int servo1_attk = 85;
 const int servo2_rest = 140;
 const int servo2_attk = 105;
 
@@ -77,5 +82,3 @@ void attack()
   delay(200);
   digitalWrite(PIN_SERVO_ON, LOW);
 }
-
-
