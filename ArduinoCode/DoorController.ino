@@ -30,7 +30,7 @@ bool isDoorMoving;
 unsigned long doorStartTime;
 
 const int Freq = 500;
-const int Duration = 2500;
+const int Duration = 2000;
 
 void setup()
 {
