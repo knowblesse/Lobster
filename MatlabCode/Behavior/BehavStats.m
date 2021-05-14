@@ -4,15 +4,17 @@
 %% Load Behavior event data
 % for concatenating multiple files
 NUM_FILES = 1;
+filename_ = {};
 ParsedData_ = {};
 behaviorResult_ = [];
 numIRClusters_ = [];
 numLickClusters_ = [];
 for f = 1 : NUM_FILES
-    [ParsedData, Trials, IRs, Licks, Attacks ] = BehavDataParser();
+    [ParsedData, ~, ~, ~, ~, filename] = BehavDataParser();
     behaviorResult = analyticValueExtractor(ParsedData, false, false);
     ParsedData_ = [ParsedData_;ParsedData];
     behaviorResult_ = [behaviorResult_; behaviorResult];
+    filename_ = [filename_,filename];
 end
 
 ParsedData = ParsedData_;
@@ -21,7 +23,7 @@ numIRClusters = numIRClusters_;
 numLickClusters = numLickClusters_;
 
 clearvars ParsedData_ behaviorResult_ numIRClusters_ numLickClusters_;
-    
+
 %% Data Array Format
 % +-----+-----+-------+-------+--------+----------------+
 % |  1  |  2  |   3   |   4   |   5    |       6        |
@@ -31,7 +33,7 @@ clearvars ParsedData_ behaviorResult_ numIRClusters_ numLickClusters_;
 % BehaviorResult : A : 0 | E : 1 | G : 2 | M : 3
 numTrial = size(ParsedData,1);
 InputArray = zeros(numTrial, 6);
-
+numLicks = 0;
 for t = 1 : numTrial
     switch(behaviorResult(t))
         case 'A'
@@ -43,15 +45,25 @@ for t = 1 : numTrial
         case 'M'
             InputArray(t,6) = 3;
     end        
-    if or(InputArray(t,6) == 0, InputArray(t,6) == 1) % Avoid나 Escape 인 경우에만.
+    if or(InputArray(t,6) == 0, InputArray(t,6) == 1) % only when it's Avoid or Escape
         InputArray(t,1) = ParsedData{t,2}(1); % first IR
         InputArray(t,2) = ParsedData{t,2}(end); % last IR
         InputArray(t,3) = ParsedData{t,3}(1); % first Lick
         InputArray(t,4) = ParsedData{t,3}(end); % last Lick
         InputArray(t,5) = ParsedData{t,4}(1); % fAttack
     end
+    numLicks = numLicks + size(ParsedData{t,3},1);
 end
 clear t;
+
+%% Basic Stats
+experimenttime = ParsedData{end,1}(2) - ParsedData{1,1}(1);
+fprintf(strcat(repmat('-',1,80),'\n'));
+fprintf('%s\n',filename_{1});
+fprintf(strcat(repmat('-',1,80),'\n'));
+fprintf('|-Experiment Time : %d : %d\n', floor(experimenttime/60), floor(rem(experimenttime,60)));
+fprintf('|-numTrial : %d\n', numTrial);
+fprintf('|-numLicks : %d\n', numLicks);
 
 %% Data for Stats
 % +-----+-----------+-------+-------------+-------------+--------------+------------+---------------+-----------------+----------------+
@@ -129,7 +141,7 @@ fig_C = figure('Name','Trial Composition');
 set(fig_C,'Position',[1,1,1200,300]);
 movegui(fig_C,'center');
 
-% sequential behav pattern
+%% sequential behav pattern
 for i = numTrial : -1 : 1
     switch(StatArray(i,11))
         case 0
@@ -147,7 +159,7 @@ for i = numTrial : -1 : 1
     end
 end
 
-% behav pattern composition
+%% behav pattern composition
 tempdat = [...
     sum(StatArray(:,11) == 0),... % Avoid
     sum(StatArray(:,11) == 1),... % Escape
@@ -172,7 +184,7 @@ yticklabels({'Composition','Behavior Type'});
 title('Trial Composition');
 xlabel('trial');
 
-% 사용자 편의를 위해서 버튼 만들기
+%% Generate Buttons
 figs = {fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8, fig9, fig10};
 
 for i = 1 : 10

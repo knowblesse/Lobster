@@ -1,10 +1,10 @@
-function [ParsedData, Trials, IRs, Licks, Attacks ] = BehavDataParser(targetdir)
+function [ParsedData, Trials, IRs, Licks, Attacks, targetdir ] = BehavDataParser(targetdir)
 %% BehavDataParser
 % Import Event data from 1) Open Bridge extracted csv files or 2) Tank
 % Invalid trial is automatically removed and the remaining is concatenated.
 % Thus resulting trial number might differ from the original number.
 % Created on 2018 Knowblesse
-% Modified on 2020NOV19 Knowblesse
+% Modified on 2021MAY14 Knowblesse
 %% Constants
 
 %% Select folder
