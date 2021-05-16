@@ -12,11 +12,16 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Data to load and analyze
-datanum = 6
+BASE_PATH = r'C:\Users\knowb\SynologyDrive\20JUN'
+datalist = os.listdir(BASE_PATH)
+
+# Variable to store all session data
+num_data = len(datalist)
+mat_accuracy = np.zeros((num_data,2)) # left column : shuffled, right column : real
+mat_confusion = np.zeros((3,6,num_data))
 
 # Load .mat data
-BASE_PATH = r'C:\Users\Knowblesse\SynologyDrive\20JUN'
-datalist = os.listdir(BASE_PATH)
+for datanum in np.arange(num_data):
 data = loadmat(os.path.join(BASE_PATH, datalist[datanum]))
 print(datalist[datanum] + ' is loaded \n')
 X = data.get('X')
@@ -64,11 +69,11 @@ f.clear()
 ax1, ax2 = f.subplots(1,2)
 sns.heatmap(confusion_mat_shuffled, ax=ax1, cmap=cmap, vmin=0, vmax=1, annot=True, square=True, linewidths=.5, cbar_kws={"shrink": .5}, xticklabels=Y_label, yticklabels=Y_label)
 sns.heatmap(confusion_mat, ax=ax2, cmap=cmap, vmin=0, vmax=1, annot=True, square=True, linewidths=.5, cbar_kws={"shrink": .5}, xticklabels=Y_label, yticklabels=Y_label)
-ax1.set_title('shuffled : {:5.3f}'.format(score_shuffled))
-ax1.set_xlabel('predicted')
-ax1.set_ylabel('actual')
-ax2.set_title('real : {:5.3f}'.format(score_real))
-ax2.set_xlabel('predicted')
-ax2.set_ylabel('actual')
+ax1.set_title('shuffled : {:5.3f}%'.format(score_shuffled*100),fontsize=25)
+ax1.set_xlabel('predicted',fontsize=15)
+ax1.set_ylabel('actual',fontsize=15)
+ax2.set_title('real : {:5.3f}%'.format(score_real*100),fontsize=25)
+ax2.set_xlabel('predicted',fontsize=15)
+ax2.set_ylabel('actual',fontsize=15)
 plt.show()
 

@@ -20,7 +20,7 @@ else
     [ParsedData, ~, ~, ~, ~] = BehavDataParser();
 end
 
-[timepoint, numTrial] = getTimepointFromParsedData(ParsedData);
+[timepoint, numTrial] = getTimepointFromParsedData(ParsedData,'E');
 
 fprintf('generateEventClassifierDataset : Processing %s\n',pathname)
 clearvars targetdir;
@@ -44,8 +44,8 @@ for f = 1 : numel(Paths)
     
     %% Draw Lines
     for t = 1 : numTrial
-        timerange = timepoint.valid_IRON(t) + TIMEWINDOW; % Aligning Timepoint
-        unit_data{f}{t} = spikes(and(timerange(1) <= spikes, spikes < timerange(2))) - timepoint.valid_IRON(t);
+        timerange = timepoint.valid_IROF(t) + TIMEWINDOW; % Aligning Timepoint
+        unit_data{f}{t} = spikes(and(timerange(1) <= spikes, spikes < timerange(2))) - timepoint.valid_IROF(t);
     end
 end
 
@@ -66,9 +66,9 @@ end
 
  
 %% Redraw
-fig = figure(1);
+fig = figure(2);
 clf(fig);
-f = 29;
+f = 5;
     
 temp_axes = drawPETH(unit_data{f}, TIMEWINDOW);
 temp_axes{1}.Parent = fig;

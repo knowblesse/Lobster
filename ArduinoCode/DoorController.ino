@@ -24,6 +24,7 @@ bool currMotionSensorSignal;
 unsigned long motionOnSetTime;
 unsigned long motionCriteronTime = 800;
 bool isMotionModeOn = false;
+bool isAdvancedMotionModeOn = false;
 bool isFirstTrial = true;
 
 bool isDoorMoving;
@@ -44,7 +45,17 @@ void setup()
   pinMode(PIN_OPENBUTTON_INPUT, INPUT);
   pinMode(PIN_CLOSESIG_INPUT, INPUT);
 
-  pinMode(PIN_MOTION_SENSOR_INPUT, INPUT);
+  delay(1000);
+  if(digitalRead(PIN_RESET_INPUT) == HIGH)
+  {
+    pinMode(PIN_MOTION_SENSOR_INPUT,INPUT_PULLUP);
+    isAdvancedMotionModeOn = true;
+  }
+  else
+  {
+    pinMode(PIN_MOTION_SENSOR_INPUT, INPUT);
+  }
+
 
   // Check toggle state
   prevToggleState = digitalRead(PIN_TOGGLE_INPUT);
