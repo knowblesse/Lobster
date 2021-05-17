@@ -1,12 +1,11 @@
 # EnsembleClassifier_Test_LOO
-# Ensemble Classifier using Leave One Out method
+# Ensemble Classifier using Leave One Out method graph sample
 import os
 import  numpy as np
 import sklearn
 if (sklearn.__version__ != '0.23.2'):
     raise Exception("scikit-learn package version must be 0.23.2")
 from scipy.io import loadmat
-from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
 import matplotlib.pyplot as plt
