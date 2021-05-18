@@ -74,7 +74,7 @@ for f = 1 : numel(Paths)
     if isempty(numspike)
         numspike = 0;
     end
-    Z.FR = numspike / ParsedData{end,1}(2) - ParsedData{1,1}(1) ; % FR btw the first TRON and the last TROF
+    Z.FR = numspike / (ParsedData{end,1}(2) - ParsedData{1,1}(1)) ; % FR btw the first TRON and the last TROF
     
     %% Trial Firing Rate
     Z.FR_trial = zeros(numTrial,1);
@@ -83,7 +83,7 @@ for f = 1 : numel(Paths)
         if isempty(numspike)
             numspike = 0;
         end
-        Z.FR_trial(t) = numspike / ParsedData{t,1}(2) - ParsedData{t,1}(1); % FR btw Trial
+        Z.FR_trial(t) = numspike / (ParsedData{t,1}(2) - ParsedData{t,1}(1)); % FR btw Trial
     end
     
     %% Save
