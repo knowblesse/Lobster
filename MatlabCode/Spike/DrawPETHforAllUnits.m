@@ -22,7 +22,6 @@ end
 
 [timepoint, numTrial] = getTimepointFromParsedData(ParsedData,'E');
 
-fprintf('generateEventClassifierDataset : Processing %s\n',pathname)
 clearvars targetdir;
 
 %% For every neurons, save all spikes in range with the target event
@@ -44,8 +43,9 @@ for f = 1 : numel(Paths)
     
     %% Draw Lines
     for t = 1 : numTrial
-        timerange = timepoint.valid_IROF(t) + TIMEWINDOW; % Aligning Timepoint
-        unit_data{f}{t} = spikes(and(timerange(1) <= spikes, spikes < timerange(2))) - timepoint.valid_IROF(t);
+        eventtime = timepoint.valid_IROF(t);
+        timerange = eventtime + TIMEWINDOW; % Aligning Timepoint
+        unit_data{f}{t} = spikes(and(timerange(1) <= spikes, spikes < timerange(2))) - eventtime;
     end
 end
 
@@ -63,7 +63,6 @@ for f = 1 : numel(Paths)
     pause(1);
 end
 
-
  
 %% Redraw
 fig = figure(2);
@@ -75,4 +74,3 @@ temp_axes{1}.Parent = fig;
 temp_axes{2}.Parent = fig;
 
 title(temp_axes{1},strcat('Cell : ', num2str(f)));
-fig.Position = [-1438,478,420,370];
