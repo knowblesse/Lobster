@@ -6,6 +6,7 @@ function [ParsedData, Trials, IRs, Licks, Attacks, targetdir ] = BehavDataParser
 % Created on 2018 Knowblesse
 % Modified on 2021MAY14 Knowblesse
 %% Constants
+isTrainingSession = false;
 
 %% Select folder
 if exist('targetdir','var') <= 0
@@ -142,7 +143,13 @@ if isTank
     Trials = [DATA.epocs.TRON.onset, DATA.epocs.TROF.onset];
     IRs = [DATA.epocs.IRON.onset,DATA.epocs.IROF.onset];
     Licks = [DATA.epocs.LICK.onset,DATA.epocs.LOFF.onset];
-    Attacks = [DATA.epocs.ATTK.onset, DATA.epocs.ATOF.onset];
+    if isfield(DATA.epocs,'ATTK')
+        Attacks = [DATA.epocs.ATTK.onset, DATA.epocs.ATOF.onset];
+    else
+        warning('No Attack. Considering as training session');
+        Attacks = [];
+        isTrainingSession = true;
+    end
     dataname = DATA.info.blockname;
     clearvars DATA
 else
@@ -168,7 +175,9 @@ for i = 1 : numTrial
     ParsedData{i,1} = Trials(i,:);
     ParsedData{i,2} = IRs(sum(and(IRs>=Trials(i,1), IRs<Trials(i,2)),2) == 2,:) - Trials(i,1);
     ParsedData{i,3} = Licks(sum(and(Licks>=Trials(i,1), Licks<Trials(i,2)),2) == 2,:) - Trials(i,1);
-    ParsedData{i,4} = Attacks(sum(and(Attacks>=Trials(i,1), Attacks<Trials(i,2)),2) == 2, :) - Trials(i,1);
+    if ~isTrainingSession
+        ParsedData{i,4} = Attacks(sum(and(Attacks>=Trials(i,1), Attacks<Trials(i,2)),2) == 2, :) - Trials(i,1);
+    end
 end
 
 %% Remove invalid trials (no IRON or no LICK or no ATTK)
@@ -180,7 +189,11 @@ for t = 1 : numTrial
     elseif isempty(ParsedData{t,3})
         warning('Trial %d is invalid : No Lick => Removed',t);
     elseif isempty(ParsedData{t,4})
-        warning('Trial %d is invalid : No Attk => Removed',t);
+        if ~isTrainingSession
+            warning('Trial %d is invalid : No Attk => Removed',t);
+        else
+            validtrial(t) = true;
+        end
     else
         validtrial(t) =  true;
     end
