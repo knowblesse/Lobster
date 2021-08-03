@@ -117,10 +117,32 @@ if isTank
         end
     end
     if size(DATA.epocs.IRON.onset,1) ~= size(DATA.epocs.IROF.onset,1)
-        error('%s : IRON IROF size mismatch!!',DATA.info.blockname);
+        warning('%s : IRON IROF size mismatch!!',DATA.info.blockname);
+        if size(DATA.epocs.IRON.onset,1) - 1 == size(DATA.epocs.IROF.onset,1)
+            fprintf('BehavDataParser : IRON data has one more point than IROF\n');
+            if all((DATA.epocs.IROF.onset - DATA.epocs.IRON.onset(1:end-1)) > 0)
+                fprintf('BehavDataParser : Safely removing the last IRON data\n');
+                DATA.epocs.IRON.onset = DATA.epocs.IRON.onset(1:end-1);
+            else
+                error('BehavDataParser : Critical Error. IR Data offset detected');
+            end
+        else
+            error('BehavDataParser : Critical Error. Too many IR Data ignored');
+        end
     end
     if size(DATA.epocs.LICK.onset,1) ~= size(DATA.epocs.LOFF.onset,1)
-        error('%s : LICK LOFF size mismatch!!',DATA.info.blockname);
+        warning('%s : LICK LOFF size mismatch!!',DATA.info.blockname);
+        if size(DATA.epocs.LICK.onset,1) - 1 == size(DATA.epocs.LOFF.onset,1)
+            fprintf('BehavDataParser : LICK data has one more point than LOFF\n');
+            if all((DATA.epocs.LOFF.onset - DATA.epocs.LICK.onset(1:end-1)) > 0)
+                fprintf('BehavDataParser : Safely removing the last LICK data\n');
+                DATA.epocs.LICK.onset = DATA.epocs.LICK.onset(1:end-1);
+            else
+                error('BehavDataParser : Critical Error. Lick Data offset detected');
+            end
+        else
+            error('BehavDataParser : Critical Error. Too many Lick Data ignored');
+        end
     end
 else
     % number check
