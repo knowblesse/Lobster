@@ -1,31 +1,38 @@
-%% SessionExtractor
-% Create a information matrix about total number of avoid and escape trial
-% in each sessions.
+%% SessionInfoExtractor
+% Analyze multiple session Tank folders and print information.
 
-loc0 = 'C:\VCF\Lobster\data\rawdata\';
-loc1 = dir(loc0);
-loc2 = {loc1.name};
-loc2 = loc2(3:end);
-
-SessionData = zeros(numel(loc2),3);
-% [Avoid | Escape | isSuc] 
-for i = 1 : numel(loc2) % 모든 폴더에 대해서
-    pathname = strcat(loc0,loc2{i},'\');
-    %% 이벤트 파일 분석
-    targetdir = strcat(pathname,'EVENTS');
-    [ParsedData, ~, ~, ~, ~] = BehavDataParser(targetdir);
-    
-    if contains(loc2{i}, 'suc') % suc 데이터 라면
-        SessionData(i,3) = 1;
-        SessionData(i,1) = size(ParsedData,1);
-    else % suc 데이터가 아니라면
-        behaviorResult = AnalyticValueExtractor(ParsedData,false,false);
-        SessionData(i,3) = 0;
-        SessionData(i,1) = sum(behaviorResult == 'A');
-        SessionData(i,2) = sum(behaviorResult == 'E');
-    end
+%% Select Session Tanks
+global CURRENT_DIR
+if ~isempty(CURRENT_DIR)
+    targetdir = uigetdir(CURRENT_DIR);
+else
+    targetdir = uigetdir();
 end
-    
-    
-    
-    
+if targetdir == 0
+    error('SessionInfoExtractor : User Cancelled');
+end
+
+%% Analyze
+[ParsedData, ~, ~, ~, ~, targetdir] = BehavDataParser(targetdir);
+
+tankName = regexp(targetdir, '.*(\\.)*\\(?<tank_name>.*)', 'names');
+tankName = tankName.tank_name;
+numTrial = size(ParsedData,1);
+numLick = size(cell2mat(ParsedData(:,3)),1);
+
+%% Session time
+sTime = ParsedData{end,1}(end) - ParsedData{1,1}(1);
+
+%% A/E ratio
+behaviorResult = analyticValueExtractor(ParsedData, false, false);
+numAvoid = sum(behaviorResult == 'A');
+numEscape = sum(behaviorResult == 'E');
+
+fprintf('*****************************************************************\n');
+fprintf('Tank : %s\n', tankName);
+fprintf('Duration : %s\n', duration(seconds(sTime),'Format','mm:ss'))
+fprintf('|----------+---------+----------+-----------|\n');
+fprintf('| numTrial | numLick | numAvoid | numEscape |\n');
+fprintf('| %8d | %7d | %8d | %9d |\n', numTrial, numLick, numAvoid, numEscape);
+fprintf('|----------+---------+----------+-----------|\n');
+   
