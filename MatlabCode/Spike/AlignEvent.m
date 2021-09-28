@@ -61,12 +61,20 @@ for f = 1 : numel(Paths)
     clearvars tp tb
     
     %% Calculate Zscore
-    bs = histcounts(spikes,ParsedData{1,1}(1) * 1000 : TIMEWINDOW_BIN : ParsedData{end,1}(2) * 1000);
-    Z.mean = mean(bs);
-    Z.std = std(bs);
-    
+    % For the Z score calculation, mean and std of spikes must be calculated. Calucating these two
+    % values can be done in several ways depending on the baseline. Previously, I used the whole
+    % spike data from the first TRON to the last TROF. But I guess this method results too high std
+    % value and include experiment non-relevent spike (during inter trial intervals). 
+    % So, I used the mean and std from binned data around the target event. 
+    % Previous Code : 
+    %     bs = histcounts(spikes,ParsedData{1,1}(1) * 1000 : TIMEWINDOW_BIN : ParsedData{end,1}(2) * 1000);
+    %     Z.mean = mean(bs);
+    %     Z.std = std(bs);
+    Z.mean = mean(sum(Z.binned_spike.TRON,1));
+    Z.std = std(sum(Z.binned_spike.TRON,1));
     for v = variables
         eval(['Z.zscore.',v{1},' = ((sum(Z.binned_spike.',v{1},',1) ./ numTrial) - Z.mean ) ./ Z.std;']);
+        eval(['Z.zscore.',v{1},' = ((sum(Z.binned_spike.',v{1},',1)) - Z.mean ) ./ Z.std;']);
     end
     
     %% Session Firing Rate
