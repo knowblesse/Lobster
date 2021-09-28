@@ -222,4 +222,20 @@ for t = 1 : numTrial
 end
 
 ParsedData = ParsedData(validtrial, :);
+
+%% Check if Lick is occured while no IR beam break
+for t = 1 : size(ParsedData,1)
+    for l = 1 : size(ParsedData{t,3},1)
+        isLickInIRBlock = false;
+        for i = 1 : size(ParsedData{t,2},1)
+            if ParsedData{t,2}(i,1) < ParsedData{t,3}(l,1) && ParsedData{t,3}(l,1) < ParsedData{t,2}(i,2)
+                isLickInIRBlock = true;
+                break;
+            end
+        end
+        if ~isLickInIRBlock
+            warning('BehavDataParser : %s : Lick with no IR break detected in trial %d, lick %d', dataname, t, l);
+        end
+    end
+end
 fprintf('BehavDataParser : %s behavior data parsing complete\n',dataname);
