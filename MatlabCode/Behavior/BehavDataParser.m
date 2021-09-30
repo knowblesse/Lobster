@@ -204,27 +204,10 @@ end
 
 %% Remove invalid trials (no IRON or no LICK or no ATTK)
 numTrial = size(ParsedData,1);
-validtrial = false(numTrial,1);
+validtrial = true(numTrial,1);
 for t = 1 : numTrial
-    if isempty(ParsedData{t,2})
-        warning('Trial %d is invalid : No IR => Removed',t);
-    elseif isempty(ParsedData{t,3})
-        warning('Trial %d is invalid : No Lick => Removed',t);
-    elseif isempty(ParsedData{t,4})
-        if ~isTrainingSession
-            warning('Trial %d is invalid : No Attk => Removed',t);
-        else
-            validtrial(t) = true;
-        end
-    else
-        validtrial(t) =  true;
-    end
-end
-
-ParsedData = ParsedData(validtrial, :);
-
-%% Check if Lick is occured while no IR beam break
-for t = 1 : size(ParsedData,1)
+    %% Check if Lick is occured while no IR beam break
+    count = 0;
     for l = 1 : size(ParsedData{t,3},1)
         isLickInIRBlock = false;
         for i = 1 : size(ParsedData{t,2},1)
@@ -234,8 +217,38 @@ for t = 1 : size(ParsedData,1)
             end
         end
         if ~isLickInIRBlock
-            warning('BehavDataParser : %s : Lick with no IR break detected in trial %d, lick %d', dataname, t, l);
+            if l == 1 
+                % if the first lick is occured without the IR beam break, delete the trial
+                validtrial(t) = false;
+                warning('BehavDataParser : %s : First lick with no IR break detected in trial %d => Removed', dataname, t);
+                break;
+            else
+                count = count + 1;
+            end
+        end
+    end
+    if count > 0 && validtrial(t)
+        warning('BehavDataParser : %s : Lick with no IR break detected in trial %d, total %d licks', dataname, t, count);
+    end
+    
+    % if the first lick is occured without the IR beam break, delete it.
+    
+    %% Validity Check       
+    if isempty(ParsedData{t,2})
+        validtrial(t) = false;
+        warning('Trial %d is invalid : No IR => Removed',t);
+    elseif isempty(ParsedData{t,3})
+        validtrial(t) = false;
+        warning('Trial %d is invalid : No Lick => Removed',t);
+    elseif isempty(ParsedData{t,4})
+        if ~isTrainingSession
+            validtrial(t) = false;
+            warning('Trial %d is invalid : No Attk => Removed',t);
         end
     end
 end
+
+ParsedData = ParsedData(validtrial, :);
+
+
 fprintf('BehavDataParser : %s behavior data parsing complete\n',dataname);
