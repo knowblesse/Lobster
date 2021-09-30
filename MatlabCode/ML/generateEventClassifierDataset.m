@@ -102,11 +102,14 @@ for u = 1 : numUnit
         irof_time_range = TIMEWINDOW + irof_time;
         % Splice by the range. exclude the last element to match the size. 
         % and apply zscore
-        iron_data = (serial_data_kerneled(round(iron_time_range(1)) : round(iron_time_range(2))-1) - serial_data_mean) / serial_data_std;
-        irof_data = (serial_data_kerneled(round(irof_time_range(1)) : round(irof_time_range(2))-1) - serial_data_mean) / serial_data_std;
-        % Average Binning
-        IRON{t} = sum(reshape(iron_data,TIMEWINDOW_BIN,binnedDataSize),1) / TIMEWINDOW_BIN;
-        IROF{t} = sum(reshape(irof_data,TIMEWINDOW_BIN,binnedDataSize),1) / TIMEWINDOW_BIN;
+        if round(iron_time_range(1)) >= 1  % check if the index is out of the range
+            iron_data = (serial_data_kerneled(round(iron_time_range(1)) : round(iron_time_range(2))-1) - serial_data_mean) / serial_data_std;
+            IRON{t} = sum(reshape(iron_data,TIMEWINDOW_BIN,binnedDataSize),1) / TIMEWINDOW_BIN; % Average Binning
+        end
+        if round(irof_time_range(1)) >= 1 % check if the index is out of the range
+            irof_data = (serial_data_kerneled(round(irof_time_range(1)) : round(irof_time_range(2))-1) - serial_data_mean) / serial_data_std;
+            IROF{t} = sum(reshape(irof_data,TIMEWINDOW_BIN,binnedDataSize),1) / TIMEWINDOW_BIN; % Average Binning
+        end        
     end
     clearvars tron_time iron_* irof_*
     
@@ -115,7 +118,15 @@ for u = 1 : numUnit
     IROF_E = IROF(behaviorResult == 'E');
     clearvars IROF
     
+    %% Remove Empty Data resulted by index out of the range
+    % ex. when you generate -8 ~ -6s offset data, -8 sec goes behind the exp start time in the first
+    % trial. This usually does not occur in IROF dataset.
+    IRON = IRON(~cellfun('isempty',IRON)); 
+    
     %% Save Data
+    if size([IRON;IROF_A;IROF_E], 1) ~= size(X,1) % if the dataset size is reduced because of the index output the range issue, reinitialize the X
+        X = cell(size([IRON;IROF_A;IROF_E], 1), numUnit);
+    end
     X(:,u) = [IRON;IROF_A;IROF_E];
 end
 
