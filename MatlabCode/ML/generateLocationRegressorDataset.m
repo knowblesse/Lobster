@@ -1,23 +1,31 @@
-%% Constants
+L%% Constants
 TIMEWINDOW_BIN = 50;
 KERNEL_SIZE = 1000;
 KERNEL_STD = 100;
 REMOVE_START_SEC = 10; % remove the top of the data
+REMOVE_END_SEC = 10;
+FS = 2; % location parsing sampling rate 1 : 1 loc per sec, 2 : 2 loc per sec, ...
 
 %% Load Location Data
-TANK_location = 'D:\Data\Lobster\Lobster_Recording-200319-161008\#20JUN1-200928-111539';
+TANK_location = 'D:\Data\Lobster\Lobster_Recording-200319-161008\20JUN1\#20JUN1-200928-111539';
 csv_path = ls(strcat(TANK_location, filesep, '*Vid1.csv'));
-locationData = readmatrix(strcat(TANK_location, filesep, csv_path));
-locationData(1,:) = zeros(1,3);
+locationData = readAnymazeData(strcat(TANK_location, filesep, csv_path));
 
 %% Convert Location Data to 1Hz
-y = zeros(floor(locationData(end,1)),2);
+data_length = floor(locationData(end,1) * FS);
+y = zeros(data_length, 2);
 
-for sec = 1 : floor(locationData(end,1))
-    start_idx = find(locationData(:,1)>=sec-1,1,'first');
+idx = 1;
+for sec = 1 / FS : 1 / FS : floor(locationData(end,1))
+    start_idx = find(locationData(:,1)>=sec-(1/FS),1,'first');
     end_idx = find(locationData(:,1)<sec,1,'last');
-    y(sec,:) = mean(locationData(start_idx:end_idx,2:3),1);
+    y(idx,:) = mean(locationData(start_idx:end_idx,2:3),1);
+    idx = idx + 1;
 end
+
+%% Interpolate NaN
+% Whenever the tracker lost the animal, it does not record the location of the animal. 
+% This result NaN when you do the mean(locationData). 
 if sum(sum(isnan(y))) ~= 0 
     fprintf('%d NaN detected. Using linear interpolation to compensate\n', sum(sum(isnan(y))));
     y1 = y(:,1);
@@ -38,8 +46,8 @@ kernel = gausswin(ceil(KERNEL_SIZE/2)*2-1, (KERNEL_SIZE - 1) / (2 * KERNEL_STD))
 
 %% Load Unit and apply Generate Serial Data from spike timestamps(fs:1000)
 numUnit = numel(Paths);
-data_length = floor(locationData(end,1));
-X = zeros(data_length,1000/50*numUnit); 
+single_unit_vector_size_ms = (1/FS)*1000 / TIMEWINDOW_BIN;
+X = zeros(data_length,single_unit_vector_size_ms*numUnit); 
 for u = 1 : numUnit
     % Load Unit Data
     load(Paths{u}); 
@@ -66,12 +74,14 @@ for u = 1 : numUnit
     serial_data_std = std(whole_serial_data);
     clearvars whole_serial_data
 
-    %% Divide by 1 second and zscore
-    for sec = 1 : data_length
-        data = (serial_data_kerneled((sec-1)*1000+1:sec*1000) - serial_data_mean) / serial_data_std;
+    %% Divide by 1/FS second and zscore
+    idx = 1;
+    for sec = 1 / FS : 1 / FS : data_length / FS
+        data = (serial_data_kerneled((sec-(1/FS))*1000+1:sec*1000) - serial_data_mean) / serial_data_std;
         % Average Binning
-        X(sec,(u-1)*1000/50+1:u*1000/50) = sum(reshape(data,TIMEWINDOW_BIN,1000/TIMEWINDOW_BIN),1) / TIMEWINDOW_BIN;
-    end
+        X(idx,(u-1)*single_unit_vector_size_ms+1:u*single_unit_vector_size_ms) = sum(reshape(data,TIMEWINDOW_BIN,numel(data)/TIMEWINDOW_BIN),1) / TIMEWINDOW_BIN;
+        idx = idx + 1;
+    end    
 end
 
 %% Print Output
@@ -79,12 +89,12 @@ Tank_name = cell2mat(regexp(TANK_location,'.+\\(?:.+\\)*(.+$)','tokens', 'once')
 X_data_path = strcat(TANK_location, filesep, regexp(Tank_name,'[^#].*','match','once'), '_regressionData_X.csv');
 y_data_path = strcat(TANK_location, filesep, regexp(Tank_name,'[^#].*','match','once'), '_regressionData_y.csv');
 
-if (sum(sum(isnan(X(REMOVE_START_SEC:end,:)))) ~= 0) || (sum(sum(isnan(y(REMOVE_START_SEC:end,:)))) ~= 0)
+if (sum(sum(isnan(X(REMOVE_START_SEC * FS : end - REMOVE_END_SEC * FS,:)))) ~= 0) || (sum(sum(isnan(y(REMOVE_START_SEC * FS : end - REMOVE_END_SEC * FS,:)))) ~= 0)
     error('nan is in the data!');
 end
 
-writematrix(X(REMOVE_START_SEC:end,:),X_data_path,'Delimiter','\t');
-writematrix(y(REMOVE_START_SEC:end,:),y_data_path,'Delimiter','\t');
+writematrix(X(REMOVE_START_SEC * FS: end - REMOVE_END_SEC * FS,:),X_data_path,'Delimiter',',');
+writematrix(y(REMOVE_START_SEC * FS: end - REMOVE_END_SEC * FS,:),y_data_path,'Delimiter',',');
 
 fprintf(repmat('-',1,64));
 fprintf('\nLocation Regression Dataset Generator\n');
