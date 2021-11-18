@@ -5,8 +5,8 @@
 
 const String START_MSG =\
 "Lobsterbot Controller\n \
-Version 2.2.1\n \
-Knowblesse 2019";
+Version 3.0\n \
+Knowblesse 2021";
 
 // Assign Pin Numbers
 const int PIN_BLOCK_INPUT = 2; // block toggle switch input
@@ -85,9 +85,6 @@ void setup()
   digitalWrite(PIN_CLOSE_OUTPUT,LOW);
   digitalWrite(PIN_MANUAL_SUC_OUTPUT,LOW);
   
-  // Generate random seed
-  randomSeed(analogRead(0));
-
   // Setup : Start Serial Comm
   Serial.begin(9600);
   Serial.println(START_MSG);
@@ -110,6 +107,7 @@ void setup()
     if (Serial.available())
     {
       mode = Serial.readString();
+      randomSeed(millis());
       
       if (mode == "tr")
       {
@@ -163,6 +161,17 @@ void setup()
         invalidInput = true;
       }
     }
+    //Clean up is enabled right after the power on. 
+    if (digitalRead(PIN_CLEANUP) == HIGH)// Clean up ON
+    { 
+      digitalWrite(PIN_MANUAL_SUC_OUTPUT, HIGH);
+      digitalWrite(PIN_PUMP_OUTPUT, HIGH);
+    }
+    else
+    {
+      digitalWrite(PIN_MANUAL_SUC_OUTPUT, LOW);
+      digitalWrite(PIN_PUMP_OUTPUT, LOW);
+    }
   }
 
   // Setup : Time limit (optional. notify when the designated time has passed)
@@ -175,6 +184,8 @@ void setup()
       timelimit = Serial.parseInt();
       timelimit = timelimit*1000*60;
       invalidInput = false;
+      Serial.print(timelimit/1000);
+      Serial.println(" seconds"); 
     }
   }
 
@@ -224,15 +235,68 @@ void setup()
   Serial.println("=====================================");
 
   // Check whether the block key is on
-  if (digitalRead(PIN_BLOCK_INPUT) == HIGH)
+  while(digitalRead(PIN_BLOCK_INPUT) == HIGH)
   {
     Serial.println("Warning : Block Lever is in the Open position!");
     delay(2000);
   }
-  else
+  while(digitalRead(PIN_TRIAL_INPUT) == HIGH)
   {
-    Serial.println("Experiment Ready.");
+    Serial.println("Warning : Door is in the Open position!");
+    delay(2000);
   }
+
+  // Start Diagnosis Protocol
+  Serial.println("=====================================");
+  Serial.println("Starting The Diagnostic Protocols");
+  Serial.print("1. BLOCK ON/OFF  ");
+  while(digitalRead(PIN_BLOCK_INPUT) == LOW){}
+  while(digitalRead(PIN_BLOCK_INPUT) == HIGH){}
+  Serial.println("OK");
+
+  Serial.print("2. TRIAL ON/OFF  ");
+  while(digitalRead(PIN_TRIAL_INPUT) == HIGH){}
+  while(digitalRead(PIN_TRIAL_INPUT) == LOW){}
+  Serial.println("OK");
+
+  Serial.println("Open the Door");
+  while(digitalRead(PIN_TRIAL_INPUT) == HIGH){}
+  Serial.print("3. Attk init?(y) ");
+  attack();
+  isAttacked = false;
+  invalidInput = true;
+  while(invalidInput)
+  {
+    if (Serial.available())
+    {
+      if (Serial.readString() == "y")
+      {
+        invalidInput = false; 
+        Serial.println("OK");
+      }
+    }
+  }
+
+  Serial.print("4. Lick Sensor   ");
+  while(digitalRead(PIN_LICK_INPUT) == LOW){}
+  Serial.println("OK");
+
+  Serial.print("5. IR checked?(y)");
+  invalidInput = true;
+  while(invalidInput)
+  {
+    if (Serial.available())
+    {
+      if (Serial.readString() == "y")
+      {
+        invalidInput = false; 
+        Serial.println("OK");
+      }
+    }
+  }
+
+  Serial.println("Diagnostic Complete. All Green");
+
 }
 
 void loop() 

@@ -25,7 +25,6 @@ const int servo2_attk = 105;
 
 void setup() 
 {
-  Serial.begin(9600);
   pinMode(PIN_ATTACK_IN, INPUT);
   pinMode(PIN_ATTACK_OUT, OUTPUT);
   pinMode(PIN_SERVO_ON, OUTPUT);
@@ -52,7 +51,6 @@ void loop()
     digitalWrite(PIN_ATTACK_OUT,HIGH);
 
     // Perform Attack
-    Serial.println("attack");
     attack();
 
     // Send Attack Info
