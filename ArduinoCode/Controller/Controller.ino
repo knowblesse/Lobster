@@ -5,7 +5,7 @@
 
 const String START_MSG =\
 "Lobsterbot Controller\n \
-Version 3.0\n \
+Version 3.0 mc version\n \
 Knowblesse 2021";
 
 // Assign Pin Numbers
@@ -97,6 +97,7 @@ void setup()
   Serial.println("| train:      | tr |");
   Serial.println("| shuttling:  | sh |");
   Serial.println("| attack:     | at |");
+  Serial.println("| mode change:| mc |");
   Serial.println("+-------------+----+");
   
   // Setup : Read Experiment Mode
@@ -133,6 +134,30 @@ void setup()
       else if (mode == "at")
       {
         Serial.println("==============Attack Mode============");
+        // Setup : Read Attack in 6sec percentage
+        Serial.println("=======Select Attack in 6sec %=======");
+        bool invalidInput1 = true;
+        Serial.println("Percentage? : ");
+        while (invalidInput1)
+        {
+          if (Serial.available())
+          {
+            percentage_attack_in_6sec = Serial.parseInt();
+            if (percentage_attack_in_6sec >= 0 && percentage_attack_in_6sec <=100)
+            {
+              invalidInput1 = false;
+            }
+            else
+            {
+              Serial.println("Wrong Percentage");
+            }
+          }
+        }
+        invalidInput = false;
+      }
+      else if (mode == "mc")
+      {
+        Serial.println("===========Mode Change Mode==========");
         // Setup : Read Attack in 6sec percentage
         Serial.println("=======Select Attack in 6sec %=======");
         bool invalidInput1 = true;
@@ -232,7 +257,16 @@ void setup()
     Serial.print("Attack in 3sec : ");
     Serial.println(100-percentage_attack_in_6sec);
   }
-  Serial.println("=====================================");
+  else if (mode == "mc")
+  {
+    Serial.println("Mode Change Mode");
+    Serial.print("Attack in 6sec : ");
+    Serial.println(percentage_attack_in_6sec);
+    Serial.print("Attack in 3sec : ");
+    Serial.println(100-percentage_attack_in_6sec);
+    Serial.println("Mode Will change after the button press");
+    Serial.println("=====================================");
+  }
 
   // Check whether the block key is on
   while(digitalRead(PIN_BLOCK_INPUT) == HIGH)
@@ -261,6 +295,7 @@ void setup()
 
   Serial.println("Open the Door");
   while(digitalRead(PIN_TRIAL_INPUT) == HIGH){}
+  delay(1000);
   Serial.print("3. Attk init?(y) ");
   attack();
   isAttacked = false;
@@ -440,17 +475,22 @@ void loop()
   {
   	if (mode == "at")
   	{
-  		digitalWrite(PIN_MANUAL_SUC_OUTPUT, LOW);
-  		if (digitalRead(PIN_MANUAL_BUTTON_INPUT) == HIGH)
-  		{
+      digitalWrite(PIN_MANUAL_SUC_OUTPUT, LOW);
+      if (digitalRead(PIN_MANUAL_BUTTON_INPUT) == HIGH)
+      {
         Serial.println("Manual Attack");
         attack();
         isAttacked = false; // this line is necessary to enable normal attack after manual attack
-  		}
+      }
   	}
     else if (mode == "tr" || mode == "sh")
     {
-    	digitalWrite(PIN_MANUAL_SUC_OUTPUT, digitalRead(PIN_MANUAL_BUTTON_INPUT));
+      digitalWrite(PIN_MANUAL_SUC_OUTPUT, digitalRead(PIN_MANUAL_BUTTON_INPUT));
+    }
+    else if (mode == "mc")
+    {
+      percentage_attack_in_6sec = 0;
+      Serial.println("Warning : Now always attack in 3 sec!!!!!!!");
     }
     digitalWrite(PIN_PUMP_OUTPUT,digitalRead(PIN_PUMP_INPUT));
   }
