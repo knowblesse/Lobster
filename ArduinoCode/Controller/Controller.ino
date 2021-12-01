@@ -15,7 +15,7 @@ const int PIN_PUMP_OUTPUT = 4; // pump motor
 const int PIN_ATTK_OUTPUT = 5; // attack signal out to lobsterbot
 const int PIN_TRIAL_INPUT = 6; // door sensor
 const int PIN_TRIAL_OUTPUT = 7; // trial signal out to TDT
-const int PIN_CLOSE_OUTPUT = 8; // (previously Tone pin) currently using as 
+const int PIN_CLOSE_OUTPUT = 8; // signal door close after the attack 
 const int PIN_MANUAL_SUC_OUTPUT = 9;
 const int PIN_LICK_INPUT = 10;
 const int PIN_MANUAL_BUTTON_INPUT = 11;
@@ -35,6 +35,8 @@ bool isAttacked = false;
 
 bool isTimeLimitReached = false;
 bool isAutoflushEnabled;
+
+bool isModeChanged = false;
 
 // Time variable
 unsigned long blockOnSetTime;
@@ -274,7 +276,7 @@ void setup()
     Serial.println("Warning : Block Lever is in the Open position!");
     delay(2000);
   }
-  while(digitalRead(PIN_TRIAL_INPUT) == HIGH)
+  while(digitalRead(PIN_TRIAL_INPUT) == LOW)
   {
     Serial.println("Warning : Door is in the Open position!");
     delay(2000);
@@ -353,6 +355,7 @@ void loop()
       trial = 0;
       accumLickTime = 0;
       isTimeLimitReached = false;
+      isModeChanged = false;
 
       isBlock = true;
       Serial.println("Block started");
@@ -399,12 +402,20 @@ void loop()
       Serial.println(trial);
 
       // Decide attack time in at mode
-      if (mode == "at")
+      if (mode == "at" || mode == "mc")
       {
-        if (random(100) < percentage_attack_in_6sec)   
-          attackDelay = 6000;
-        else
+        if (isModeChanged)
+        {
           attackDelay = 3000;
+          Serial.print("MC : ");
+        }
+        else
+        {
+          if (random(100) < percentage_attack_in_6sec)   
+            attackDelay = 6000;
+          else
+            attackDelay = 3000;
+        }
         
         Serial.print("Attack in ");
         Serial.print(attackDelay);
@@ -426,7 +437,7 @@ void loop()
           {
             doorCloseTime = millis() + doorCloseDelay;
           }
-          else if (mode == "at")
+          else if (mode == "at" || mode == "mc")
           {
             attackOnsetTime = millis() + attackDelay;  
           }
@@ -439,7 +450,7 @@ void loop()
           closeDoor();
         }
 
-        if (mode == "at" && attackOnsetTime < millis()) // Attack Onset Time reached
+        if ( (mode == "at" || mode == "mc") && attackOnsetTime < millis()) // Attack Onset Time reached
         {
           Serial.println("######Attacked!!######");
           attack();
@@ -473,8 +484,8 @@ void loop()
   }
   else
   {
-  	if (mode == "at")
-  	{
+    if (mode == "at")
+    {
       digitalWrite(PIN_MANUAL_SUC_OUTPUT, LOW);
       if (digitalRead(PIN_MANUAL_BUTTON_INPUT) == HIGH)
       {
@@ -482,17 +493,26 @@ void loop()
         attack();
         isAttacked = false; // this line is necessary to enable normal attack after manual attack
       }
-  	}
+    }
     else if (mode == "tr" || mode == "sh")
     {
       digitalWrite(PIN_MANUAL_SUC_OUTPUT, digitalRead(PIN_MANUAL_BUTTON_INPUT));
     }
     else if (mode == "mc")
     {
-      percentage_attack_in_6sec = 0;
-      Serial.println("Warning : Now always attack in 3 sec!!!!!!!");
+      if (digitalRead(PIN_MANUAL_BUTTON_INPUT) == HIGH && (!isModeChanged))
+      {
+        isModeChanged = true;
+        Serial.println("Warning : Now always attack in 3 sec!!!!!!!");
+      }
+      else if (digitalRead(PIN_MANUAL_BUTTON_INPUT) == HIGH && (isModeChanged))
+      {
+        isModeChanged = false;
+        Serial.println("Warning : Mode Change Reversed!");
+      }
     }
-    digitalWrite(PIN_PUMP_OUTPUT,digitalRead(PIN_PUMP_INPUT));
+    digitalWrite(PIN_PUMP_OUTPUT,LOW);
+    digitalWrite(PIN_MANUAL_SUC_OUTPUT, LOW);
   }
   
   //Num Lick Count
@@ -564,3 +584,4 @@ void closeDoor()
   delay(100);
   digitalWrite(PIN_CLOSE_OUTPUT, LOW);
 }
+
