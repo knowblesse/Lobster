@@ -165,8 +165,15 @@ if isTank
     Trials = [DATA.epocs.TRON.onset, DATA.epocs.TROF.onset];
     IRs = [DATA.epocs.IRON.onset,DATA.epocs.IROF.onset];
     Licks = [DATA.epocs.LICK.onset,DATA.epocs.LOFF.onset];
+    
     if isfield(DATA.epocs,'ATTK')
-        Attacks = [DATA.epocs.ATTK.onset, DATA.epocs.ATOF.onset];
+        if size(DATA.epocs.ATTK.onset,1) > 1
+            Attacks = [DATA.epocs.ATTK.onset, DATA.epocs.ATOF.onset];
+        else
+            warning('Only One Attack. Considering as training session');
+            Attacks = [];
+            isTrainingSession = true;
+        end 
     else
         warning('No Attack. Considering as training session');
         Attacks = [];
