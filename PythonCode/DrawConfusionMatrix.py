@@ -1,5 +1,18 @@
+import seaborn as sns
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.io import loadmat
+from pathlib import Path
+
+data_path = Path('D:\Data\Lobster\Lobster_Recording-200319-161008\EventClassifierDataset\output_IL.mat')
+
+data = loadmat(str(data_path.absolute()))
+mat_confusion = data.get('mat_confusion')
+
 # Draw End result
-cmap = sns.color_palette("light:g", as_cmap=True)
+#cmap = sns.color_palette(['#ffffff','#ff0000'], n_colors=50, as_cmap=True)
+#cmap = sns.light_palette('#ff0000', as_cmap=True)
+cmap = sns.light_palette('#0000C0', as_cmap=True)
 f = plt.figure(2, figsize=(12, 6))
 f.clear()
 ax1, ax2 = f.subplots(1,2)
@@ -19,12 +32,13 @@ for i in np.arange(3):
         ax1.text(0.5 + i, 0.6 + j,'(±{:.3f})'.format(confusion_mat_std_shuffled[i,j]),verticalalignment='top',horizontalalignment='center',color='w')
         ax2.text(0.5 + i, 0.6 + j,'(±{:.3f})'.format(confusion_mat_std_real[i,j]), verticalalignment = 'top', horizontalalignment = 'center', color = 'w')
 
-ax1.set_title('shuffled : {:5.3f}%(±{:5.3f})'.format(np.mean(mat_accuracy,axis=0)[0]*100, np.std(mat_accuracy[:,0]*100)),fontsize=18)
+Y_label = ['Head Entry', 'Avoidance HW', 'Escape HW']
+ax1.set_title('shuffled',fontsize=18)
 ax1.set_xticklabels(Y_label,verticalalignment='center')
 ax1.set_yticklabels(Y_label,verticalalignment='center')
 ax1.set_xlabel('predicted',fontsize=15)
 ax1.set_ylabel('actual',labelpad=10,fontsize=15)
-ax2.set_title('real : {:5.3f}%(±{:5.3f})'.format(np.mean(mat_accuracy,axis=0)[1]*100, np.std(mat_accuracy[:,1]*100)),fontsize=19)
+ax2.set_title('real',fontsize=19)
 ax2.set_xticklabels(Y_label,verticalalignment='center')
 ax2.set_yticklabels(Y_label,verticalalignment='center')
 ax2.set_xlabel('predicted',fontsize=15)

@@ -4,14 +4,23 @@ import matplotlib.pyplot as plt
 import csv
 import numpy as np
 from pathlib import Path
+from sklearn.model_selection import KFold
 
-TANK_location = Path(r'D:\Data\Lobster\Lobster_Recording-200319-161008\20JUN1\#20JUN1-200928-111539')
+TANK_location = Path(r'D:\Data\Lobster\Lobster_Recording-200319-161008\20JUN1\#20JUN1-200923-142219_PL')
 X_location = next(TANK_location.glob('*regressionData_X.csv'))
 y_location = next(TANK_location.glob('*regressionData_y.csv'))
 
 
 X = np.loadtxt(str(X_location), delimiter=',')
 y = np.loadtxt(str(y_location), delimiter=',')
+
+y_decoded = np.zeros(y.shape)
+
+kf = KFold(n_splits=5) # 0.2 testing set
+
+for train_index, test_index in kf.split(X):
+
+
 
 X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.3)
 

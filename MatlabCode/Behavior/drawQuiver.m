@@ -43,3 +43,13 @@ imshow(image);
 
 hold on;
 quiver(X_mesh,Y_mesh,U,V,0.7, 'LineWidth',2,'Color','y','AlignVertexCenters',false);
+
+
+figure(4);
+clf;
+imshow(image);
+
+
+hold on;
+l = streamslice(X_mesh, Y_mesh, U, V);
+set(l, 'Color', 'w');
