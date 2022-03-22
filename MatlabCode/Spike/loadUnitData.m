@@ -21,4 +21,5 @@ if (ischar(Paths))
     Paths = {Paths};
     filename = {filename};
 end
+fprintf('loadUnit : %d units loaded\n',numel(Paths));
 end

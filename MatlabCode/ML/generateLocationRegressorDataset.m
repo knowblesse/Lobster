@@ -1,5 +1,6 @@
-L%% Constants
+%% Constants
 TIMEWINDOW_BIN = 50;
+SessionTime_s = 30*60;
 KERNEL_SIZE = 1000;
 KERNEL_STD = 100;
 REMOVE_START_SEC = 10; % remove the top of the data
@@ -38,51 +39,9 @@ if sum(sum(isnan(y))) ~= 0
     y = [y1,y2];
 end
 
-%% Load Unit Data
-[Paths, pathname, filename] = loadUnitData(TANK_location);
-
-%% Generate Gaussian Kernel
-kernel = gausswin(ceil(KERNEL_SIZE/2)*2-1, (KERNEL_SIZE - 1) / (2 * KERNEL_STD)); % kernel size is changed into an odd number for symmetrical kernel application. see Matlab gausswin docs for the second parameter.
-
-%% Load Unit and apply Generate Serial Data from spike timestamps(fs:1000)
-numUnit = numel(Paths);
-single_unit_vector_size_ms = (1/FS)*1000 / TIMEWINDOW_BIN;
-X = zeros(data_length,single_unit_vector_size_ms*numUnit); 
-for u = 1 : numUnit
-    % Load Unit Data
-    load(Paths{u}); 
-    if istable(SU)
-        spikes = table2array(SU(:,1));
-    else
-        spikes = SU(:,1);
-    end
-    clearvars SU;
-    %% Serialize timestamp data(Sampling frequency = 1000Hz)
-    spk = round(spikes*1000);
-    % use 10 sec from the last video time as the length of the serial data
-    serial_data = zeros(data_length * 1000 + (10*1000),1); 
-    serial_data(spk,1) = 1;
-    %% Convolve Gaussian kernel 
-    conv_ =  conv(serial_data,kernel);
-    % Trim start/end point of the data to match the size
-    serial_data_kerneled = conv_(...
-         1  + (ceil(KERNEL_SIZE/2)*2-2)/2 :...
-        end - (ceil(KERNEL_SIZE/2)*2-2)/2);
-    %% Get mean and std of serialized signal from the first TRON and the last TROF
-    whole_serial_data = serial_data_kerneled;
-    serial_data_mean = mean(whole_serial_data);
-    serial_data_std = std(whole_serial_data);
-    clearvars whole_serial_data
-
-    %% Divide by 1/FS second and zscore
-    idx = 1;
-    for sec = 1 / FS : 1 / FS : data_length / FS
-        data = (serial_data_kerneled((sec-(1/FS))*1000+1:sec*1000) - serial_data_mean) / serial_data_std;
-        % Average Binning
-        X(idx,(u-1)*single_unit_vector_size_ms+1:u*single_unit_vector_size_ms) = sum(reshape(data,TIMEWINDOW_BIN,numel(data)/TIMEWINDOW_BIN),1) / TIMEWINDOW_BIN;
-        idx = idx + 1;
-    end    
-end
+%% Make X data
+X = generateWholeSessionUnitdata(TANK_location, SessionTime_s, KERNEL_SIZE, KERNEL_STD, TIMEWINDOW_BIN, FS);
+% TODO : the size of this data does not match with the y data. 
 
 %% Print Output
 Tank_name = cell2mat(regexp(TANK_location,'.+\\(?:.+\\)*(.+$)','tokens', 'once'));
