@@ -1,4 +1,13 @@
 function X = generateWholeSessionUnitdata(TANK_location, SessionTime_s, KERNEL_SIZE, KERNEL_STD, TIMEWINDOW_BIN, FS)
+%% generateWholeSessionUnitdata
+% Generate neural data snippets from the whole session
+% Params
+%   TANK_location : path to the tank
+%   SessionTime_s : Total session time in second
+%   KERNEL_SIZE : kernel size
+%   KERNEL_STD : kernel std
+%   TIMEWINDOW_BIN : binning window size 50ms
+%   FS : number of locations per second. ex)2 = 2 locations per sec 
 
 %% Load Unit Data
 [Paths, ~, ~] = loadUnitData(TANK_location);
@@ -21,8 +30,12 @@ for u = 1 : numUnit
     clearvars SU;
     %% Serialize timestamp data(Sampling frequency = 1000Hz)
     spk = round(spikes*1000);
-    % use 10 sec from the last video time as the length of the serial data
-    serial_data = zeros(SessionTime_s * 1000 + (10*1000),1); 
+    % Use SessionTime_s + 10 sec data. (extra time for continuous convolution)
+    % This is not mandatory, but might help to get smooth neural data. 
+    serial_data = zeros( (SessionTime_s + 10) *1000,1); 
+    % Before changing the serial_data, check if the spk are in range of SessionTime_s + 10sec
+    spk = spk(spk < (SessionTime_s + 10) *1000)
+    % Set value one to the spike point
     serial_data(spk,1) = 1;
     %% Convolve Gaussian kernel 
     serial_data_kerneled =  conv(serial_data,kernel,'same');
@@ -37,8 +50,9 @@ for u = 1 : numUnit
     for sec = 1 / FS : 1 / FS : SessionTime_s
         data = (serial_data_kerneled((sec-(1/FS))*1000+1:sec*1000) - serial_data_mean) / serial_data_std;
         % Average Binning
-        % mean Z value during TIMEWINDOW ms ---> one data point
-        % single_unit_vector_size data poins per unit
+        % one data point during each TIMEWINDOW_BIN
+        % ex) one point per 50ms
+        % we acheive this by summing all 1ms point data and dividing it by TIMEWINDOW_BIN
         X(idx,(u-1)*single_unit_vector_size+1:u*single_unit_vector_size) = sum(reshape(data,TIMEWINDOW_BIN,numel(data)/TIMEWINDOW_BIN),1) / TIMEWINDOW_BIN;
         idx = idx + 1;
     end    
