@@ -33,8 +33,8 @@ for u = 1 : numUnit
     % Use SessionTime_s + 10 sec data. (extra time for continuous convolution)
     % This is not mandatory, but might help to get smooth neural data. 
     serial_data = zeros( (SessionTime_s + 10) *1000,1); 
-    % Before changing the serial_data, check if the spk are in range of SessionTime_s + 10sec
-    spk = spk(spk < (SessionTime_s + 10) *1000)
+    % Before changing the serial_data, make sure that the all spikes are in SessionTime_s + 10sec
+    spk = spk(spk < (SessionTime_s + 10) *1000);
     % Set value one to the spike point
     serial_data(spk,1) = 1;
     %% Convolve Gaussian kernel 
