@@ -12,6 +12,20 @@ function X = generateWholeSessionUnitdata(TANK_location, SessionTime_s, KERNEL_S
 %% Load Unit Data
 [Paths, ~, ~] = loadUnitData(TANK_location);
 
+%% Check if the BLOF is behind the SessionTime_s
+DATA = TDTbin2mat(TANK_location,'TYPE',{'epocs'});
+if ~isfield(DATA.epocs,'BLOF')
+    warning('generateWholeSessionUnitData : BLOF block does not exist. Using the last TROF');
+    temp_time = DATA.epocs.TROF.onset(end);
+else
+    temp_time = DATA.epocs.BLOF.onset;
+end
+
+if temp_time < SessionTime_s
+    warning('generateWholeSessionUnitData : Session time is shorter than %d sec. Using %d sec instead', SessionTime_s, round(temp_time));
+    SessionTime_s = round(temp_time);
+end
+
 %% Generate Gaussian Kernel
 kernel = gausswin(ceil(KERNEL_SIZE/2)*2-1, (KERNEL_SIZE - 1) / (2 * KERNEL_STD)); % kernel size is changed into an odd number for symmetrical kernel application. see Matlab gausswin docs for the second parameter.
 
