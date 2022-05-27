@@ -109,7 +109,7 @@ error_x = []
 error_y = []
 error_d = []
 
-kf = KFold(n_splits=5)
+kf = KFold(n_splits=5, shuffle=True)
 
 for train_index, test_index in kf.split(X):
     X_train = X[train_index,:]
