@@ -84,19 +84,6 @@ y_x = np.expand_dims(intp_x(midPointTimes * video_frame_rate), 1)
 y_y = np.expand_dims(intp_y(midPointTimes * video_frame_rate), 1)
 y_d = np.expand_dims(intp_d(midPointTimes * video_frame_rate) % 360, 1)
 
-# # Scale
-# scaler_x = StandardScaler()
-# scaler_y = StandardScaler()
-# scaler_d = StandardScaler()
-#
-# scaler_x.fit(y_x)
-# scaler_y.fit(y_y)
-# scaler_d.fit(y_d)
-#
-# y_x = scaler_x.transform(y_x)
-# y_y = scaler_y.transform(y_y)
-# y_d = scaler_t.transform(y_d)
-
 X = neural_data
 y = np.concatenate((y_x, y_y, y_d), axis=1)
 
@@ -110,6 +97,8 @@ error_y = []
 error_d = []
 
 kf = KFold(n_splits=5, shuffle=True)
+WholeTestResult = np.zeros([X.shape[0], 6]) # num data x [row, column, degree], [real, test]
+WholeTestResult[:, :3] = y
 
 for train_index, test_index in kf.split(X):
     X_train = X[train_index,:]
@@ -148,6 +137,7 @@ for train_index, test_index in kf.split(X):
     error_d.append(rmse(y_test[:,2], reg3_result))
 
     print(f'{error_x_fake[-1]:.3f}, {error_x[-1]:.3f}, {error_y_fake[-1]:.3f}, {error_y[-1]:.3f}, {error_d_fake[-1]:.3f}, {error_d[-1]:.3f}')
+    WholeTestResult[test_index, 3:] = np.stack([reg1_result, reg2_result, reg3_result], axis=1)
 
 print('Copy : ')
 print(f'{np.mean(error_x_fake):.3f}, {np.mean(error_x):.3f}, {np.mean(error_y_fake):.3f}, {np.mean(error_y):.3f}, {np.mean(error_d_fake):.3f}, {np.mean(error_d):.3f}')

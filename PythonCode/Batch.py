@@ -23,6 +23,7 @@ neural_data_rate = 2 # datapoints per sec. This shows how many X data is present
 truncatedTime_s = 10 # sec. matlab data delete the first and the last 10 sec of the neural data.
 
 FolderLocation = Path(r'D:\Data\Lobster\Lobster_Recording-200319-161008\20JUN1')
+OutputFileLocation = Path(r'D:\Output')
 
 for tank in FolderLocation.glob('#*'):
     tank_name = re.search('#.*',str(tank))[0]
@@ -101,6 +102,8 @@ for tank in FolderLocation.glob('#*'):
     error_d = []
 
     kf = KFold(n_splits=5, shuffle=True)
+    WholeTestResult = np.zeros([X.shape[0], 6])  # num data x [row, column, degree], [real, test]
+    WholeTestResult[:, :3] = y
 
     for train_index, test_index in kf.split(X):
         X_train = X[train_index,:]
@@ -138,4 +141,8 @@ for tank in FolderLocation.glob('#*'):
         error_y.append(rmse(y_test[:,1], reg2_result))
         error_d.append(rmse(y_test[:,2], reg3_result))
 
+        WholeTestResult[test_index, 3:] = np.stack([reg1_result, reg2_result, reg3_result], axis=1)
+
     print(f'{tank_name} : {np.mean(error_x_fake):.3f}, {np.mean(error_x):.3f}, {np.mean(error_y_fake):.3f}, {np.mean(error_y):.3f}, {np.mean(error_d_fake):.3f}, {np.mean(error_d):.3f}')
+    np.savetxt(str(OutputFileLocation / (tank_name + 'result.csv')),WholeTestResult, fmt='%.3f', delimiter=',')
+
