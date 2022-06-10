@@ -18,6 +18,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import cv2 as cv
 from tqdm import tqdm
+import requests
+import csv
 
 class dANN(nn.Module):
     def __init__(self, params):
@@ -67,8 +69,8 @@ truncatedTime_s = 10 # sec. matlab data delete the first and the last 10 sec of 
 device = torch.device("cuda" if torch.cuda.is_available else "cpu")
 train_epoch = 10000
 
-FolderLocation = Path(r'D:\Data\Lobster\Lobster_Recording-200319-161008\21JAN5')
-OutputFileLocation = Path(r'D:\Output')
+FolderLocation = Path(r'/media/ainav/409D-B7E7/21AUG4')
+OutputFileLocation = Path(r'/media/ainav/409D-B7E7/Output')
 
 for tank in FolderLocation.glob('#*'):
     tank_name = re.search('#.*',str(tank))[0]
@@ -91,7 +93,10 @@ for tank in FolderLocation.glob('#*'):
         raise(BaseException("There are multiple files ending with _wholeSessionUnitData.csv"))
 
     # Check Video FPS
-    vc = cv.VideoCapture(str(next(TANK_location.glob('*.avi'))))
+    videoFileName = [i for i in TANK_location.glob('*.avi')]
+    if len(videoFileName) == 0:
+        videoFileName = [i for i in TANK_location.glob('*.mp4')]
+    vc = cv.VideoCapture(str(videoFileName[0]))
     video_frame_rate = vc.get(cv.CAP_PROP_FPS)
     if video_frame_rate % 1 != 0:
         raise(BaseException("Video Frame rate is not a integer!"))
@@ -207,9 +212,15 @@ for tank in FolderLocation.glob('#*'):
         WholeTestResult[test_index,6: ] = realFit.to('cpu').numpy()
 
     print(f"{tank_name} : "
-          f"Row : {np.mean((WholeTestResult[:,0]-WholeTestResult[:,3])**2)**0.5:.3f} | {np.mean((WholeTestResult[:,0]-WholeTestResult[:,6])**2)**0.5:.3f},"
-          f"Col : {np.mean((WholeTestResult[:,1]-WholeTestResult[:,4])**2)**0.5:.3f} | {np.mean((WholeTestResult[:,1]-WholeTestResult[:,7])**2)**0.5:.3f},"
+          f"Row : {np.mean((WholeTestResult[:,0]-WholeTestResult[:,3])**2)**0.5:.3f} | {np.mean((WholeTestResult[:,0]-WholeTestResult[:,6])**2)**0.5:.3f},  "
+          f"Col : {np.mean((WholeTestResult[:,1]-WholeTestResult[:,4])**2)**0.5:.3f} | {np.mean((WholeTestResult[:,1]-WholeTestResult[:,7])**2)**0.5:.3f},  "
           f"Deg : {np.mean((WholeTestResult[:,2]-WholeTestResult[:,5])**2)**0.5:.3f} | {np.mean((WholeTestResult[:,2]-WholeTestResult[:,8])**2)**0.5:.3f}")
     np.savetxt(str(OutputFileLocation / (tank_name + 'result.csv')),WholeTestResult, fmt='%.3f', delimiter=',')
 
+    with open(str(OutputFileLocation / 'log.csv'), 'a', newline='') as csvfile:
+        wr = csv.writer(csvfile, delimiter=',')
+        wr.writerow([tank_name,
+                     np.mean((WholeTestResult[:,0]-WholeTestResult[:,3])**2)**0.5, np.mean((WholeTestResult[:,0]-WholeTestResult[:,6])**2)**0.5,
+                     np.mean((WholeTestResult[:,1]-WholeTestResult[:,4])**2)**0.5, np.mean((WholeTestResult[:,1]-WholeTestResult[:,7])**2)**0.5,
+                     np.mean((WholeTestResult[:,2]-WholeTestResult[:,5])**2)**0.5, np.mean((WholeTestResult[:,2]-WholeTestResult[:,8])**2)**0.5])
 
