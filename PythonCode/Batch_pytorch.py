@@ -57,10 +57,10 @@ class dANN(nn.Module):
         return x
 
     def init_weights(self):
-        nn.init.normal_(self.fc1.weight, mean=0, std=0.05)
-        nn.init.normal_(self.fc2.weight, mean=0, std=0.05)
-        nn.init.normal_(self.fc3.weight, mean=0, std=0.05)
-        nn.init.normal_(self.fc4.weight, mean=0, std=0.05)
+        nn.init.normal_(self.fc1.weight, mean=0, std=0.2)
+        nn.init.normal_(self.fc2.weight, mean=0, std=0.2)
+        nn.init.normal_(self.fc3.weight, mean=0, std=0.2)
+        nn.init.normal_(self.fc4.weight, mean=0, std=0.2)
 
 
 # Constant
@@ -68,7 +68,7 @@ neural_data_rate = 2 # datapoints per sec. This shows how many X data is present
 truncatedTime_s = 10 # sec. matlab data delete the first and the last 10 sec of the neural data.
 device = torch.device("cuda" if torch.cuda.is_available else "cpu")
 train_epoch = 20000
-init_lr = 0.001
+init_lr = 0.0001
 
 FolderLocation = Path(r'/media/ainav/409D-B7E7/LobsterData')
 OutputFileLocation = Path(r'/media/ainav/409D-B7E7/Output')
@@ -76,6 +76,7 @@ OutputFileLocation = Path(r'/media/ainav/409D-B7E7/Output')
 for tank in FolderLocation.glob('#*'):
     tank_name = re.search('#.*',str(tank))[0]
     TANK_location = tank.absolute()
+    print(tank_name)
 
     # Check if the video file is buttered
     butter_location = [p for p in TANK_location.glob('*_buttered.csv')]
@@ -164,8 +165,8 @@ for tank in FolderLocation.glob('#*'):
         net_fake = dANN(params).to(device)
         net.init_weights()
         net_fake.init_weights()
-        optimizer = torch.optim.SGD(net.parameters(), lr=init_lr, momentum=0.8)
-        optimizer_fake = torch.optim.SGD(net_fake.parameters(), lr=init_lr, momentum=0.8)
+        optimizer = torch.optim.SGD(net.parameters(), lr=init_lr, momentum=0.7)
+        optimizer_fake = torch.optim.SGD(net_fake.parameters(), lr=init_lr, momentum=0.7)
 
         pbar = tqdm(np.arange(train_epoch))
 
@@ -173,12 +174,13 @@ for tank in FolderLocation.glob('#*'):
 
             if e > 10000:
                 for g in optimizer.param_groups:
-                    lr = g['lr'] * np.exp(-0.01)
+                    lr = g['lr'] * np.exp(-0.0005)
                     g['lr'] = lr
                 for g in optimizer_fake.param_groups:
-                    lr = g['lr'] * np.exp(-0.01)
+                    lr = g['lr'] * np.exp(-0.0005)
                     g['lr'] = lr
-
+            else:
+                lr = init_lr
             # Update net
             net.train()
             loss = F.mse_loss(net.forward(X_train), y_train)
