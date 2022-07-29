@@ -257,5 +257,9 @@ end
 
 ParsedData = ParsedData(validtrial, :);
 
+% Extra
+if strcmp(dataname, '#21AUG3-211118-153136')
+    ParsedData{63,4}(1,:) = [];
+end
 
 fprintf('BehavDataParser : %s behavior data parsing complete\n',dataname);
