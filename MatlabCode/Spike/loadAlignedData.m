@@ -1,4 +1,4 @@
-function [Neurons, Neuron_names] = loadAlignedData()
+function [Neurons, Neuron_names] = loadAlignedData(TANK_location)
 %% loadAlignedData
 % load Aligned unit data (.mat) and make them into one cell
 

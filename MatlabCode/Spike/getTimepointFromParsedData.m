@@ -26,7 +26,4 @@ for t = 1 : numTrial
     timepoint.ATTK(t) = start_time + ParsedData{t,4}(1) * 1000;
     timepoint.TROF(t) = ParsedData{t,1}(2) * 1000;    
 end
-
-
-
 end
