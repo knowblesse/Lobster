@@ -1,5 +1,7 @@
 function [timepoint,numTrial] = getTimepointFromParsedData(ParsedData,drawOnly)
-%% Find Time window in each trial
+%% Find Absolue Time of the each behavior event
+% Using the ParsedData, this function output timepoint struct variable which has all behavioral
+% absolute time point for every trials. Timepoines are in ms.
 % drawOnly : 'A' or 'E'. if provided, return only Avoid or Escape trials
 
 if exist('drawOnly','var') > 0 

@@ -1,16 +1,23 @@
 %% BatchScript
 % Script for batch running other scripts or functions
 
-basepath = 'D:\Data\Lobster\Lobster_Recording-200319-161008\21AUG4';
+
+basePath = 'D:\Data\Lobster\Lobster_Recording-200319-161008\';
 %matfile_save_location = 'C:\Users\Knowblesse\SynologyDrive\발표\학회\2021 한국뇌신경과학회\Lobster\';
 
-filelist = dir(basepath);
-workingfile = regexp({filelist.name},'^2\S*','match');
-workingfile = workingfile(~cellfun('isempty',workingfile));
-
-result = {};
-for f = 1 : numel(workingfile)
-    TANK_location = strcat(basepath,filesep, cell2mat(workingfile{f}));
-    unitstxt2mats(strcat(TANK_location, '\recording\',ls(strcat(TANK_location, '\recording\*.txt'))));
+%% Subject
+for subject = ["20JUN1", "21JAN2", "21JAN5", "21AUG3", "21AUG4"]
+    subjectPath = strcat(basePath, subject);
+    filelist = dir(subjectPath);
+    sessionPaths = regexp({filelist.name},'^#\S*','match');
+    sessionPaths = sessionPaths(~cellfun('isempty',sessionPaths));
+    %% Session
+    for session = 1 : numel(sessionPaths)
+        TANK_name = cell2mat(sessionPaths{session});
+        TANK_location = char(strcat(subjectPath,filesep, TANK_name));
+        %% Scripts
+        AlignEvent;
+    end
 end
+
 fprintf('DONE\n');
