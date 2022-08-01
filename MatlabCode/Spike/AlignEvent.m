@@ -4,9 +4,8 @@
 %% PARAMETERS
 TIMEWINDOW_LEFT = -1000; %(ms)
 TIMEWINDOW_RIGHT = +1000; %(ms)
-TIMEWINDOW = [TIMEWINDOW_LEFT, TIMEWINDOW_RIGHT];
 TIMEWINDOW_BIN = 50; %(ms) 
-clearvars TIMEWINDOW_LEFT TIMEWINDOW_RIGHT
+numBin = (TIMEWINDOW_RIGHT - TIMEWINDOW_LEFT)/TIMEWINDOW_BIN; % number of bins
 
 %% Select Unit data (.mat) path
 [Paths, pathname, filename] = loadUnitData(TANK_location);
@@ -45,36 +44,41 @@ for f = 1 : numel(Paths)
     clearvars SU;
     
     %% Spike binning
-    variables = {'TRON','first_IRON','valid_IRON','first_LICK','valid_IROF','ATTK','TROF'};
-    for v = variables
-        eval(['Z.binned_spike.',v{1},' = zeros(numTrial,diff(TIMEWINDOW)/TIMEWINDOW_BIN);']);
-        eval(['tp = timepoint.',v{1},';']);
-        for t = 1 : numTrial
-            spikebin = zeros(diff(TIMEWINDOW)/TIMEWINDOW_BIN,1);
-            timebin = linspace(tp(t) + TIMEWINDOW(1), tp(t) + TIMEWINDOW(2),numel(spikebin) + 1);
-            for tb = 1 : numel(spikebin)
-                spikebin(tb) = sum(and(spikes >= timebin(tb), spikes < timebin(tb+1)));
+    event_list = ["TRON","first_IRON","valid_IRON","first_LICK","valid_IROF","ATTK","TROF"];
+    for event = event_list
+        Z.binned_spike.(event) = zeros(numTrial, numBin);
+        for trial = 1 : numTrial
+            spikebin = zeros(numBin, 1);
+            timebin = linspace(...
+                timepoint.(event)(trial) + TIMEWINDOW_LEFT,...
+                timepoint.(event)(trial) + TIMEWINDOW_RIGHT,...
+                numBin + 1);
+            for i_bin = 1 : numBin
+                spikebin(i_bin) = sum(and(spikes >= timebin(i_bin), spikes < timebin(i_bin+1)));
             end
-            eval(['Z.binned_spike.',v{1},'(t,:) = spikebin;']);
+            Z.binned_spike.(event)(trial,:) = spikebin;
         end
     end
-    clearvars tp tb
+        
+    clearvars event trial i_bin
     
     %% Calculate Zscore
-    % For the Z score calculation, mean and std of spikes must be calculated. Calucating these two
-    % values can be done in several ways depending on the baseline. Previously, I used the whole
-    % spike data from the first TRON to the last TROF. But I guess this method results too high std
-    % value and include experiment non-relevent spike (during inter trial intervals). 
-    % So, I used the mean and std from binned data around the target event. 
-    % Previous Code : 
-    %     bs = histcounts(spikes,ParsedData{1,1}(1) * 1000 : TIMEWINDOW_BIN : ParsedData{end,1}(2) * 1000);
-    %     Z.mean = mean(bs);
-    %     Z.std = std(bs);
-    Z.mean = mean(sum(Z.binned_spike.TRON,1));
-    Z.std = std(sum(Z.binned_spike.TRON,1));
-    for v = variables
-        eval(['Z.zscore.',v{1},' = ((sum(Z.binned_spike.',v{1},',1) ./ numTrial) - Z.mean ) ./ Z.std;']);
-        eval(['Z.zscore.',v{1},' = ((sum(Z.binned_spike.',v{1},',1)) - Z.mean ) ./ Z.std;']);
+    % For the Z score calculation, meaning bins across whole trial must come first
+    % before applying the z transformation. (mean of z scores are not z score)
+    % I used the +- 1 seconds around TRON as the baseline. 
+    % To make the mean and the std as representative as possible, I did not use
+    % one single timepoint as a baseline, rather used "every +- 1 seconds around TRON".
+    % After meaning the binned spikes from the baseline period across trials, mean and std of bin 
+    % is calculated. And then, this value is used for z transformation to "binned_spike"s aligned to
+    % all behavior event. We might lose all TRON responsive neurons, but since TRON is not my 
+    % Event Of Interest, it would be okay.
+    
+    Z.mean_baseline = mean(mean(Z.binned_spike.TRON,1));
+    Z.std_baseline = std(mean(Z.binned_spike.TRON,1));
+    
+    %% Z score calculation
+    for event = event_list
+        Z.zscore.(event) = ( mean(Z.binned_spike.(event),1) - Z.mean_baseline) ./ Z.std_baseline;
     end
     
     %% Session Firing Rate
