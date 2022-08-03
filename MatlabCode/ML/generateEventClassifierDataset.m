@@ -74,54 +74,56 @@ for u = 1 : numUnit
     %% Serialize timestamp data(Sampling frequency = 1000Hz)
     spk = round(spikes*1000);
     % use max(10s from last spike, 10s from the last TROF) as the length of the serial data
-    serial_data = zeros(max(spk(end) + (10*1000), (ceil(ParsedData{end,1}(end)) + 10)*1000),1); 
+    serial_data = zeros(max(spk(end) + (10*1000), (ceil(ParsedData{end,1}(end)) + 10)*1000),1);
     serial_data(spk,1) = 1;
+    
     %% Convolve Gaussian kernel 
-    conv_ =  conv(serial_data,kernel);
-    % Trim start/end point of the data to match the size
-    serial_data_kerneled = conv_(...
-         1  + (ceil(KERNEL_SIZE/2)*2-2)/2 :...
-        end - (ceil(KERNEL_SIZE/2)*2-2)/2);
-    %% Get mean and std of serialized signal from the first TRON and the last TROF
-    whole_serial_data = serial_data_kerneled(round(ParsedData{1,1}(1)*1000) : round(ParsedData{end,1}(end)*1000));
-    serial_data_mean = mean(whole_serial_data);
-    serial_data_std = std(whole_serial_data);
-    clearvars whole_serial_data
+    serial_data_kerneled =  conv(serial_data,kernel,'same');
+    
+    %% Get mean and std of serialized signal and apply normalization
+    serial_data_mean = mean(serial_data_kerneled);
+    serial_data_std = std(serial_data_kerneled);
+    whole_serial_data = (serial_data_kerneled - serial_data_mean) ./ serial_data_std;
+    
+    clearvars serial_data_kerneled
 
     %% Divide by EVENT Marker
     IRON = cell(numTrial,1);
     IROF = cell(numTrial,1);
-    for t = 1 : numTrial
-        % Get event time
-        tron_time = ParsedData{t,1}(1) * 1000;
-        iron_time = ParsedData{t,2}(1) * 1000 + tron_time;%first iron
-        nearAttackIRindex = find(ParsedData{t,2}(:,1) < ParsedData{t,4}(1), 1, 'last');
-        irof_time = ParsedData{t,2}(nearAttackIRindex, 2) * 1000 + tron_time;
-        % Get range of analysis
-        iron_time_range = TIMEWINDOW + iron_time;
-        irof_time_range = TIMEWINDOW + irof_time;
-        % Splice by the range. exclude the last element to match the size. 
-        % and apply zscore
-        if round(iron_time_range(1)) >= 1  % check if the index is out of the range
-            iron_data = (serial_data_kerneled(round(iron_time_range(1)) : round(iron_time_range(2))-1) - serial_data_mean) / serial_data_std;
-            IRON{t} = sum(reshape(iron_data,TIMEWINDOW_BIN,binnedDataSize),1) / TIMEWINDOW_BIN; % Average Binning
+
+    [timepoint, ~] = getTimepointFromParsedData(ParsedData); % onset of event (in ms)
+    
+    for trial = 1 : numTrial
+        % Get Peri-Event Window
+        IRON_window = round(TIMEWINDOW + timepoint.first_IRON(trial));
+        IROF_window = round(TIMEWINDOW + timepoint.valid_IROF(trial));
+
+        % Check if the window is out of range
+        if (IRON_window(1) >= 1) && (IRON_window(2) <= numel(whole_serial_data))
+            % Since the index of the whole_serial_data is actual timepoint in ms,
+            % retrive the value in the window by index.
+            IRON{trial} = mean(reshape(...
+                whole_serial_data(IRON_window(1)+1 : IRON_window(2)),...
+                TIMEWINDOW_BIN, binnedDataSize), 1);
         end
-        if round(irof_time_range(1)) >= 1 % check if the index is out of the range
-            irof_data = (serial_data_kerneled(round(irof_time_range(1)) : round(irof_time_range(2))-1) - serial_data_mean) / serial_data_std;
-            IROF{t} = sum(reshape(irof_data,TIMEWINDOW_BIN,binnedDataSize),1) / TIMEWINDOW_BIN; % Average Binning
-        end        
+
+        if (IROF_window(1) >= 1) && (IROF_window(2) <= numel(whole_serial_data))
+            IROF{trial} = mean(reshape(...
+                whole_serial_data(IROF_window(1)+1 : IROF_window(2)),...
+                TIMEWINDOW_BIN, binnedDataSize), 1);
+        end
     end
-    clearvars tron_time iron_* irof_*
     
     %% Separate Avoid and Escape
     IROF_A = IROF(behaviorResult == 'A');
     IROF_E = IROF(behaviorResult == 'E');
-    clearvars IROF
     
     %% Remove Empty Data resulted by index out of the range
     % ex. when you generate -8 ~ -6s offset data, -8 sec goes behind the exp start time in the first
     % trial. This usually does not occur in IROF dataset.
     IRON = IRON(~cellfun('isempty',IRON)); 
+    IROF_A = IROF_A(~cellfun('isempty',IROF_A));
+    IROF_E = IROF_E(~cellfun('isempty',IROF_E));
     
     %% Save Data
     if size([IRON;IROF_A;IROF_E], 1) ~= size(X,1) % if the dataset size is reduced because of the index output the range issue, reinitialize the X
