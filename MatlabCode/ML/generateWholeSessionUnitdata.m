@@ -1,4 +1,4 @@
-function X = generateWholeSessionUnitdata(TANK_location, SessionTime_s, KERNEL_SIZE, KERNEL_STD, TIMEWINDOW_BIN, FS)
+function X = generateWholeSessionUnitdata(TANK_location, SessionTime_s, KERNEL_SIZE, KERNEL_STD, TIMEWINDOW_BIN, locPsec)
 %% generateWholeSessionUnitdata
 % Generate neural data snippets from the whole session
 % Params
@@ -7,12 +7,17 @@ function X = generateWholeSessionUnitdata(TANK_location, SessionTime_s, KERNEL_S
 %   KERNEL_SIZE : kernel size
 %   KERNEL_STD : kernel std
 %   TIMEWINDOW_BIN : binning window size 50ms
-%   FS : number of locations per second. ex)2 = 2 locations per sec 
+%   locPsec : number of locations per second. ex)2 = 2 locations per sec 
+% Output
+% (number of time points) x (number of cell) 2D matrix.
+%   The data is not zscore. But it is normalized. 
 
 %% Load Unit Data
 [Paths, ~, ~] = loadUnitData(TANK_location);
 
 %% Check if the BLOF is behind the SessionTime_s
+% Sometimes, I end an experiment without setting the block switch to off position. 
+% In this case, use the last TROF as the BLOF
 DATA = TDTbin2mat(TANK_location,'TYPE',{'epocs'});
 if ~isfield(DATA.epocs,'BLOF')
     warning('generateWholeSessionUnitData : BLOF block does not exist. Using the last TROF');
@@ -21,18 +26,23 @@ else
     temp_time = DATA.epocs.BLOF.onset;
 end
 
+%% Check if Experiment duration is shorter than "SessionTime_s"
+% In this case, I ignored the "SessionTime_s" and just use the short length of the experiment
 if temp_time < SessionTime_s
     warning('generateWholeSessionUnitData : Session time is shorter than %d sec. Using %d sec instead', SessionTime_s, round(temp_time));
     SessionTime_s = round(temp_time);
 end
 
+clearvars temp_time
+
 %% Generate Gaussian Kernel
 kernel = gausswin(ceil(KERNEL_SIZE/2)*2-1, (KERNEL_SIZE - 1) / (2 * KERNEL_STD)); % kernel size is changed into an odd number for symmetrical kernel application. see Matlab gausswin docs for the second parameter.
 
-%% Load Unit and apply Generate Serial Data from spike timestamps(fs:1000)
+%% Load Unit and apply Generate Serial Data from spike timestamps(locPsec:1000)
 numUnit = numel(Paths);
-single_unit_vector_size = (1/FS)*1000 / TIMEWINDOW_BIN;
-X = zeros(SessionTime_s*FS,single_unit_vector_size*numUnit); 
+vector_duration = 1/locPsec*1000; % duration(ms) of a vector corresponding to a single timepoint
+single_unit_vector_size = vector_duration / TIMEWINDOW_BIN; % size of a vector corresponding to a single unit, a single timepoint.
+X = zeros(SessionTime_s*locPsec,single_unit_vector_size*numUnit); 
 for u = 1 : numUnit
     % Load Unit Data
     load(Paths{u}); 
@@ -53,22 +63,23 @@ for u = 1 : numUnit
     serial_data(spk,1) = 1;
     %% Convolve Gaussian kernel 
     serial_data_kerneled =  conv(serial_data,kernel,'same');
-    %% Get mean and std of serialized signal from the first TRON and the last TROF
-    whole_serial_data = serial_data_kerneled;
-    serial_data_mean = mean(whole_serial_data);
-    serial_data_std = std(whole_serial_data);
-    clearvars whole_serial_data
+    %% Get mean and std of serialized signal to normalize the whole spike data
+    serial_data_mean = mean(serial_data_kerneled);
+    serial_data_std = std(serial_data_kerneled);
+    whole_serial_data = (serial_data_kerneled - serial_data_mean) ./ serial_data_std;
 
-    %% Divide by 1/FS second and zscore
+    clearvars serial_data_kerneled
+
+    %% Reshape whole_serial_data_z
     idx = 1;
-    for sec = 1 / FS : 1 / FS : SessionTime_s
-        data = (serial_data_kerneled((sec-(1/FS))*1000+1:sec*1000) - serial_data_mean) / serial_data_std;
+    for msec = vector_duration : vector_duration : SessionTime_s * 1000
+        data = whole_serial_data(msec-vector_duration+1:msec);
         % Average Binning
         % one data point during each TIMEWINDOW_BIN
-        % ex) one point per 50ms
-        % we acheive this by summing all 1ms point data and dividing it by TIMEWINDOW_BIN
-        X(idx,(u-1)*single_unit_vector_size+1:u*single_unit_vector_size) = sum(reshape(data,TIMEWINDOW_BIN,numel(data)/TIMEWINDOW_BIN),1) / TIMEWINDOW_BIN;
+        % ex) one value per 50ms
+        % we acheive this by meaning all 1ms-long data and dividing it by TIMEWINDOW_BIN
+        X(idx,(u-1)*single_unit_vector_size+1:u*single_unit_vector_size) = mean(reshape(data,TIMEWINDOW_BIN,numel(data)/TIMEWINDOW_BIN),1);
         idx = idx + 1;
-    end    
+    end
 end
 end
