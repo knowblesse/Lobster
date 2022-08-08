@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 
 ## Make All regression raw data into one big file
-FolderLocation = Path(r'D:\Data\Lobster\LocationRegression')
+FolderLocation = Path(r'F:\Output_Control')
 OutputFileLocation = Path(r'F:\Output')
 
 OutputData = DataFrame(columns=['Session', 'True_R', 'True_C', 'True_D', 'Fake_R', 'Fake_C', 'Fake_D', 'Pred_R', 'Pred_C', 'Pred_D'])
@@ -18,14 +18,21 @@ for file in files:
     session_name = re.search('#.*r', str(file))[0][:-1]
     FILE_location = file.absolute()
     data = pd.read_csv(FILE_location, sep=',',names=['True_R', 'True_C', 'True_D', 'Fake_R', 'Fake_C', 'Fake_D', 'Pred_R', 'Pred_C', 'Pred_D'])
-    data.insert(0,'Session','')
+    # Remove Weird Predictions
+    outlierIndex = np.logical_or(
+        np.logical_or(data['Pred_R'] < 0, data['Pred_R'] > 480),
+        np.logical_or(data['Pred_C'] < 0, data['Pred_C'] > 640)
+    )
+    # Add Session Column
+    data.insert(0, 'Session', '')
+    data = data.drop(index=np.where(outlierIndex)[0])
     data['Session'] = session_name
     data['Error_R'] = data['True_R'] - data['Pred_R']
     data['Error_C'] = data['True_C'] - data['Pred_C']
     data['Error_D'] = data['True_D'] - data['Pred_D']
     OutputData= pd.concat([OutputData,data])
 
-OutputData.to_csv(str(OutputFileLocation/'TotalRegression.csv'))
+OutputData.to_csv(str(OutputFileLocation/'TotalRegression_Control.csv'))
 
 
 #
@@ -43,7 +50,7 @@ for i in range(40,620,20):
 plt.figure(1)
 plt.gcf().set_size_inches([5.89, 5.46])
 plt.clf()
-plt.plot(range(40,620,20), plotdata * 0.169, 'k')
+plt.plot(range(40,620,20), plotdata * 0.169, 'g')
 plt.xlim([0,640])
 plt.ylim([0,50])
 plt.vlines(250,0,50, color='k', linestyles='--')
@@ -66,7 +73,7 @@ for i in range(100,460,20):
 plt.figure(2)
 plt.gcf().set_size_inches([5.89, 5.46])
 plt.clf()
-plt.plot(range(100,460,20), plotdata*0.169, 'k')
+plt.plot(range(100,460,20), plotdata*0.169, 'g')
 plt.vlines(250,0,50, color='k', linestyles='--')
 plt.vlines(315,0,50, color='k', linestyles='--')
 plt.xlim([0,480])
@@ -78,7 +85,7 @@ plt.title('Error by Row Location')
 
 
 ## L1 Error Calculation
-FolderLocation = Path(r'D:\Data\Lobster\LocationRegression')
+FolderLocation = Path(r'F:\Output_Control')
 OutputFileLocation = Path(r'F:\Output')
 
 OutputData = DataFrame(columns=['Session', 'Error_R', 'Error_C', 'Error_D'])
@@ -103,4 +110,4 @@ for file in files:
                              'Error_C_True':np.mean(np.abs(data['True_C'] - data['Pred_C'])),
                              'Error_D_True':np.mean(np.abs(data['True_D'] - data['Pred_D'])),})])
 
-OutputData.to_csv(str(OutputFileLocation/'summaryRegression.csv'))
+OutputData.to_csv(str(OutputFileLocation/'summaryRegression_Control.csv'))
