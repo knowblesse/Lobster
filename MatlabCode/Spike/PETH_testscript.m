@@ -1,34 +1,3 @@
-%% Draw PETH
-index = 24 ;
-event = 'valid_IRON'; % ["TRON","first_IRON","valid_IRON","first_LICK","valid_IROF","ATTK","TROF"]
-TIMEWINDOW = [-1000, 1000];
-
-numTrial = size(output.Data{index}.binned_spike.TRON, 1);
-spikes = cell(numTrial,1);
-ParsedData = BehavDataParser(strcat('D:\Data\Lobster\Lobster_Recording-200319-161008\', ...
-    output.Subject{index}, filesep,...
-    output.Session{index}));
-timepoint = getTimepointFromParsedData(ParsedData);
-
-for trial = 1 : numTrial
-    spikes{trial} = output.RawSpikeData{index}(...
-        and(output.RawSpikeData{index} >= timepoint.(event)(trial) + TIMEWINDOW(1), output.RawSpikeData{index} < timepoint.(event)(trial) + TIMEWINDOW(2)))...
-        - timepoint.(event)(trial);
-end
-
-fig = figure('Name', strcat("Index : ", num2str(index), " event : ", event));
-clf;
-axis_ = drawPETH(spikes, TIMEWINDOW);
-axis_{1}.Parent = fig;
-axis_{2}.Parent = fig;
-subplot(3,1,1:2);
-title(strcat(output.Session{index}, '-', num2str(output.Cell(index))), 'Interpreter', 'none');
-subplot(3,1,3);
-hold on;
-yyaxis right;
-plot(linspace(-1000+(2000/80), 1000-(2000/80), 40), output.Data{index}.zscore.(event),'Color', 'r', 'LineWidth', 2, 'LineStyle', '-');
-
-
 %% Draw Sorted PETH
 
 TIMEWINDOW_LEFT = -1000; %(ms)
