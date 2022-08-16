@@ -24,9 +24,25 @@ numLick = size(cell2mat(ParsedData(:,3)),1);
 sTime = ParsedData{end,1}(end) - ParsedData{1,1}(1);
 
 %% A/E ratio
-behaviorResult = analyticValueExtractor(ParsedData, false, false);
-numAvoid = sum(behaviorResult == 'A');
-numEscape = sum(behaviorResult == 'E');
+if isempty(ParsedData{1,4}) 
+    % Training ( Shuttling )
+    numAvoid = 0;
+    numEscape = 0;
+    for trial = 1 : size(ParsedData,1)
+        doorCloseTime = ParsedData{trial, 3}(1) + 6;
+        nearAttackIRindex = find(ParsedData{trial, 2}(:,1) < doorCloseTime,1,'last'); % Shuttling 6 seconds
+        IAttackIROFI = ParsedData{trial, 2}(nearAttackIRindex, 2) - doorCloseTime;
+        if IAttackIROFI >= 0 % Escape
+            numEscape = numEscape + 1;
+        else % Avoid
+            numAvoid = numAvoid + 1;
+        end
+    end    
+else
+    behaviorResult = analyticValueExtractor(ParsedData, false, false);
+    numAvoid = sum(behaviorResult == 'A');
+    numEscape = sum(behaviorResult == 'E');
+end
 
 fprintf('*****************************************************************\n');
 fprintf('Tank : %s\n', tankName);
