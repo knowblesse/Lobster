@@ -2,8 +2,8 @@
 % Align spike data on a specific event, compute Z-score, and save into <aligned> folder
 
 %% PARAMETERS
-TIMEWINDOW_LEFT = -1000; %(ms)
-TIMEWINDOW_RIGHT = +1000; %(ms)
+TIMEWINDOW_LEFT = -2000; %(ms)
+TIMEWINDOW_RIGHT = +2000; %(ms)
 TIMEWINDOW_BIN = 50; %(ms) 
 numBin = (TIMEWINDOW_RIGHT - TIMEWINDOW_LEFT)/TIMEWINDOW_BIN; % number of bins
 
