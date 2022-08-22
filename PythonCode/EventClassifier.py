@@ -9,35 +9,36 @@ Using the preprocessed Neural Ensemble dataset with behavior labels, build and t
 """
 
 import numpy as np
+from numpy.random import default_rng
 from pathlib import Path
 import sklearn
 from sklearn.metrics import confusion_matrix
 from sklearn.svm import SVC
 from sklearn.model_selection import LeaveOneOut
-from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score
 from scipy.io import loadmat, savemat
 from tqdm import tqdm
-from sklearn.inspection import permutation_importance
 
 # Check package version
 if (sklearn.__version__ < '0.23.2'):
     raise Exception("scikit-learn package version must be at least 0.23.2")
 
+rng = default_rng()
 # SVC Event Classifier Function
-def EventClassifier(matFilePath):   
+def EventClassifier(matFilePath, numBin):   
     # Input : matFilePath : Path object
     # Define Classification function
-    def runTest(X,Y):
+    def runTest(X,y):
         # Leave One Out, and collect all predict result
-        Y_pred = np.zeros((len(Y),), dtype='uint8')
+        y_pred = np.zeros((len(y),), dtype='uint8')
         loo = LeaveOneOut()
         for train_index, test_index in loo.split(X):
             X_train, X_test = X[train_index], X[test_index]
-            Y_train, Y_test = Y[train_index], Y[test_index]
+            y_train = y[train_index]
             clf = SVC(C=2, kernel='linear')
-            clf.fit(X_train, Y_train)
-            Y_pred[test_index] = clf.predict(X_test)
-        return Y_pred
+            clf.fit(X_train, y_train)
+            y_pred[test_index] = clf.predict(X_test)
+        return y_pred
 
     def getCoefImportance(X, Y, n_timebin = 20):
         clf = SVC(C=2, kernel='linear')
@@ -47,52 +48,64 @@ def EventClassifier(matFilePath):
 
     # Load Data
     data = loadmat(str(matFilePath.absolute()))
-    print(str(matFilePath) + ' is loaded \n')
     X = data.get('X')
-    Y = data.get('y')
-    Y = np.squeeze(Y)
+    y = np.squeeze(data.get('y'))
 
     # Clip
     X = np.clip(X, -5, 5)
 
     # Generate Shuffled Data
-    Y_real = Y.copy()
-    Y_shuffled = Y.copy()
-    np.random.shuffle(Y_shuffled)
+    y_real = y.copy()
+    y_shuffled = y.copy()
+    rng.shuffle(y_shuffled)
 
     # Run Classification 
-    Y_pred_shuffled = runTest(X, Y_shuffled)
-    Y_pred_real = runTest(X,Y_real)
-    importance_score = getCoefImportance(X, Y_real)
+    y_pred_shuffled = runTest(X, y_shuffled)
+    y_pred_real = runTest(X,y_real)
+    importance_score = getCoefImportance(X, y_real)
+
+    # Run Which cell is important
+    numRepeat = 10
+    numUnit = int(X.shape[1] / numBin)
+    importance_unit_score = np.zeros((numRepeat, numUnit))
+    baseScore = balanced_accuracy_score(y_real, y_pred_real)
+    for unit in range(numUnit):
+        for rep in range(numRepeat):
+            X_ = X.copy()
+            for bin in range(numBin):
+                rng.shuffle(X_[:, numBin * unit + bin])
+            importance_unit_score[rep, unit] = baseScore - balanced_accuracy_score(y_real, runTest(X_, y_real))
 
     # Generate output
     accuracy = [
-            accuracy_score(Y_shuffled, Y_pred_shuffled),
-            accuracy_score(Y_real, Y_pred_real)]
+            accuracy_score(y_shuffled, y_pred_shuffled),
+            accuracy_score(y_real, y_pred_real)]
     balanced_accuracy = [
-            balanced_accuracy_score(Y_shuffled, Y_pred_shuffled),
-            balanced_accuracy_score(Y_real, Y_pred_real)]
+            balanced_accuracy_score(y_shuffled, y_pred_shuffled),
+            balanced_accuracy_score(y_real, y_pred_real)]
     conf_matrix = [
-            confusion_matrix(Y_shuffled, Y_pred_shuffled),
-            confusion_matrix(Y_real, Y_pred_real)]
+            confusion_matrix(y_shuffled, y_pred_shuffled),
+            confusion_matrix(y_real, y_pred_real)]
     return {
             'accuracy' : accuracy, 
             'balanced_accuracy' : balanced_accuracy,
             'confusion_matrix' : conf_matrix,
-            'importance_score' : importance_score}
+            'importance_score' : importance_score,
+            'importance_unit_score' : importance_unit_score
+            }
 
 def Batch_EventClassifier(baseFolderPath):
     # run through all dataset and generate result summary
     result = []
     tankNames = []
     importance_score = np.empty((0,2))
-    is0 = np.empty(0,1)
-    is1 = np.empty(0, 1)
-    is2 = np.empty(0, 1)
-
     balanced_accuracy = np.empty((0,2))
-    for dataPath in tqdm([p for p in baseFolderPath.glob('#*')]):
-        data_ = EventClassifier(dataPath)
+
+    pbar = tqdm([p for p in baseFolderPath.glob('#*')])
+
+    for dataPath in pbar:
+        pbar.set_postfix({'path':dataPath})
+        data_ = EventClassifier(dataPath, 40)
         tankNames.append(str(dataPath))
         result.append(data_)
         balanced_accuracy = np.vstack([
@@ -104,12 +117,11 @@ def Batch_EventClassifier(baseFolderPath):
 
     return {'tankNames' : tankNames, 'result' : result, 'balanced_accuracy' : balanced_accuracy, 'importance_score' : importance_score}
     
-output = Batch_EventClassifier(Path(r'E:\EventClassificationDataset'))
-print(np.mean(output['balanced_accuracy'],0))
-savemat(r'E:\EventClassificationDataset\Output.mat', output)
+output = Batch_EventClassifier(Path(r'D:\Data\Lobster\EventClassificationData'))
+print(f'shuffled : {np.mean(output["balanced_accuracy"],0)[0]:.2f} ±{np.std(output["balanced_accuracy"],0)[0]:.2f}')
+print(f'    real : {np.mean(output["balanced_accuracy"],0)[1]:.2f} ±{np.std(output["balanced_accuracy"],0)[1]:.2f}')
+savemat(r'D:\Data\Lobster\EventClassificationData\Output.mat', output)
 
-# 'rgf' kernel : [0.33016645, 0.69981628]
-# 'linear' kernel : [0.32275436 0.6936246 ]
 #
 # plt.plot(np.sum(np.reshape(a.importances_mean, (20, -1)), 0))
 #
