@@ -258,7 +258,7 @@ end
 ParsedData = ParsedData(validtrial, :);
 
 % Extra
-if strcmp(dataname, '#21AUG3-211118-153136')
+if strcmp(dataname, '#21AUG3-211118-153136_PL')
     ParsedData{63,4}(1,:) = [];
 end
 
