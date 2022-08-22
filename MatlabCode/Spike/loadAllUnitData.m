@@ -3,8 +3,8 @@ function output = loadAllUnitData()
 % Load all unit data with corresponding behavior data
 
 %% Define table variable for output
-output = table('Size',[0, 8],'VariableTypes',["string", "string", "double", "cell", "cell", "cell", "cell", "cell"],...
-    'VariableNames', ["Subject", "Session", "Cell", "Data", "RawSpikeData", "BehavData", "AE", "Zscore"]);
+output = table('Size',[0, 9],'VariableTypes',["string", "string", "string", "double", "cell", "cell", "cell", "cell", "cell"],...
+    'VariableNames', ["Subject", "Session", "Area", "Cell", "Data", "RawSpikeData", "BehavData", "AE", "Zscore"]);
 i_output = 1;
 
 for subject = ["20JUN1", "21AUG3", "21AUG4", "21JAN2", "21JAN5"]
@@ -16,6 +16,10 @@ for subject = ["20JUN1", "21AUG3", "21AUG4", "21JAN2", "21JAN5"]
     for f = 1 : numel(workingfile)
         TANK_name = cell2mat(workingfile{f});
         TANK_location = char(strcat(basepath,filesep, TANK_name));
+        
+        % Area (PL IL)
+        result_ = regexp(TANK_name, '_(?<area>\wL)$', 'names');
+        brainArea = result_.area;
         
         % Behav Data
         ParsedData = BehavDataParser(TANK_location);
@@ -50,9 +54,11 @@ for subject = ["20JUN1", "21AUG3", "21AUG4", "21JAN2", "21JAN5"]
                 ./ std(mean(Neurons{n}.binned_spike.TRON(behaviorResult == 'E',:), 1));
 
             % save
-            output(i_output,:) = {subject, string(TANK_name), n, Neurons(n), spikes, ParsedData, behaviorResult, {Zscore}};
+            output(i_output,:) = {subject, string(TANK_name), string(brainArea), n, Neurons(n), spikes, ParsedData, behaviorResult, {Zscore}};
             i_output = i_output+1;
         end
     end
 end
+fpritnf("--------------------------------------\n");
+fprintf("loadAllUnitData Complete\n");
 end
