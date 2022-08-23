@@ -57,17 +57,34 @@ def EventClassifier(matFilePath, numBin):
     y_pred_shuffled = runTest(X, y_shuffled)
     y_pred_real = runTest(X,y_real)
 
-    # Run Which cell is important
+    # Run which unit is important
     numRepeat = 30
     numUnit = int(X.shape[1] / numBin)
+
     importance_score = np.zeros((numRepeat, numUnit))
+
+    # importance to the specific class
+    importance_score_HE = np.zeros((numRepeat, numUnit))
+    importance_score_AHW = np.zeros((numRepeat, numUnit))
+    importance_score_EHW = np.zeros((numRepeat, numUnit))
+
     baseScore = balanced_accuracy_score(y_real, y_pred_real)
+    baseConfusion = confusion_matrix(y_real, y_pred_real)
+    baseScore_HE = baseConfusion[0, 0] / np.sum(y_real == 0)
+    baseScore_AHW = baseConfusion[1, 1] / np.sum(y_real == 1)
+    baseScore_EHW = baseConfusion[2, 2] / np.sum(y_real == 2)
     for unit in range(numUnit):
         for rep in range(numRepeat):
             X_ = X.copy()
             for bin in range(numBin):
                 rng.shuffle(X_[:, numBin * unit + bin])
-            importance_score[rep, unit] = baseScore - balanced_accuracy_score(y_real, runTest(X_, y_real))
+            y_pred_real_ = runTest(X_, y_real) 
+            importance_score[rep, unit] = baseScore - balanced_accuracy_score(y_real, y_pred_real_)
+            conf_ = confusion_matrix(y_real, y_pred_real_) 
+            
+            importance_score_HE[rep, unit] = baseScore_HE - (conf_[0,0] / np.sum(y_real == 0))
+            importance_score_AHW[rep, unit] = baseScore_AHW - (conf_[1,1] / np.sum(y_real == 1))
+            importance_score_EHW[rep, unit] = baseScore_EHW - (conf_[2,2] / np.sum(y_real == 2)) 
 
     # Generate output
     accuracy = [
@@ -80,10 +97,13 @@ def EventClassifier(matFilePath, numBin):
             confusion_matrix(y_shuffled, y_pred_shuffled),
             confusion_matrix(y_real, y_pred_real)]
     return {
-            'accuracy' : accuracy, 
-            'balanced_accuracy' : balanced_accuracy,
-            'confusion_matrix' : conf_matrix,
-            'importance_score' : importance_score,
+            'accuracy': accuracy,
+            'balanced_accuracy': balanced_accuracy,
+            'confusion_matrix': conf_matrix,
+            'importance_score': importance_score,
+            'importance_score_HE': importance_score_HE,
+            'importance_score_AHW': importance_score_AHW,
+            'importance_score_EHW': importance_score_EHW
             }
 
 def Batch_EventClassifier(baseFolderPath):
@@ -103,11 +123,8 @@ def Batch_EventClassifier(baseFolderPath):
         balanced_accuracy = np.vstack([
             balanced_accuracy,
             np.expand_dims(np.array(data_['balanced_accuracy']),0)])
-        for i, score in enumerate(data_['importance_score']):
-            importance_score = np.vstack([importance_score,
-                                          np.expand_dims(np.array([i+1, score]), 0)])
 
-    return {'tankNames' : tankNames, 'result' : result, 'balanced_accuracy' : balanced_accuracy, 'importance_score' : importance_score}
+    return {'tankNames' : tankNames, 'result' : result, 'balanced_accuracy' : balanced_accuracy}
     
 output = Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData'))
 print(f'shuffled : {np.mean(output["balanced_accuracy"],0)[0]:.2f} ±{np.std(output["balanced_accuracy"],0)[0]:.2f}')
