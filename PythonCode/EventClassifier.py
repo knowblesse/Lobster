@@ -18,7 +18,7 @@ from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import accuracy_score, balanced_accuracy_score
 from scipy.io import loadmat, savemat
 from tqdm import tqdm
-
+import requests
 # Check package version
 if (sklearn.__version__ < '0.23.2'):
     raise Exception("scikit-learn package version must be at least 0.23.2")
@@ -40,12 +40,6 @@ def EventClassifier(matFilePath, numBin):
             y_pred[test_index] = clf.predict(X_test)
         return y_pred
 
-    def getCoefImportance(X, Y, n_timebin = 20):
-        clf = SVC(C=2, kernel='linear')
-        clf.fit(X, Y)
-        mean_coef = np.mean((clf.coef_ ** 2), 0)
-        return np.sum(np.reshape(mean_coef, (n_timebin, -1)), 0)
-
     # Load Data
     data = loadmat(str(matFilePath.absolute()))
     X = data.get('X')
@@ -62,19 +56,18 @@ def EventClassifier(matFilePath, numBin):
     # Run Classification 
     y_pred_shuffled = runTest(X, y_shuffled)
     y_pred_real = runTest(X,y_real)
-    importance_score = getCoefImportance(X, y_real)
 
     # Run Which cell is important
-    numRepeat = 10
+    numRepeat = 30
     numUnit = int(X.shape[1] / numBin)
-    importance_unit_score = np.zeros((numRepeat, numUnit))
+    importance_score = np.zeros((numRepeat, numUnit))
     baseScore = balanced_accuracy_score(y_real, y_pred_real)
     for unit in range(numUnit):
         for rep in range(numRepeat):
             X_ = X.copy()
             for bin in range(numBin):
                 rng.shuffle(X_[:, numBin * unit + bin])
-            importance_unit_score[rep, unit] = baseScore - balanced_accuracy_score(y_real, runTest(X_, y_real))
+            importance_score[rep, unit] = baseScore - balanced_accuracy_score(y_real, runTest(X_, y_real))
 
     # Generate output
     accuracy = [
@@ -91,7 +84,6 @@ def EventClassifier(matFilePath, numBin):
             'balanced_accuracy' : balanced_accuracy,
             'confusion_matrix' : conf_matrix,
             'importance_score' : importance_score,
-            'importance_unit_score' : importance_unit_score
             }
 
 def Batch_EventClassifier(baseFolderPath):
@@ -117,11 +109,12 @@ def Batch_EventClassifier(baseFolderPath):
 
     return {'tankNames' : tankNames, 'result' : result, 'balanced_accuracy' : balanced_accuracy, 'importance_score' : importance_score}
     
-output = Batch_EventClassifier(Path(r'D:\Data\Lobster\EventClassificationData'))
+output = Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData'))
 print(f'shuffled : {np.mean(output["balanced_accuracy"],0)[0]:.2f} ±{np.std(output["balanced_accuracy"],0)[0]:.2f}')
 print(f'    real : {np.mean(output["balanced_accuracy"],0)[1]:.2f} ±{np.std(output["balanced_accuracy"],0)[1]:.2f}')
-savemat(r'D:\Data\Lobster\EventClassificationData\Output.mat', output)
-
+savemat(r'/home/ainav/Data/EventClassificationData/Output.mat', output)
+requests.get(
+        'https://api.telegram.org/bot5269105245:AAGCdJAZ9fzfazxC8nc-WI6MTSrxn2QC52U/sendMessage?chat_id=5520161508&text=Done')
 #
 # plt.plot(np.sum(np.reshape(a.importances_mean, (20, -1)), 0))
 #
