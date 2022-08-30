@@ -5,14 +5,12 @@ Align spike data on a specific event, compute Z-score and save into **aligned** 
 (temporal script)
 Delete all **Aligned** folders from rawdata tank
 
-## DeleteUnitMat.m
-(tempral script)
-Delete all **unit.mat** files from rawdata tank's recording folder
-
 ## drawPETH.m
 ### ax = drawPETH(unit, TIMEWINDOW)
 Draw Peri-Event Time Histogram and returns two axes in a cell structure. 
 - unit : cell : nx1 : each cell represent one trial and it has n x 1 matrix
+
+## drawPeak
 
 ## DrawPETHforAllUnits.m
 Batch script for **drawPETH.m**
