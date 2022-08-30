@@ -55,7 +55,7 @@ def EventClassifier(matFilePath, numBin):
 
     # Run Classification 
     y_pred_shuffled = runTest(X, y_shuffled)
-    y_pred_real = runTest(X,y_real)
+    y_pred_real = runTest(X, y_real)
 
     # Run which unit is important
     numRepeat = 30
@@ -70,21 +70,21 @@ def EventClassifier(matFilePath, numBin):
 
     baseScore = balanced_accuracy_score(y_real, y_pred_real)
     baseConfusion = confusion_matrix(y_real, y_pred_real)
-    baseScore_HE = baseConfusion[0, 0] / np.sum(y_real == 0)
-    baseScore_AHW = baseConfusion[1, 1] / np.sum(y_real == 1)
-    baseScore_EHW = baseConfusion[2, 2] / np.sum(y_real == 2)
+    baseScore_HE = baseConfusion[0, 0] / np.sum(y_real == 1) # matlab class starts from class 1
+    baseScore_AHW = baseConfusion[1, 1] / np.sum(y_real == 2)
+    baseScore_EHW = baseConfusion[2, 2] / np.sum(y_real == 3)
     for unit in range(numUnit):
         for rep in range(numRepeat):
-            X_ = X.copy()
+            X_corrupted = X.copy()
             for bin in range(numBin):
-                rng.shuffle(X_[:, numBin * unit + bin])
-            y_pred_real_ = runTest(X_, y_real) 
-            importance_score[rep, unit] = baseScore - balanced_accuracy_score(y_real, y_pred_real_)
-            conf_ = confusion_matrix(y_real, y_pred_real_) 
+                rng.shuffle(X_corrupted[:, numBin * unit + bin])
+            y_pred_crpt = runTest(X_corrupted, y_real)
+            importance_score[rep, unit] = baseScore - balanced_accuracy_score(y_real, y_pred_crpt)
+            conf_ = confusion_matrix(y_real, y_pred_crpt) 
             
-            importance_score_HE[rep, unit] = baseScore_HE - (conf_[0,0] / np.sum(y_real == 0))
-            importance_score_AHW[rep, unit] = baseScore_AHW - (conf_[1,1] / np.sum(y_real == 1))
-            importance_score_EHW[rep, unit] = baseScore_EHW - (conf_[2,2] / np.sum(y_real == 2)) 
+            importance_score_HE[rep, unit] = baseScore_HE - (conf_[0,0] / np.sum(y_real == 1))
+            importance_score_AHW[rep, unit] = baseScore_AHW - (conf_[1,1] / np.sum(y_real == 2))
+            importance_score_EHW[rep, unit] = baseScore_EHW - (conf_[2,2] / np.sum(y_real == 3)) 
 
     # Generate output
     accuracy = [
