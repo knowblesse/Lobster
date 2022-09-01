@@ -62,8 +62,9 @@ def EventClassifier_numUnit(matFilePath, numBin, numRepeat):
 
     # Create X_part
 
-
-    for numUnit2Use in range(1, numUnit+1):
+    pbar1 = tqdm(np.arange(1, numUnit))
+    for numUnit2Use in pbar1:
+        pbar1.set_postfix({'numUnit2Use': numUnit2Use, 'numUnit': numUnit})
         itercomb = [list(pairs) for pairs in itertools.combinations(np.arange(numUnit), numUnit2Use)] # combinations
         rng.shuffle(itercomb)
         for rep in range(numRepeat): # use only few of the combinations
@@ -75,8 +76,15 @@ def EventClassifier_numUnit(matFilePath, numBin, numRepeat):
             y_pred_shuffled = runTest(X_part, y_shuffled)
             y_pred_real = runTest(X_part, y_real)
 
-            balanced_accuracies[0, rep, numUnit2Use] = balanced_accuracy_score(y_shuffled, y_pred_shuffled)
-            balanced_accuracies[1, rep, numUnit2Use] = balanced_accuracy_score(y_real, y_pred_real)
+            balanced_accuracies[0, rep, numUnit2Use-1] = balanced_accuracy_score(y_shuffled, y_pred_shuffled)
+            balanced_accuracies[1, rep, numUnit2Use-1] = balanced_accuracy_score(y_real, y_pred_real)
+
+    # Run Classification with full model
+    y_pred_shuffled = runTest(X, y_shuffled)
+    y_pred_real = runTest(X, y_real)
+
+    balanced_accuracies[0, :, -1] = balanced_accuracy_score(y_shuffled, y_pred_shuffled)
+            
     return balanced_accuracies
 
 def Batch_EventClassifier(baseFolderPath):
@@ -97,5 +105,5 @@ def Batch_EventClassifier(baseFolderPath):
     return {'tankNames' : tankNames, 'result' : result}
     
 output = Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData'))
-
 savemat(r'/home/ainav/Data/EventClassificationData/Output.mat', output)
+
