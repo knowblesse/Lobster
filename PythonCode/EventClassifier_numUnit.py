@@ -37,9 +37,6 @@ def generateNonRepeatedCombination(numIndex, setSize, repeat):
             selected_index.add(candidate)
     return list(selected_index)
 
-
-
-
 # SVC Event Classifier Function
 def EventClassifier_numUnit(matFilePath, numBin, numRepeat):   
     # Input : matFilePath : Path object
@@ -74,13 +71,12 @@ def EventClassifier_numUnit(matFilePath, numBin, numRepeat):
     numUnit = int(X.shape[1] / numBin)
     balanced_accuracies = np.zeros((2, numRepeat, numUnit)) # D0 : shuffle/real | D1 : repeat | D2 : unitCount
 
-    pbar1 = tqdm(np.arange(1, numUnit))
-    for numUnit2Use in pbar1:
-        pbar1.set_postfix({'numUnit2Use': numUnit2Use, 'numUnit': numUnit})
+    print(f'Num Unit : {numUnit}', end='')
+    for numUnit2Use in np.arange(1, numUnit):
+        print(f'{numUnit2Use} ', end='')
         itercomb = generateNonRepeatedCombination(numUnit, numUnit2Use, numRepeat)
         rng.shuffle(itercomb)
         for rep in range(numRepeat): # use only few of the combinations
-            print(f'numUnit : {numUnit2Use} rep : {rep}')
             X_part = np.empty((X.shape[0],0))
             for unit in itercomb[rep]:
                 X_part = np.hstack((X_part, X[:,numBin * unit : numBin * (unit + 1)]))
@@ -117,5 +113,6 @@ def Batch_EventClassifier(baseFolderPath):
     return {'tankNames' : tankNames, 'result' : result}
 
 output = Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData'))
+#output = Batch_EventClassifier(Path(r'E:\EventClassificationData'))
 savemat(r'/home/ainav/Data/EventClassificationData/Output.mat', output)
 
