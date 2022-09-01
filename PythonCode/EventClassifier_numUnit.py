@@ -8,7 +8,6 @@ This script is a varient of "EventClassifier.py" to test how the number of units
     - using the sklearn SVC class, build and test the SVM
     - for the evalutation, Leave One Out method is used
 """
-import itertools
 import numpy as np
 from numpy.random import default_rng
 from pathlib import Path
@@ -26,6 +25,21 @@ if (sklearn.__version__ < '0.23.2'):
     raise Exception("scikit-learn package version must be at least 0.23.2")
 
 rng = default_rng()
+
+def generateNonRepeatedCombination(numIndex, setSize, repeat):
+    elements = [i for i in range(numIndex)]
+    selected_index = set()
+    rng = default_rng()
+    while len(selected_index) < repeat:
+        permuted_index = rng.permutation([i for i in range(len(elements))])
+        candidate = tuple(sorted(permuted_index[0:setSize]))
+        if not (candidate in selected_index):
+            selected_index.add(candidate)
+    return list(selected_index)
+
+
+
+
 # SVC Event Classifier Function
 def EventClassifier_numUnit(matFilePath, numBin, numRepeat):   
     # Input : matFilePath : Path object
@@ -60,14 +74,13 @@ def EventClassifier_numUnit(matFilePath, numBin, numRepeat):
     numUnit = int(X.shape[1] / numBin)
     balanced_accuracies = np.zeros((2, numRepeat, numUnit)) # D0 : shuffle/real | D1 : repeat | D2 : unitCount
 
-    # Create X_part
-
     pbar1 = tqdm(np.arange(1, numUnit))
     for numUnit2Use in pbar1:
         pbar1.set_postfix({'numUnit2Use': numUnit2Use, 'numUnit': numUnit})
-        itercomb = [list(pairs) for pairs in itertools.combinations(np.arange(numUnit), numUnit2Use)] # combinations
+        itercomb = generateNonRepeatedCombination(numUnit, numUnit2Use, numRepeat)
         rng.shuffle(itercomb)
         for rep in range(numRepeat): # use only few of the combinations
+            print(f'numUnit : {numUnit2Use} rep : {rep}')
             X_part = np.empty((X.shape[0],0))
             for unit in itercomb[rep]:
                 X_part = np.hstack((X_part, X[:,numBin * unit : numBin * (unit + 1)]))
@@ -78,7 +91,6 @@ def EventClassifier_numUnit(matFilePath, numBin, numRepeat):
 
             balanced_accuracies[0, rep, numUnit2Use-1] = balanced_accuracy_score(y_shuffled, y_pred_shuffled)
             balanced_accuracies[1, rep, numUnit2Use-1] = balanced_accuracy_score(y_real, y_pred_real)
-
     # Run Classification with full model
     y_pred_shuffled = runTest(X, y_shuffled)
     y_pred_real = runTest(X, y_real)
@@ -97,13 +109,13 @@ def Batch_EventClassifier(baseFolderPath):
 
     for dataPath in pbar:
         pbar.set_postfix({'path':dataPath})
-        data_ = EventClassifier_numUnit(dataPath, 40, 5)
         tankNames.append(str(dataPath))
         sessionNames.append(re.search('(#2.*)_event', str(dataPath)).groups()[0])
+        data_ = EventClassifier_numUnit(dataPath, 40, 5)
         result.append(data_)
 
     return {'tankNames' : tankNames, 'result' : result}
-    
+
 output = Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData'))
 savemat(r'/home/ainav/Data/EventClassificationData/Output.mat', output)
 
