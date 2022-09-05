@@ -130,15 +130,3 @@ output = Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData')
 print(f'shuffled : {np.mean(output["balanced_accuracy"],0)[0]:.2f} ±{np.std(output["balanced_accuracy"],0)[0]:.2f}')
 print(f'    real : {np.mean(output["balanced_accuracy"],0)[1]:.2f} ±{np.std(output["balanced_accuracy"],0)[1]:.2f}')
 savemat(r'/home/ainav/Data/EventClassificationData/Output.mat', output)
-requests.get(
-        'https://api.telegram.org/bot5269105245:AAGCdJAZ9fzfazxC8nc-WI6MTSrxn2QC52U/sendMessage?chat_id=5520161508&text=Done')
-#
-# plt.plot(np.sum(np.reshape(a.importances_mean, (20, -1)), 0))
-#
-# rgf로 해도 저 함수 쓰면 어짜피 임폴턴스 구할 수 있음.
-# 걍 rgf로 하고
-#
-# 1. 각 세션마다 cell number 에 따라서 importnace 쭉 값을 나열시키고,
-# 2. align 한거 있지 그거에서 좌측에 나타나는 애들, 가운데 나타나는 애들, 우측에 나타나는 애들 범위 3개로 나눠서
-# 3. 각각 그룹에 있는 애들의 importance가 어떻게 되는지
-# if 확인:
