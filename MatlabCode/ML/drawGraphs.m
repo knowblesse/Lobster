@@ -23,13 +23,13 @@ numSession = 40;
 
 %% Draw Number of Units vs Accuracy Graph
 
-figure();
+figure('Position', [680   553   443   425]);
 subplot(1,1,1);
 hold on;
 
 for session = 1 : numSession
-    plot(mean(cell2mat(squeeze(unitAccuracy(session, 1, :, :))), 1), 'Color', xkcd.grey);
-    plot(mean(cell2mat(squeeze(unitAccuracy(session, 2, :, :))), 1), 'Color', xkcd.black);
+    plot(mean(cell2mat(squeeze(unitAccuracy(session, 1, :, :))), 1), 'Color', xkcd.light_grey);
+    plot(mean(cell2mat(squeeze(unitAccuracy(session, 2, :, :))), 1), 'Color', xkcd.light_grey);
 end
 
 meanAccuracy = zeros(2, 26);
@@ -38,14 +38,34 @@ for i = 1 : 26
     meanAccuracy(2,i) = mean(cell2mat(squeeze(unitAccuracy(:, 2, :, i))), 'all');
 end
 
-plot(meanAccuracy(1,:), 'Color', 'r');
-plot(meanAccuracy(2,:), 'Color', 'b');
+l1 = plot(meanAccuracy(1,:), 'Color', 'k', 'LineWidth', 2, 'LineStyle', '--');
+l2 = plot(meanAccuracy(2,:), 'Color', 'k', 'LineWidth', 2);
+
+xlabel('Number of Units', 'FontName', 'Noto Sans');
+ylabel('Balanced accuracy');
+
+xlim([1, 26]);
+ylim([0.2, 1]);
+
+legend([l1, l2], {'Shuffled', 'Real'});
+
+set(gca, 'FontName', 'Noto Sans');
+
 
 %% draw heatmap
+cmap_PL = [...
+    linspace(1, xkcd.pig_pink(1), 100)',...
+    linspace(1, xkcd.pig_pink(2), 100)',...
+    linspace(1, xkcd.pig_pink(3), 100)'];
+cmap_IL = [...
+    linspace(1, xkcd.sky_blue(1), 100)',...
+    linspace(1, xkcd.sky_blue(2), 100)',...
+    linspace(1, xkcd.sky_blue(3), 100)'];
 
 PLdata = result(contains(tankNames, "PL"));
 ILdata = result(contains(tankNames, "IL"));
 
+% PL
 cm_shuffled = zeros(numel(PLdata), 3, 3);
 cm_real = zeros(numel(PLdata), 3, 3);
 for i = 1 : numel(PLdata)
@@ -57,15 +77,22 @@ end
 fig = figure('Name', 'PL');
 
 subplot(2,2,1);
-heatmap(squeeze(mean(cm_shuffled, 1)));
+ax1 = heatmap({'HE', 'AHW', 'EHW'}, {'HE', 'AHW', 'EHW'}, squeeze(mean(cm_shuffled, 1)));
 caxis([0, 1]);
+colormap(ax1, cmap_PL);
+ax1.CellLabelFormat = '%0.2f';
+xlabel('Predicted');
+ylabel('Actual');
 
 subplot(2,2,2);
-heatmap(squeeze(mean(cm_real, 1)));
+ax2 = heatmap({'HE', 'AHW', 'EHW'}, {'HE', 'AHW', 'EHW'}, squeeze(mean(cm_real, 1)));
 caxis([0, 1]);
+colormap(ax2, cmap_PL);
+ax2.CellLabelFormat = '%0.2f';
+xlabel('Predicted');
+ylabel('Actual');
 
-
-
+% IL
 cm_shuffled = zeros(numel(ILdata), 3, 3);
 cm_real = zeros(numel(ILdata), 3, 3);
 for i = 1 : numel(ILdata)
@@ -75,9 +102,17 @@ for i = 1 : numel(ILdata)
 end
 
 subplot(2,2,3);
-heatmap(squeeze(mean(cm_shuffled, 1)));
+ax3 = heatmap({'HE', 'AHW', 'EHW'}, {'HE', 'AHW', 'EHW'}, squeeze(mean(cm_shuffled, 1)));
 caxis([0, 1]);
+colormap(ax3, cmap_IL);
+ax3.CellLabelFormat = '%0.2f';
+xlabel('Predicted');
+ylabel('Actual');
 
 subplot(2,2,4);
-heatmap(squeeze(mean(cm_real, 1)));
+ax4 = heatmap({'HE', 'AHW', 'EHW'}, {'HE', 'AHW', 'EHW'}, squeeze(mean(cm_real, 1)));
 caxis([0, 1]);
+ax4.CellLabelFormat = '%0.2f';
+colormap(ax4, cmap_IL);
+xlabel('Predicted');
+ylabel('Actual');
