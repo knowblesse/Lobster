@@ -74,7 +74,7 @@ for i = 1 : numel(PLdata)
     cm_real(i, :, :) = squeeze(cm(2, :, :)) ./ repmat(sum(squeeze(cm(2, :, :)), 2), 1, 3);
 end
 
-fig = figure('Name', 'PL');
+fig = figure();
 
 subplot(2,2,1);
 ax1 = heatmap({'HE', 'AHW', 'EHW'}, {'HE', 'AHW', 'EHW'}, squeeze(mean(cm_shuffled, 1)));
@@ -83,6 +83,7 @@ colormap(ax1, cmap_PL);
 ax1.CellLabelFormat = '%0.2f';
 xlabel('Predicted');
 ylabel('Actual');
+title('Shuffled');
 
 subplot(2,2,2);
 ax2 = heatmap({'HE', 'AHW', 'EHW'}, {'HE', 'AHW', 'EHW'}, squeeze(mean(cm_real, 1)));
@@ -91,6 +92,7 @@ colormap(ax2, cmap_PL);
 ax2.CellLabelFormat = '%0.2f';
 xlabel('Predicted');
 ylabel('Actual');
+title('Real');
 
 % IL
 cm_shuffled = zeros(numel(ILdata), 3, 3);
@@ -108,6 +110,7 @@ colormap(ax3, cmap_IL);
 ax3.CellLabelFormat = '%0.2f';
 xlabel('Predicted');
 ylabel('Actual');
+title('Shuffled');
 
 subplot(2,2,4);
 ax4 = heatmap({'HE', 'AHW', 'EHW'}, {'HE', 'AHW', 'EHW'}, squeeze(mean(cm_real, 1)));
@@ -116,3 +119,6 @@ ax4.CellLabelFormat = '%0.2f';
 colormap(ax4, cmap_IL);
 xlabel('Predicted');
 ylabel('Actual');
+title('Real');
+
+set(gca, 'FontName', 'Noto Sans');
