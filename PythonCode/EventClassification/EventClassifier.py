@@ -1,7 +1,8 @@
 """
 EventClassifier
 @ 2020 Knowblesse
-Using the preprocessed Neural Ensemble dataset with behavior labels, build and test the SVM
+Using the preprocessed Neural Ensemble dataset with behavior labels, build and test the SVM.
+Along with the accuracy, feature importance is calculated.
 - Description
     - .mat dataset must have two variable, X and y. (mind the case of the variable name)
     - using the sklearn SVC class, build and test the SVM

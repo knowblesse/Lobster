@@ -21,48 +21,6 @@ from tqdm import tqdm
 import requests
 import csv
 
-class dANN(nn.Module):
-    def __init__(self, params):
-        # params : device , input_size
-        super(dANN, self).__init__()
-
-        self.device = params['device']
-        self.fc1 = nn.Linear(
-            params['input_size'],
-            100)
-        self.fc2 = nn.Linear(
-            100,
-            50)
-        self.fc3 = nn.Linear(
-            50,
-            25)
-        self.fc4 = nn.Linear(
-            25,
-            3)
-
-    def forward(self, x):
-        x = x.to(self.device)
-
-        x = self.fc1(x)
-        x = F.relu(x)
-
-        x = self.fc2(x)
-        x = F.relu(x)
-
-        x = self.fc3(x)
-        x = F.relu(x)
-
-        x = self.fc4(x)
-
-        return x
-
-    def init_weights(self):
-        nn.init.normal_(self.fc1.weight, mean=0, std=0.2)
-        nn.init.normal_(self.fc2.weight, mean=0, std=0.2)
-        nn.init.normal_(self.fc3.weight, mean=0, std=0.2)
-        nn.init.normal_(self.fc4.weight, mean=0, std=0.2)
-
-
 # Constant
 neural_data_rate = 2 # datapoints per sec. This shows how many X data is present per second.
 truncatedTime_s = 10 # sec. matlab data delete the first and the last 10 sec of the neural data.
@@ -125,6 +83,8 @@ for tank in FolderLocation.glob('#*'):
             else:
                 degree_offset_value[i:] += 360
         prev_head_direction = butter_data[i, 3]
+
+
 
     # Generate Interpolation function
     intp_r = interp1d(butter_data[:, 0], butter_data[:, 1], kind='linear')
