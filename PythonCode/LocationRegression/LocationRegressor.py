@@ -1,13 +1,3 @@
-"""
-Location Decoder Pytorch
-@ 2022 Knowblesse
-Using deep Neural Net based Regressor, decode the current animal's location using the neural data.
-Input :
-    TANK_location
-The Tank must have these two data
-    1) buttered_data.csv (from butter package)
-    2) neural spike data (get it from the Matlab)
-"""
 import re
 import numpy as np
 from pathlib import Path
@@ -18,26 +8,18 @@ import torch.nn as nn
 import torch.nn.functional as F
 import cv2 as cv
 from tqdm import tqdm
-import requests
 import csv
+from LocationRegressionHelper import *
 
-# Constant
-neural_data_rate = 2 # datapoints per sec. This shows how many X data is present per second.
-truncatedTime_s = 10 # sec. matlab data delete the first and the last 10 sec of the neural data.
-device = torch.device("cuda" if torch.cuda.is_available else "cpu")
-train_epoch = 20000
-init_lr = 0.0001
 
-FolderLocation = Path(r'/media/ainav/409D-B7E7/LobsterData')
-OutputFileLocation = Path(r'/media/ainav/409D-B7E7/Output')
-
-for tank in FolderLocation.glob('#*'):
-    tank_name = re.search('#.*',str(tank))[0]
-    TANK_location = tank.absolute()
+# Location Regressor Function
+def LocationRegressor(tankPath, outputPath, neural_data_rate, truncatedTime_s, train_epoch, init_lr):
+    #Load Tank
+    tank_name = re.search('#.*',str(tankPath))[0]
     print(tank_name)
 
     # Check if the video file is buttered
-    butter_location = [p for p in TANK_location.glob('*_buttered.csv')]
+    butter_location = [p for p in tankPath.glob('*_buttered.csv')]
 
     if len(butter_location) == 0:
         raise(BaseException("Can not find a butter file in the current Tank location"))
@@ -45,7 +27,7 @@ for tank in FolderLocation.glob('#*'):
         raise(BaseException("There are multiple files ending with _buttered.csv"))
 
     # Check if the neural data file is present
-    wholeSessionUnitData_location = [p for p in TANK_location.glob('*_wholeSessionUnitData.csv')]
+    wholeSessionUnitData_location = [p for p in tankPath.glob('*_wholeSessionUnitData.csv')]
 
     if len(wholeSessionUnitData_location) == 0:
         raise(BaseException("Can not find a regression data file in the current Tank location"))
@@ -53,9 +35,9 @@ for tank in FolderLocation.glob('#*'):
         raise(BaseException("There are multiple files ending with _wholeSessionUnitData.csv"))
 
     # Check Video FPS
-    videoFileName = [i for i in TANK_location.glob('*.avi')]
+    videoFileName = [i for i in tankPath.glob('*.avi')]
     if len(videoFileName) == 0:
-        videoFileName = [i for i in TANK_location.glob('*.mp4')]
+        videoFileName = [i for i in tankPath.glob('*.mp4')]
     vc = cv.VideoCapture(str(videoFileName[0]))
     video_frame_rate = vc.get(cv.CAP_PROP_FPS)
     if video_frame_rate % 1 != 0:
@@ -70,26 +52,10 @@ for tank in FolderLocation.glob('#*'):
     if np.any(butter_data == -1):
         raise(BaseException("-1 exist in the butter data. check with the relabeler"))
 
-    # Interpolate butter data
-    #   See Butter package's butterUtil/interpolateButterData for detail
-
-    prev_head_direction = butter_data[0, 3]
-    degree_offset_value = np.zeros(butter_data.shape[0])
-    for i in np.arange(1, butter_data.shape[0]):
-        # if the degree change is more than a half rotation, use the smaller rotation value instead.
-        if np.abs(butter_data[i, 3] - prev_head_direction) > 180:
-            if butter_data[i, 3] > prev_head_direction:
-                degree_offset_value[i:] -= 360
-            else:
-                degree_offset_value[i:] += 360
-        prev_head_direction = butter_data[i, 3]
-
-
-
     # Generate Interpolation function
     intp_r = interp1d(butter_data[:, 0], butter_data[:, 1], kind='linear')
     intp_c = interp1d(butter_data[:, 0], butter_data[:, 2], kind='linear')
-    intp_d = interp1d(butter_data[:, 0], np.convolve(butter_data[:, 3] + degree_offset_value, np.ones(5), 'same') / 5, kind='linear')
+    intp_d = interp1d(butter_data[:, 0], correctRotationOffset(butter_data[:, 3]), kind='linear')
 
     # Find midpoint of each neural data
     #   > If neural data is collected from 0 ~ 0.5 sec, (neural_data_rate=2), then the mid-point of the
@@ -100,8 +66,9 @@ for tank in FolderLocation.glob('#*'):
     y_r = np.expand_dims(intp_r(midPointTimes * video_frame_rate), 1)
     y_c = np.expand_dims(intp_c(midPointTimes * video_frame_rate), 1)
     y_d = np.expand_dims(intp_d(midPointTimes * video_frame_rate) % 360, 1)
-
-    X = neural_data
+    
+    # Dataset Prepared
+    X = np.clip(neural_data, -5, 5)
     y = np.concatenate((y_r, y_c, y_d), axis=1)
 
     # Run Test
@@ -109,10 +76,13 @@ for tank in FolderLocation.glob('#*'):
     WholeTestResult = np.zeros([X.shape[0], 9])  # num data x [real row, col, deg, fake predicted row, col, deg, predicted row, col, deg]
     WholeTestResult[:, :3] = y
 
+    # Start training
+    device = torch.device("cuda" if torch.cuda.is_available else "cpu")
     for train_index, test_index in kf.split(X):
 
         X_train = torch.tensor(X[train_index,:],dtype=torch.float32, device=device, requires_grad=True)
         X_test = torch.tensor(X[test_index,:], dtype=torch.float32, device=device, requires_grad=False)
+
         _X_train_shuffled = X[train_index,:].copy()
         np.random.shuffle(_X_train_shuffled)
         X_train_shuffled = torch.tensor(_X_train_shuffled, dtype=torch.float32, device=device, requires_grad=True)
@@ -121,19 +91,21 @@ for tank in FolderLocation.glob('#*'):
         y_test = torch.tensor(y[test_index, :], dtype=torch.float32, device=device, requires_grad=False)
 
         params = {'input_size':X_train.shape[1], 'device':device}
-        net = dANN(params).to(device)
+        net_real = dANN(params).to(device)
         net_fake = dANN(params).to(device)
-        net.init_weights()
+        net_real.init_weights()
         net_fake.init_weights()
-        optimizer = torch.optim.SGD(net.parameters(), lr=init_lr, momentum=0.7)
+        optimizer_real = torch.optim.SGD(net_real.parameters(), lr=init_lr, momentum=0.7)
         optimizer_fake = torch.optim.SGD(net_fake.parameters(), lr=init_lr, momentum=0.7)
 
         pbar = tqdm(np.arange(train_epoch))
+        lr = init_lr
 
         for e in pbar:
-
+            
+            # Update Learning rate (moving learning rate)
             if e > 10000:
-                for g in optimizer.param_groups:
+                for g in optimizer_real.param_groups:
                     lr = g['lr'] * np.exp(-0.0005)
                     g['lr'] = lr
                 for g in optimizer_fake.param_groups:
@@ -141,13 +113,14 @@ for tank in FolderLocation.glob('#*'):
                     g['lr'] = lr
             else:
                 lr = init_lr
-            # Update net
-            net.train()
-            loss = F.mse_loss(net.forward(X_train), y_train)
-            optimizer.zero_grad()
+
+            # Update net_real
+            net_real.train()
+            loss = F.mse_loss(net_real.forward(X_train), y_train)
+            optimizer_real.zero_grad()
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(net.parameters(), 5)
-            optimizer.step()
+            torch.nn.utils.clip_grad_norm_(net_real.parameters(), 5)
+            optimizer_real.step()
 
             # Update net_fake
             net_fake.train()
@@ -157,10 +130,11 @@ for tank in FolderLocation.glob('#*'):
             torch.nn.utils.clip_grad_norm_(net_fake.parameters(), 5)
             optimizer_fake.step()
 
+            # Print Loss
             if e % 20 == 0:
                 with torch.no_grad():
-                    loss = F.mse_loss(net.forward(X_train), y_train, reduction='none') ** 0.5
-                    testLoss = F.mse_loss(net.forward(X_test), y_test, reduction='none') ** 0.5
+                    loss = F.mse_loss(net_real.forward(X_train), y_train, reduction='none') ** 0.5
+                    testLoss = F.mse_loss(net_real.forward(X_test), y_test, reduction='none') ** 0.5
                     testLoss_fake = F.mse_loss(net_fake.forward(X_test), y_test, reduction='none') ** 0.5
                 stats = {'epoch': e,
                          'lr': lr,
@@ -174,12 +148,11 @@ for tank in FolderLocation.glob('#*'):
                          }
                 pbar.set_postfix(stats)
 
-        net.eval()
+        net_real.eval()
         net_fake.eval()
         with torch.no_grad():
             fakeFit = net_fake.forward(X_test)
-            realFit = net.forward(X_test)
-
+            realFit = net_real.forward(X_test)
 
         WholeTestResult[test_index,3:6] = fakeFit.to('cpu').numpy()
         WholeTestResult[test_index,6: ] = realFit.to('cpu').numpy()
@@ -188,12 +161,18 @@ for tank in FolderLocation.glob('#*'):
           f"Row : {np.mean((WholeTestResult[:,0]-WholeTestResult[:,3])**2)**0.5:.3f} | {np.mean((WholeTestResult[:,0]-WholeTestResult[:,6])**2)**0.5:.3f},  "
           f"Col : {np.mean((WholeTestResult[:,1]-WholeTestResult[:,4])**2)**0.5:.3f} | {np.mean((WholeTestResult[:,1]-WholeTestResult[:,7])**2)**0.5:.3f},  "
           f"Deg : {np.mean((WholeTestResult[:,2]-WholeTestResult[:,5])**2)**0.5:.3f} | {np.mean((WholeTestResult[:,2]-WholeTestResult[:,8])**2)**0.5:.3f}")
-    np.savetxt(str(OutputFileLocation / (tank_name + 'result.csv')),WholeTestResult, fmt='%.3f', delimiter=',')
+    np.savetxt(str(outputPath / (tank_name + 'result.csv')),WholeTestResult, fmt='%.3f', delimiter=',')
 
-    with open(str(OutputFileLocation / 'log.csv'), 'a', newline='') as csvfile:
+    with open(str(outputPath / 'log.csv'), 'a', newline='') as csvfile:
         wr = csv.writer(csvfile, delimiter=',')
         wr.writerow([tank_name,
                      np.mean((WholeTestResult[:,0]-WholeTestResult[:,3])**2)**0.5, np.mean((WholeTestResult[:,0]-WholeTestResult[:,6])**2)**0.5,
                      np.mean((WholeTestResult[:,1]-WholeTestResult[:,4])**2)**0.5, np.mean((WholeTestResult[:,1]-WholeTestResult[:,7])**2)**0.5,
                      np.mean((WholeTestResult[:,2]-WholeTestResult[:,5])**2)**0.5, np.mean((WholeTestResult[:,2]-WholeTestResult[:,8])**2)**0.5])
 
+
+InputFolder = Path('r/media/ainav')
+OutputFolder = Path('r/media/ainav')
+
+for tank in InputFolder.glob('#*'):
+    LocationRegressor(tank, OutputFolder, neural_data_rate=2, truncatedTime_s=10, train_epoch=20000, init_lr=0.0001)

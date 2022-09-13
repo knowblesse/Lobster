@@ -44,15 +44,19 @@ class dANN(nn.Module):
         nn.init.normal_(self.fc4.weight, mean=0, std=0.2)
 
 def correctRotationOffset(rotationData):
-    # Correct Rotation data for interpolation.
-    # If
-prev_head_direction = butter_data[0, 3]
-degree_offset_value = np.zeros(butter_data.shape[0])
-for i in np.arange(1, butter_data.shape[0]):
-    # if the degree change is more than a half rotation, use the smaller rotation value instead.
-    if np.abs(butter_data[i, 3] - prev_head_direction) > 180:
-        if butter_data[i, 3] > prev_head_direction:
-            degree_offset_value[i:] -= 360
-        else:
-            degree_offset_value[i:] += 360
-    prev_head_direction = butter_data[i, 3]
+    # Correct Rotation data for further interpolation.
+    # If the degree difference of two consecutive labeld data point is bigger than 180 degree,
+    # it is more reasonable to think that the actual rotation is smaller than 180 degree, and
+    # crossing the boarder between 0 and 360
+    prev_head_direction = rotationData[0]
+    degree_offset_value = np.zeros(rotationData.shape[0])
+    for i in np.arange(1, rotationData.shape[0]):
+        # if the degree change is more than a half rotation, use the smaller rotation value instead.
+        if np.abs(rotationData[i] - prev_head_direction) > 180:
+            if rotationData[i] > prev_head_direction:
+                degree_offset_value[i:] -= 360
+            else:
+                degree_offset_value[i:] += 360
+        prev_head_direction = rotationData[i]
+    return rotationData + degree_offset_value
+
