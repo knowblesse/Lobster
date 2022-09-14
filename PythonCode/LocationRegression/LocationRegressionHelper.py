@@ -20,7 +20,7 @@ class dANN(nn.Module):
             25)
         self.fc4 = nn.Linear(
             25,
-            3)
+            params['output_node'])
 
     def forward(self, x):
         x = x.to(self.device)
