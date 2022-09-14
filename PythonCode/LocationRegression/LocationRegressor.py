@@ -165,8 +165,9 @@ def LocationRegressor(tankPath, outputPath, neural_data_rate, truncatedTime_s, t
                      np.mean((WholeTestResult[:,2]-WholeTestResult[:,5])**2)**0.5, np.mean((WholeTestResult[:,2]-WholeTestResult[:,8])**2)**0.5])
 
 
-InputFolder = Path('r/media/ainav')
-OutputFolder = Path('r/media/ainav')
+InputFolder =  Path('/home/ainav/Data/LocationRegressionData')
+OutputFolder = Path('/home/ainav/Data/LocationRegressionResult')
 
 for tank in InputFolder.glob('#*'):
+    print(tank)
     LocationRegressor(tank, OutputFolder, neural_data_rate=2, truncatedTime_s=10, train_epoch=20000, init_lr=0.0001)
