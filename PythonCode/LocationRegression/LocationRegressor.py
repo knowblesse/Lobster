@@ -35,14 +35,8 @@ def LocationRegressor(tankPath, outputPath, neural_data_rate, truncatedTime_s, t
         raise(BaseException("There are multiple files ending with _wholeSessionUnitData.csv"))
 
     # Check Video FPS
-    videoFileName = [i for i in tankPath.glob('*.avi')]
-    if len(videoFileName) == 0:
-        videoFileName = [i for i in tankPath.glob('*.mp4')]
-    vc = cv.VideoCapture(str(videoFileName[0]))
-    video_frame_rate = vc.get(cv.CAP_PROP_FPS)
-    if video_frame_rate % 1 != 0:
-        raise(BaseException("Video Frame rate is not a integer!"))
-    video_frame_rate = int(video_frame_rate)
+    fpsFileName = tankPath / 'FPS.txt'
+    video_frame_rate = int(np.loadtxt(fpsFileName))
 
     # Load file
     butter_data = np.loadtxt(str(butter_location[0]), delimiter='\t')
