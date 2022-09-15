@@ -9,7 +9,7 @@ import cv2 as cv
 from scipy.interpolate import interp1d
 import numpy as np
 import re
-from NeuralPatternSwitch import wholeSessionUnitDataPCA
+from LocationRegression.Analysis.NeuralPatternSwitch import wholeSessionUnitDataPCA
 from tqdm import tqdm
 
 Tank_Path = Path(r'D:\Data\Lobster\Lobster_Recording-200319-161008\20JUN1\#20JUN1-200827-171419_PL')
