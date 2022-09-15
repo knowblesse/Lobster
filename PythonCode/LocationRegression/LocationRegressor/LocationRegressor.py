@@ -211,7 +211,6 @@ def DistanceRegressor(tankPath, outputPath, neural_data_rate, truncatedTime_s, t
     kf = KFold(n_splits=5, shuffle=True)
     WholeTestResult = np.zeros(
         [X.shape[0], 3])  # num data x [real, fake, predicted]
-    print(y.shape)
     WholeTestResult[:, :1] = y
 
     # Start training
@@ -288,8 +287,8 @@ def DistanceRegressor(tankPath, outputPath, neural_data_rate, truncatedTime_s, t
             fakeFit = net_fake.forward(X_test)
             realFit = net_real.forward(X_test)
 
-        WholeTestResult[test_index, 1] = fakeFit.to('cpu').numpy()
-        WholeTestResult[test_index, 2] = realFit.to('cpu').numpy()
+        WholeTestResult[test_index, 1:2] = fakeFit.to('cpu').numpy()
+        WholeTestResult[test_index, 2:3] = realFit.to('cpu').numpy()
 
     print(f"{tank_name} Complete")
     np.savetxt(str(outputPath / (tank_name + '_distance_result.csv')), WholeTestResult, fmt='%.3f', delimiter=',')
