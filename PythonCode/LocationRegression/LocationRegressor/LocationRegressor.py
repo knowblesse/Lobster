@@ -153,19 +153,7 @@ def LocationRegressor(tankPath, outputPath, neural_data_rate, truncatedTime_s, t
 
         WholeTestResult[test_index,3:6] = fakeFit.to('cpu').numpy()
         WholeTestResult[test_index,6: ] = realFit.to('cpu').numpy()
-
-    print(f"{tank_name} : "
-          f"Row : {np.mean((WholeTestResult[:,0]-WholeTestResult[:,3])**2)**0.5:.3f} | {np.mean((WholeTestResult[:,0]-WholeTestResult[:,6])**2)**0.5:.3f},  "
-          f"Col : {np.mean((WholeTestResult[:,1]-WholeTestResult[:,4])**2)**0.5:.3f} | {np.mean((WholeTestResult[:,1]-WholeTestResult[:,7])**2)**0.5:.3f},  "
-          f"Deg : {np.mean((WholeTestResult[:,2]-WholeTestResult[:,5])**2)**0.5:.3f} | {np.mean((WholeTestResult[:,2]-WholeTestResult[:,8])**2)**0.5:.3f}")
     np.savetxt(str(outputPath / (tank_name + 'result.csv')),WholeTestResult, fmt='%.3f', delimiter=',')
-
-    with open(str(outputPath / 'log.csv'), 'a', newline='') as csvfile:
-        wr = csv.writer(csvfile, delimiter=',')
-        wr.writerow([tank_name,
-                     np.mean((WholeTestResult[:,0]-WholeTestResult[:,3])**2)**0.5, np.mean((WholeTestResult[:,0]-WholeTestResult[:,6])**2)**0.5,
-                     np.mean((WholeTestResult[:,1]-WholeTestResult[:,4])**2)**0.5, np.mean((WholeTestResult[:,1]-WholeTestResult[:,7])**2)**0.5,
-                     np.mean((WholeTestResult[:,2]-WholeTestResult[:,5])**2)**0.5, np.mean((WholeTestResult[:,2]-WholeTestResult[:,8])**2)**0.5])
 
 
 def DistanceRegressor(tankPath, outputPath, neural_data_rate, truncatedTime_s, train_epoch, init_lr):
