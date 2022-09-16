@@ -5,11 +5,10 @@ KERNEL_SIZE = 1000;
 KERNEL_STD = 100;
 
 basepath = 'D:\Data\Lobster\Lobster_Recording-200319-161008\Data';
-outputpath = 'D:\Data\Lobster\EventClassificationData';
+outputpath = 'D:\Data\Lobster\EventClassificationData_4C';
 filelist = dir(basepath);
 workingfile = regexp({filelist.name},'#\S*','match'); % read only #ed folders
 workingfile = workingfile(~cellfun('isempty',workingfile));
-6
 for f = 1 : numel(workingfile)
     TANK_name = cell2mat(workingfile{f});
     TANK_location = fullfile(basepath, TANK_name);

@@ -66,7 +66,7 @@ if __name__ == '__main__':
     numBin = 40
     numRepeat = 5
 
-    dataList = sorted([p for p in Path(r'E:\EventClassificationData').glob('#*')]) # /home/ainav/Data/EventClassificationData
+    dataList = sorted([p for p in Path(r'D:\Data\Lobster\EventClassificationData_4C').glob('#*')]) # /home/ainav/Data/EventClassificationData
     isPass = False
 
     for dataPath in dataList:
@@ -121,6 +121,4 @@ if __name__ == '__main__':
         balanced_accuracies[1, :, -1] = balanced_accuracy_score(y_real, y_pred_real)
 
         result = {'result': balanced_accuracies}
-        savemat(r'E:\EventClassificationResult\\'+sessionNames+'_Output.mat', result)
-        requests.get(f'https://api.telegram.org/bot5269105245:AAHyOGSwCeYvmNNT3nKzQ6Ho_KfVw2nKTYE/sendMessage?chat_id=5520161508&text={sessionNames}')
-
+        savemat(r'D:\Data\Lobster\EventClassificationResult_4C'+sessionNames+'_Output.mat', result)
