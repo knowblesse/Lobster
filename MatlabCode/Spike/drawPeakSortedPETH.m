@@ -36,20 +36,36 @@ caxis(ax_hm, [-5, 20]);
 set(ax_hm, 'FontName', 'Noto Sans');
 drawnow;
 
-%% Peak Histogram
-histogram(ax_hist, peak_index,(1:numBin)-0.5, 'Normalization', 'pdf', 'FaceColor','k','LineStyle','none');
+% This function tells where the peak of each unit's firing rate is located on the time axis.
+% %% Peak Histogram
+% histogram(ax_hist, peak_index,(1:numBin)-0.5, 'Normalization', 'pdf', 'FaceColor','k','LineStyle','none');
+% hold on;
+% ylim_ = ylim;
+% %ylim_ = [0, 0.1];
+% line(ax_hist, [numBin, numBin]/2, ylim_, 'Color', 'r', 'LineWidth', 0.8); 
+% xlim(ax_hist, [0.5, numBin - 0.5]);
+% %ylim(ax_hist, ylim_);
+% xticks(ax_hist, [0.5, 10 : 10 : numBin-10, numBin - 0.5]);
+% xticklabels(ax_hist, arrayfun(@num2str, TIMEWINDOW(1):500:TIMEWINDOW(2), 'UniformOutput', false))
+% %ylabel(ax_hist, 'Number of Unit');
+% xlabel(ax_hist, 'Time (ms)');
+% ax_hist.Position(3) = ax_hm.Position(3);
+% set(ax_hist, 'FontName', 'Noto Sans');
+
+%% Mean Z score
+set(ax_hist, 'FontName', 'Noto Sans');
+plot(mean(clip(sorted_zscores, -5, 5), 1), 'Color','k', 'LineWidth',1);
 hold on;
 ylim_ = ylim;
-%ylim_ = [0, 0.1];
-line(ax_hist, [numBin, numBin]/2, ylim_, 'Color', 'r', 'LineWidth', 0.8); 
+line(ax_hist, ones(1,2) * size(sorted_zscores,2) / 2, [-5, 5], 'Color', 'r', 'LineWidth', 0.8); 
+line(ax_hist, [0.5, numBin - 0.5], [0,0], 'Color', 'k', 'LineWidth', 0.8, 'LineStyle', '--'); 
 xlim(ax_hist, [0.5, numBin - 0.5]);
-%ylim(ax_hist, ylim_);
 xticks(ax_hist, [0.5, 10 : 10 : numBin-10, numBin - 0.5]);
 xticklabels(ax_hist, arrayfun(@num2str, TIMEWINDOW(1):500:TIMEWINDOW(2), 'UniformOutput', false))
-%ylabel(ax_hist, 'Number of Unit');
+ylabel(ax_hist, 'Z');
 xlabel(ax_hist, 'Time (ms)');
 ax_hist.Position(3) = ax_hm.Position(3);
-set(ax_hist, 'FontName', 'Noto Sans');
+
 
 end
 
