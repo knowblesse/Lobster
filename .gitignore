@@ -6,6 +6,7 @@ PythonCode/\.idea/
 Apparatus/OldVersions/
 *.lck
 *.swp
+__pycache__/
 
 Apparatus/Visual/OldVersions/
 

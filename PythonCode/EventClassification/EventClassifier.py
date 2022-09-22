@@ -118,7 +118,7 @@ def Batch_EventClassifier(baseFolderPath):
     importance_score = np.empty((0,2))
     balanced_accuracy = np.empty((0,2))
 
-    pbar = tqdm([p for p in baseFolderPath.glob('#*')])
+    pbar = tqdm(sorted([p for p in baseFolderPath.glob('#*')]))
 
     for dataPath in pbar:
         pbar.set_postfix({'path':dataPath})
