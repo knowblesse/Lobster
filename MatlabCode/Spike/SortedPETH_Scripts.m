@@ -7,8 +7,8 @@ output_IL = output(output.Area == "IL", :);
 
 %% Responsiveness calculation
 
-unitData = output;
-%unitData = output_PL;
+%unitData = output;
+unitData = output_IL;
 
 zscore_threshold = 4;
 bin_size = 80;
@@ -155,124 +155,8 @@ p = ylabel('Z');
 p.Position(1) = -4;
 saveas(gcf, 'C:\Users\Knowblesse\Desktop\4.svg', 'svg');
 
-%% Draw Composition Graph
-fig = figure('Name', 'Unit Composition', 'Position', [321   546   896   303]); 
 
-% Index
-plIndex = output.Area == "PL";
-ilIndex = output.Area == "IL";
-% Total Responsive
-totUnit_PL = sum(plIndex);
-totUnit_IL = sum(ilIndex);
-
-resUnit_PL = sum(any(responsive(plIndex, :), 2));
-resUnit_IL = sum(any(responsive(ilIndex, :), 2));
-
-ax1 = subplot(1,8,1:2);
-bplot = bar([resUnit_PL / totUnit_PL, (totUnit_PL - resUnit_PL) / totUnit_PL;...
-             resUnit_IL / totUnit_IL, (totUnit_IL - resUnit_IL) / totUnit_IL],...
-             'stacked',...
-             'FaceColor', 'flat',...
-             'LineStyle', 'none');
-bplot(1).CData = [xkcd.pig_pink; xkcd.sky_blue];
-bplot(2).CData = [xkcd.grey; xkcd.grey];
-hold on;
-text(1, resUnit_PL / totUnit_PL / 2, ...
-    [num2str(resUnit_PL / totUnit_PL, '%.2f'),strcat("n=", num2str(resUnit_PL))],...
-    'HorizontalAlignment', 'center',...
-    'VerticalAlignment', 'middle',...
-    'FontName', 'Noto Sans');
-text(1, resUnit_PL / totUnit_PL + (totUnit_PL - resUnit_PL) / totUnit_PL / 2, ...
-    [num2str((totUnit_PL - resUnit_PL) / totUnit_PL, '%.2f'),strcat("n=", num2str((totUnit_PL - resUnit_PL)))],...
-    'HorizontalAlignment', 'center',...
-    'VerticalAlignment', 'middle',...
-    'FontName', 'Noto Sans');
-text(2, resUnit_IL / totUnit_IL / 2, ...
-    [num2str(resUnit_IL / totUnit_IL, '%.2f'),strcat("n=", num2str(resUnit_IL))],...
-    'HorizontalAlignment', 'center',...
-    'VerticalAlignment', 'middle',...
-    'FontName', 'Noto Sans');
-text(2, resUnit_IL / totUnit_IL + (totUnit_IL - resUnit_IL) / totUnit_IL / 2, ...
-    [num2str((totUnit_IL - resUnit_IL) / totUnit_IL, '%.2f'),strcat("n=", num2str((totUnit_IL - resUnit_IL)))],...
-    'HorizontalAlignment', 'center',...
-    'VerticalAlignment', 'middle',...
-    'FontName', 'Noto Sans');
-xticklabels(["PL", "IL"]);
-ylabel('Proportions');
-set(ax1, 'FontName', 'Noto Sans');
-set(ax1, 'FontSize', 9);
-
-
-% Event Responsive
-data2plot = [sum(responsive(plIndex,1)); sum(responsive(plIndex,2)); sum(responsive(plIndex,3))];
-data2plot = [data2plot, resUnit_PL - data2plot] ./ resUnit_PL;
-
-ax2 = subplot(1,8,3:5);
-bplot = bar(data2plot,...
-             'stacked',...
-             'FaceColor', 'flat',...
-             'LineStyle', 'none');
-bplot(1).CData = repmat(xkcd.pig_pink, 3, 1);
-bplot(2).CData = repmat(xkcd.pig_pink, 3, 1);
-bplot(2).FaceAlpha = 0.2;
-hold on;
-text(1, data2plot(1,1) / 2, ...
-    [num2str(data2plot(1,1), '%.2f'),strcat("n=", num2str(sum(responsive(plIndex,1))))],...
-    'HorizontalAlignment', 'center',...
-    'VerticalAlignment', 'middle',...
-    'FontName', 'Noto Sans');
-text(2, data2plot(2,1) / 2, ...
-    [num2str(data2plot(2,1), '%.2f'),strcat("n=", num2str(sum(responsive(plIndex,2))))],...
-    'HorizontalAlignment', 'center',...
-    'VerticalAlignment', 'middle',...
-    'FontName', 'Noto Sans');
-text(3, data2plot(3,1) / 2, ...
-    [num2str(data2plot(3,1), '%.2f'),strcat("n=", num2str(sum(responsive(plIndex,3))))],...
-    'HorizontalAlignment', 'center',...
-    'VerticalAlignment', 'middle',...
-    'FontName', 'Noto Sans');
-
-xticklabels(["HE", "AHW", "EHW"]);
-yticklabels({});
-set(ax2, 'FontName', 'Noto Sans');
-set(ax2, 'FontSize', 9);
-
-% Event Responsive
-data2plot = [sum(responsive(ilIndex,1)); sum(responsive(ilIndex,2)); sum(responsive(ilIndex,3))];
-data2plot = [data2plot, resUnit_IL - data2plot] ./ resUnit_IL;
-
-ax3 = subplot(1,8,6:8);
-bplot = bar(data2plot,...
-             'stacked',...
-             'FaceColor', 'flat',...
-             'LineStyle', 'none');
-bplot(1).CData = repmat(xkcd.sky_blue, 3, 1);
-bplot(2).CData = repmat(xkcd.sky_blue, 3, 1);
-bplot(2).FaceAlpha = 0.2;
-hold on;
-text(1, data2plot(1,1) / 2, ...
-    [num2str(data2plot(1,1), '%.2f'),strcat("n=", num2str(sum(responsive(ilIndex,1))))],...
-    'HorizontalAlignment', 'center',...
-    'VerticalAlignment', 'middle',...
-    'FontName', 'Noto Sans');
-text(2, data2plot(2,1) / 2, ...
-    [num2str(data2plot(2,1), '%.2f'),strcat("n=", num2str(sum(responsive(ilIndex,2))))],...
-    'HorizontalAlignment', 'center',...
-    'VerticalAlignment', 'middle',...
-    'FontName', 'Noto Sans');
-text(3, data2plot(3,1) / 2, ...
-    [num2str(data2plot(3,1), '%.2f'),strcat("n=", num2str(sum(responsive(ilIndex,3))))],...
-    'HorizontalAlignment', 'center',...
-    'VerticalAlignment', 'middle',...
-    'FontName', 'Noto Sans');
-
-xticklabels(["HE", "AHW", "EHW"]);
-yticklabels({});
-set(ax3, 'FontName', 'Noto Sans');
-set(ax3, 'FontSize', 9);
-
-
-%% Draw Unit Type Composition
+%% Draw Unit Class Composition
 fig = figure('Name', 'Unit Type Composition', 'Position', [321   542   765   307]); 
 
 ax = subplot(1,1,1);
@@ -381,8 +265,68 @@ xticklabels(["AHE", "EHE", "AHW", "EHW"]);
 ylim([0, 150]);
 ylabel('Units');
 legend({'pre-event', 'peri-event', 'post-event'}, 'Location', 'northeast', 'FontName', 'Noto Sans');
-set(ax1, 'FontName', 'Noto Sans');
-set(ax1, 'FontSize', 9);
+
+
+
+%% Class change between avoidance and escape trial
+
+cmap_HE = [...
+    linspace(1, xkcd.pig_pink(1), 100)',...
+    linspace(1, xkcd.pig_pink(2), 100)',...
+    linspace(1, xkcd.pig_pink(3), 100)'];
+cmap_HW = [...
+    linspace(1, xkcd.sky_blue(1), 100)',...
+    linspace(1, xkcd.sky_blue(2), 100)',...
+    linspace(1, xkcd.sky_blue(3), 100)'];
+
+% Head Entry
+fig = figure();
+
+hm_data = zeros(4,4);
+for avoid_class = 0 : 3
+    for escape_class = 0 : 3
+        hm_data(avoid_class + 1, escape_class + 1) = ...
+            sum(all([output.first_LICK_A_type == avoid_class, output.first_LICK_E_type == escape_class], 2))...
+                / sum(output.first_LICK_A_type == avoid_class);
+    end
+end
+
+% change Non-reponsive to the last index
+hm_data = hm_data(:, [2,3,4,1]);
+hm_data = hm_data([2,3,4,1], :);
+
+
+% Head Withdrawal
+subplot(1,2,1);
+ax1 = heatmap({'Pre', 'Peri', 'Post', 'Non'}, {'Pre', 'Peri', 'Post', 'Non'}, hm_data);
+caxis([0, 1]);
+colormap(ax1, cmap_HE);
+ax1.CellLabelFormat = '%0.2f';
+xlabel('Escape Class');
+ylabel('Avoidance Class');
+title('Head Entry');
+
+hm_data = zeros(4,4);
+for avoid_class = 0 : 3
+    for escape_class = 0 : 3
+        hm_data(avoid_class + 1, escape_class + 1) = ...
+            sum(all([output.valid_IROF_A_type == avoid_class, output.valid_IROF_E_type == escape_class], 2))...
+                / sum(output.valid_IROF_A_type == avoid_class);
+    end
+end
+
+% change Non-reponsive to the last index
+hm_data = hm_data(:, [2,3,4,1]);
+hm_data = hm_data([2,3,4,1], :);
+
+subplot(1,2,2);
+ax2 = heatmap({'Pre', 'Peri', 'Post', 'Non'}, {'Pre', 'Peri', 'Post', 'Non'}, hm_data);
+caxis([0, 1]);
+colormap(ax2, cmap_HW);
+ax2.CellLabelFormat = '%0.2f';
+xlabel('Escape Class');
+ylabel('Avoidance Class');
+title('Head Withdrawal');
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
