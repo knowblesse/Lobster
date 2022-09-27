@@ -7,8 +7,8 @@ output_IL = output(output.Area == "IL", :);
 
 %% Responsiveness calculation
 
-%unitData = output;
-unitData = output_IL;
+unitData = output;
+%unitData = output_IL;
 
 zscore_threshold = 4;
 bin_size = 80;
@@ -315,7 +315,7 @@ for avoid_class = 0 : 3
     end
 end
 
-% change Non-reponsive to the last index
+% rearrange the matrix so the Non-reponsive units are located to the last index
 hm_data = hm_data(:, [2,3,4,1]);
 hm_data = hm_data([2,3,4,1], :);
 
@@ -327,57 +327,3 @@ ax2.CellLabelFormat = '%0.2f';
 xlabel('Escape Class');
 ylabel('Avoidance Class');
 title('Head Withdrawal');
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Data Processing Scripts                   %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%% Load Feature Importance Data and save into the data table
-load('C:\VCF\Lobster\MatlabCode\Spike\Output.mat');
-r_ = [];
-rhe_ = [];
-rahw_ = [];
-rehw_ = [];
-for i = 1 : 40
-    r_ = [r_; mean(result{i}.importance_score,1)'];
-    rhe_ = [rhe_; mean(result{i}.importance_score_HE,1)'];
-    rahw_ = [rahw_; mean(result{i}.importance_score_AHW,1)'];
-    rehw_ = [rehw_; mean(result{i}.importance_score_EHW,1)'];
-end
-output = [output, table(r_, 'VariableNames', "FI")];
-output = [output, table(rhe_, 'VariableNames', "FI_HE")];
-output = [output, table(rahw_, 'VariableNames', "FI_AHW")];
-output = [output, table(rehw_, 'VariableNames', "FI_EHW")];
-
-%% Feature Importance on Balanced accuracy
-output.FI(output.first_LICK_type == 1) * 100
-output.FI(output.first_LICK_type == 2) * 100
-output.FI(output.first_LICK_type == 3) * 100
-output.FI(output.first_LICK_type == 0) * 100
-
-output.FI(output.valid_IROF_A_type == 1) * 100
-output.FI(output.valid_IROF_A_type == 2) * 100
-output.FI(output.valid_IROF_A_type == 3) * 100
-output.FI(output.valid_IROF_A_type == 0) * 100
-
-output.FI(output.valid_IROF_E_type == 1) * 100
-output.FI(output.valid_IROF_E_type == 2) * 100
-output.FI(output.valid_IROF_E_type == 3) * 100
-output.FI(output.valid_IROF_E_type == 0) * 100
-
-%% Feature Importance on the accuracy of the each class
-output.FI_HE(output.first_LICK_type == 1) * 100
-output.FI_HE(output.first_LICK_type == 2) * 100
-output.FI_HE(output.first_LICK_type == 3) * 100
-output.FI_HE(output.first_LICK_type == 0) * 100
-
-output.FI_AHW(output.valid_IROF_A_type == 1) * 100
-output.FI_AHW(output.valid_IROF_A_type == 2) * 100
-output.FI_AHW(output.valid_IROF_A_type == 3) * 100
-output.FI_AHW(output.valid_IROF_A_type == 0) * 100
-
-output.FI_EHW(output.valid_IROF_E_type == 1) * 100
-output.FI_EHW(output.valid_IROF_E_type == 2) * 100
-output.FI_EHW(output.valid_IROF_E_type == 3) * 100
-output.FI_EHW(output.valid_IROF_E_type == 0) * 100

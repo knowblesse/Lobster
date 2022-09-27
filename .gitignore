@@ -8,6 +8,8 @@ Apparatus/OldVersions/
 *.swp
 __pycache__/
 
+*.mat
+
 Apparatus/Visual/OldVersions/
 
 Apparatus/Lick/OldVersions/
@@ -15,3 +17,5 @@ Apparatus/Lick/OldVersions/
 Apparatus/Robot/OldVersions/
 
 Apparatus/Arena/OldVersions/
+
+.obsidian/
