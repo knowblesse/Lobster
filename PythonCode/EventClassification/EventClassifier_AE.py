@@ -28,7 +28,7 @@ if (sklearn.__version__ < '0.23.2'):
 
 rng = default_rng()
 # SVC Event Classifier Function
-def EventClassifier(matFilePath, numBin):   
+def EventClassifier(matFilePath, numBin, unit_list):   
     # Input : matFilePath : Path object
     # Define Classification function
     def runTest(X,y):
@@ -74,19 +74,31 @@ def EventClassifier(matFilePath, numBin):
         y_pred_real = runTest(X, y_real)
 
         # Run which unit is important
-        numRepeat = 30
+        numRepeat = 10
         numUnit = int(X.shape[1] / numBin)
 
         baseScore = balanced_accuracy_score(y_real, y_pred_real)
-        importance_score = np.zeros((numRepeat, numUnit))
-
-        for unit in range(numUnit):
-            for rep in range(numRepeat):
-                X_corrupted = X.copy()
+        importance_score = np.zeros((numRepeat, 2))
+        
+        # Shuffle units in the list
+        for rep in range(numRepeat):
+            X_corrupted = X.copy()
+            for unit in unit_list-1: # -1 because unit number starts from 1 in the Matlab file
                 for bin in range(numBin):
                     rng.shuffle(X_corrupted[:, numBin * unit + bin])
-                y_pred_crpt = runTest(X_corrupted, y_real)
-                importance_score[rep, unit] = baseScore - balanced_accuracy_score(y_real, y_pred_crpt)
+            y_pred_crpt = runTest(X_corrupted, y_real)
+            importance_score[rep, 0] = baseScore - balanced_accuracy_score(y_real, y_pred_crpt)
+
+        # Shuffle units NOT in the list
+        not_unit_list = list(set(np.arange(numUnit)) - set(unit_list-1))
+
+        for rep in range(numRepeat):
+            X_corrupted = X.copy()
+            for unit in not_unit_list:
+                for bin in range(numBin):
+                    rng.shuffle(X_corrupted[:, numBin * unit + bin])
+            y_pred_crpt = runTest(X_corrupted, y_real)
+            importance_score[rep, 1] = baseScore - balanced_accuracy_score(y_real, y_pred_crpt)
 
         # Generate output
         balanced_accuracy = [
@@ -112,14 +124,24 @@ def Batch_EventClassifier(baseFolderPath):
 
     pbar = tqdm(sorted([p for p in baseFolderPath.glob('#*')]))
 
-    for dataPath in pbar:
+    # unit list of AHW Class 1 unit
+    data = loadmat('/home/ainav/Data/EventClassificationData_4C/AHW_C1_unit_list.mat')
+    unit_list = data.get('AHW_C1_unit_list')
+
+    for i, dataPath in enumerate(pbar):
         pbar.set_postfix({'path':dataPath})
-        data_ = EventClassifier(dataPath, 40)
-        tankNames.append(str(dataPath))
-        sessionNames.append(re.search('(#.*_\wL)', str(dataPath)).groups()[0])
-        result.append(data_)
+        
+        sessionName = re.search('(#.*_\wL)', str(dataPath)).groups()[0]
+
+        if unit_list[i][0][0][0] != sessionName:
+            raise('unit list name does not match with session name')
+        if unit_list[i][2][0][0] == 1: # if 0, AHW Class 1 unit is too small or to many
+            data_ = EventClassifier(dataPath, 40, unit_list[i][1][0])
+            tankNames.append(str(dataPath))
+            sessionNames.append(sessionName)
+            result.append(data_)
 
     return {'tankNames' : tankNames, 'result' : result, 'sessionNames': sessionNames}
     
 output = Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData_4C'))
-savemat(r'/home/ainav/Data/EventClassificationResult_4C/Output_AE.mat', output)
+savemat(r'/home/ainav/Data/EventClassificationResult_4C/Output_AE_AHW_C1.mat', output)
