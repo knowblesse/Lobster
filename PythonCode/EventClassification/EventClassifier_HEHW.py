@@ -1,9 +1,9 @@
 """
-EventClassifier_AE
+EventClassifier_HEHW
 @ 2020 Knowblesse
 Using the preprocessed Neural Ensemble dataset with behavior labels, build and test the SVM.
 Along with the accuracy, feature importance is calculated.
-Divide all dataset into Head Entry and Head Withdrawal, and generate two svm for A/E classification.
+Only classifiy whether the data is from HE or HW
 - Description
     - .mat dataset must have two variable, X and y. (mind the case of the variable name)
     - using the sklearn SVC class, build and test the SVM
@@ -51,56 +51,46 @@ def EventClassifier(matFilePath, numBin):
     # Clip
     X = np.clip(X, -5, 5)
 
-    # Divide HE and HW dataset
-
-    X_HE = X[np.any([(y == 1), (y == 2)], 0), :]
-    X_HW = X[np.any([(y == 3), (y == 4)], 0), :]
-    y_HE = y[np.any([(y == 1), (y == 2)], 0)]
-    y_HW = y[np.any([(y == 3), (y == 4)], 0)]
-
-    balanced_accuracy_AE = []
-    importance_score_AE = []
+    # Remove A/E Information
+    y = np.hstack([
+            np.ones(np.sum(np.any([(y == 1), (y == 2)], 0)), int) * 1,
+            np.ones(np.sum(np.any([(y == 3), (y == 4)], 0)), int) * 2
+            ])
 
     # Run Classificaion
-    for X, y in zip([X_HE, X_HW], [y_HE, y_HW]):
 
-        # Generate Shuffled Data
-        y_real = y.copy()
-        y_shuffled = y.copy()
-        rng.shuffle(y_shuffled)
+    # Generate Shuffled Data
+    y_real = y.copy()
+    y_shuffled = y.copy()
+    rng.shuffle(y_shuffled)
 
-        # Run Classification 
-        y_pred_shuffled = runTest(X, y_shuffled)
-        y_pred_real = runTest(X, y_real)
+    # Run Classification 
+    y_pred_shuffled = runTest(X, y_shuffled)
+    y_pred_real = runTest(X, y_real)
 
-        # Run which unit is important
-        numRepeat = 30
-        numUnit = int(X.shape[1] / numBin)
+    # Run which unit is important
+    numRepeat = 30
+    numUnit = int(X.shape[1] / numBin)
 
-        baseScore = balanced_accuracy_score(y_real, y_pred_real)
-        importance_score = np.zeros((numRepeat, numUnit))
+    baseScore = balanced_accuracy_score(y_real, y_pred_real)
+    importance_score = np.zeros((numRepeat, numUnit))
 
-        for unit in range(numUnit):
-            for rep in range(numRepeat):
-                X_corrupted = X.copy()
-                for bin in range(numBin):
-                    rng.shuffle(X_corrupted[:, numBin * unit + bin])
-                y_pred_crpt = runTest(X_corrupted, y_real)
-                importance_score[rep, unit] = baseScore - balanced_accuracy_score(y_real, y_pred_crpt)
+    for unit in range(numUnit):
+        for rep in range(numRepeat):
+            X_corrupted = X.copy()
+            for bin in range(numBin):
+                rng.shuffle(X_corrupted[:, numBin * unit + bin])
+            y_pred_crpt = runTest(X_corrupted, y_real)
+            importance_score[rep, unit] = baseScore - balanced_accuracy_score(y_real, y_pred_crpt)
 
-        # Generate output
-        balanced_accuracy = [
-                balanced_accuracy_score(y_shuffled, y_pred_shuffled),
-                balanced_accuracy_score(y_real, y_pred_real)]
-
-        balanced_accuracy_AE.append(balanced_accuracy)
-        importance_score_AE.append(importance_score)
+    # Generate output
+    balanced_accuracy = [
+            balanced_accuracy_score(y_shuffled, y_pred_shuffled),
+            balanced_accuracy_score(y_real, y_pred_real)]
 
     return {
-        'balanced_accuracy_HE': balanced_accuracy_AE[0],
-        'balanced_accuracy_HW': balanced_accuracy_AE[1],
-        'importance_score_HE': importance_score_AE[0],
-        'importance_score_HW': importance_score_AE[1],
+        'balanced_accuracy': balanced_accuracy,
+        'importance_score': importance_score,
         }
 
 def Batch_EventClassifier(baseFolderPath):
@@ -122,4 +112,4 @@ def Batch_EventClassifier(baseFolderPath):
     return {'tankNames' : tankNames, 'result' : result, 'sessionNames': sessionNames}
     
 output = Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData_4C'))
-savemat(r'/home/ainav/Data/EventClassificationResult_4C/Output_AE.mat', output)
+savemat(r'/home/ainav/Data/EventClassificationResult_4C/Output_HEHW.mat', output)
