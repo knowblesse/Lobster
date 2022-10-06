@@ -90,9 +90,8 @@ def EventClassifier(matFilePath, numBin, unit_list):
             importance_score[rep, 0] = baseScore - balanced_accuracy_score(y_real, y_pred_crpt)
 
         # Shuffle units NOT in the list
-        not_unit_list = list(set(np.arange(numUnit)) - set(unit_list-1))
-
         for rep in range(numRepeat):
+            not_unit_list = rng.choice(list(set(np.arange(numUnit)) - set(unit_list-1)), len(unit_list))
             X_corrupted = X.copy()
             for unit in not_unit_list:
                 for bin in range(numBin):
@@ -133,8 +132,8 @@ def Batch_EventClassifier(baseFolderPath):
         
         sessionName = re.search('(#.*_\wL)', str(dataPath)).groups()[0]
 
-        if unit_list[i][0][0][0] != sessionName:
-            raise('unit list name does not match with session name')
+        if unit_list[i][0][0] != sessionName:
+            raise(BaseException('unit list name does not match with session name'))
         if unit_list[i][2][0][0] == 1: # if 0, AHW Class 1 unit is too small or to many
             data_ = EventClassifier(dataPath, 40, unit_list[i][1][0])
             tankNames.append(str(dataPath))
