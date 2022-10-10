@@ -13,9 +13,11 @@ import numpy as np
 from numpy.random import default_rng
 from pathlib import Path
 import sklearn
-from sklearn.svm import SVC
+from sklearn.svm import SVC, LinearSVC
 from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import balanced_accuracy_score
+from sklearn.utils.testing import ignore_warnings
+from sklearn.exceptions import ConvergenceWarning
 from scipy.io import loadmat, savemat
 from tqdm import tqdm
 import re
@@ -27,20 +29,23 @@ if (sklearn.__version__ < '0.23.2'):
 
 rng = default_rng()
 # SVC Event Classifier Function
-def EventClassifier(matFilePath, numBin, unit_list):   
+def EventClassifier(matFilePath, numBin):
     # Input : matFilePath : Path object
     # Define Classification function
-    def runTest(X,y):
+    @ignore_warnings(category=ConvergenceWarning)
+    def fitSVM(X,y):
         # Leave One Out, and collect all predict result
         y_pred = np.zeros((len(y),), dtype=int)
+        weights = np.zeros((len(y), X.shape[1]))
         loo = LeaveOneOut()
         for train_index, test_index in loo.split(X):
             X_train, X_test = X[train_index], X[test_index]
             y_train = y[train_index]
-            clf = SVC(C=6, kernel='sigmoid', gamma='scale', coef0=0.6)
+            clf = LinearSVC(penalty='l2', C=0.5, dual=True, max_iter=10000, tol=1e-4)
             clf.fit(X_train, y_train)
             y_pred[test_index] = clf.predict(X_test)
-        return y_pred
+            weights[test_index, :] = np.abs(clf.coef_)
+        return [y_pred, np.mean(weights, axis=0)]
 
     # Load Data
     data = loadmat(str(matFilePath.absolute()))
@@ -57,7 +62,8 @@ def EventClassifier(matFilePath, numBin, unit_list):
     y_HW = y[np.any([(y == 3), (y == 4)], 0)]
 
     balanced_accuracy_AE = []
-    importance_score_AE = []
+    unitRank_AE = []
+    accuracy_AE = []
 
     # Run Classificaion
     for X, y in zip([X_HE, X_HW], [y_HE, y_HW]):
@@ -67,52 +73,43 @@ def EventClassifier(matFilePath, numBin, unit_list):
         y_shuffled = y.copy()
         rng.shuffle(y_shuffled)
 
-        # Run Classification 
-        y_pred_shuffled = runTest(X, y_shuffled)
-        y_pred_real = runTest(X, y_real)
+        # Run Control Classification
+        y_pred_shuffled, _ = fitSVM(X, y_shuffled)
 
         # Run which unit is important
-        numRepeat = 100
-        numUnit = int(X.shape[1] / numBin)
+        unitList = np.arange(int(X.shape[1] / numBin))
+        unitRank = []
+        accuracy = []
+        while len(unitList) > 0:
+            # Generate partial X
+            X_partial = np.empty((X.shape[0], 0))
+            for i in unitList:
+                X_partial = np.hstack((X_partial, X[:, i * numBin: (i + 1) * numBin]))
+            y_pred_partial, weights = fitSVM(X_partial, y_real)
+            accuracy.append(balanced_accuracy_score(y_real, y_pred_partial))
+            # Find the least important unit
+            leastImportantUnitIndex = unitList[np.argmin(np.mean(np.reshape(weights, (numBin, -1), order='F'), 0))]
+            unitRank.append(leastImportantUnitIndex)
+            unitList = np.delete(unitList, np.where(unitList == leastImportantUnitIndex))
 
-        baseScore = balanced_accuracy_score(y_real, y_pred_real)
-        importance_score = np.zeros((numRepeat, 2))
-        
-        # Shuffle units in the list
-        for rep in range(numRepeat):
-            X_corrupted = X.copy()
-            for unit in unit_list-1: # -1 because unit number starts from 1 in the Matlab file
-                for bin in range(numBin):
-                    rng.shuffle(X_corrupted[:, numBin * unit + bin])
-            y_pred_crpt = runTest(X_corrupted, y_real)
-            importance_score[rep, 0] = baseScore - balanced_accuracy_score(y_real, y_pred_crpt)
-
-        # Shuffle units NOT in the list
-        for rep in range(numRepeat):
-            not_unit_list = rng.choice(list(set(np.arange(numUnit)) - set(unit_list-1)), len(unit_list))
-            X_corrupted = X.copy()
-            for unit in not_unit_list:
-                for bin in range(numBin):
-                    rng.shuffle(X_corrupted[:, numBin * unit + bin])
-            y_pred_crpt = runTest(X_corrupted, y_real)
-            importance_score[rep, 1] = baseScore - balanced_accuracy_score(y_real, y_pred_crpt)
-
-        # Generate output
         balanced_accuracy = [
-                balanced_accuracy_score(y_shuffled, y_pred_shuffled),
-                balanced_accuracy_score(y_real, y_pred_real)]
+            balanced_accuracy_score(y_shuffled, y_pred_shuffled),
+            accuracy[0]]
 
         balanced_accuracy_AE.append(balanced_accuracy)
-        importance_score_AE.append(importance_score)
+        unitRank_AE.append(unitRank)
+        accuracy_AE.append(accuracy)
 
     return {
         'balanced_accuracy_HE': balanced_accuracy_AE[0],
         'balanced_accuracy_HW': balanced_accuracy_AE[1],
-        'importance_score_HE': importance_score_AE[0],
-        'importance_score_HW': importance_score_AE[1],
+        'unitRank_HE' : unitRank_AE[0],
+        'unitRank_HW': unitRank_AE[1],
+        'accuracy_HE' : accuracy_AE[0],
+        'accuracy_HW': accuracy_AE[1],
         }
 
-def Batch_EventClassifier(baseFolderPath, unit_list):
+def Batch_EventClassifier(baseFolderPath):
     # run through all dataset and generate result summary
     result = []
     tankNames = []
@@ -126,27 +123,17 @@ def Batch_EventClassifier(baseFolderPath, unit_list):
         
         sessionName = re.search('(#.*_\wL)', str(dataPath)).groups()[0]
 
-        if unit_list[i][0][0] != sessionName:
-            raise(BaseException('unit list name does not match with session name'))
-        if unit_list[i][2][0][0] == 1: # if 0, AHW Class 1 unit is too small or to many
-            data_ = EventClassifier(dataPath, 40, unit_list[i][1][0])
-            tankNames.append(str(dataPath))
-            sessionNames.append(sessionName)
-            result.append(data_)
-
+        data_ = EventClassifier(dataPath, 40)
+        tankNames.append(str(dataPath))
+        sessionNames.append(sessionName)
+        result.append(data_)
+        balanced_accuracy = np.vstack((balanced_accuracy, data_['balanced_accuracy_HW']))
+    print(f"{np.mean(balanced_accuracy, 0)[0]} | {np.mean(balanced_accuracy, 0)[1]}")
     return {'tankNames' : tankNames, 'result' : result, 'sessionNames': sessionNames}
 
 if platform.system() == 'Windows':
-    # unit list of AHW Class 1 unit
-    data = loadmat('C:\VCF\Lobster\MatlabCode\ML\AHW_C1_unit_list.mat')
-    unit_list = data.get('AHW_C1_unit_list')
-
-    output = Batch_EventClassifier(Path(r'D:\Data\Lobster\EventClassificationData_4C'), unit_list)
-    savemat(r'D:\Data\Lobster\EventClassificationResult_4C\Output_AE_AHW_C1.mat', output)
+    output = Batch_EventClassifier(Path(r'D:\Data\Lobster\EventClassificationData_4C'))
+    savemat(r'D:\Data\Lobster\Output_AE_RFE.mat', output)
 else:
-    # unit list of AHW Class 1 unit
-    data = loadmat('/home/ainav/Data/EventClassificationData_4C/AHW_C1_unit_list.mat')
-    unit_list = data.get('AHW_C1_unit_list')
-
-    output = Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData_4C'), unit_list)
-    savemat(r'/home/ainav/Data/EventClassificationResult_4C/Output_AE_AHW_C1.mat', output)
+    output = Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData_4C'))
+    savemat(r'/home/ainav/Data/EventClassificationResult_4C/Output_AE_RFE.mat', output)
