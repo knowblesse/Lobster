@@ -16,8 +16,6 @@ import sklearn
 from sklearn.svm import SVC, LinearSVC
 from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import balanced_accuracy_score
-from sklearn.utils.testing import ignore_warnings
-from sklearn.exceptions import ConvergenceWarning
 from scipy.io import loadmat, savemat
 from tqdm import tqdm
 import re
@@ -28,11 +26,11 @@ if (sklearn.__version__ < '0.23.2'):
     raise Exception("scikit-learn package version must be at least 0.23.2")
 
 rng = default_rng()
+
 # SVC Event Classifier Function
 def EventClassifier(matFilePath, numBin):
     # Input : matFilePath : Path object
     # Define Classification function
-    @ignore_warnings(category=ConvergenceWarning)
     def fitSVM(X,y):
         # Leave One Out, and collect all predict result
         y_pred = np.zeros((len(y),), dtype=int)
@@ -88,7 +86,7 @@ def EventClassifier(matFilePath, numBin):
             y_pred_partial, weights = fitSVM(X_partial, y_real)
             accuracy.append(balanced_accuracy_score(y_real, y_pred_partial))
             # Find the least important unit
-            leastImportantUnitIndex = unitList[np.argmin(np.mean(np.reshape(weights, (numBin, -1), order='F'), 0))]
+            leastImportantUnitIndex = unitList[np.argmin(np.max(np.reshape(weights, (numBin, -1), order='F'), 0))]
             unitRank.append(leastImportantUnitIndex)
             unitList = np.delete(unitList, np.where(unitList == leastImportantUnitIndex))
 
@@ -128,6 +126,7 @@ def Batch_EventClassifier(baseFolderPath):
         sessionNames.append(sessionName)
         result.append(data_)
         balanced_accuracy = np.vstack((balanced_accuracy, data_['balanced_accuracy_HW']))
+
     print(f"{np.mean(balanced_accuracy, 0)[0]} | {np.mean(balanced_accuracy, 0)[1]}")
     return {'tankNames' : tankNames, 'result' : result, 'sessionNames': sessionNames}
 
@@ -136,4 +135,4 @@ if platform.system() == 'Windows':
     savemat(r'D:\Data\Lobster\Output_AE_RFE.mat', output)
 else:
     output = Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData_4C'))
-    savemat(r'/home/ainav/Data/EventClassificationResult_4C/Output_AE_RFE.mat', output)
+    savemat(r'/home/ainav/Data/EventClassificationResult_4C/Output_AE_RFE_max.mat', output)
