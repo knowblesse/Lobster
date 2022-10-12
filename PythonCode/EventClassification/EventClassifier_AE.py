@@ -62,6 +62,8 @@ def EventClassifier(matFilePath, numBin):
     balanced_accuracy_AE = []
     unitRank_AE = []
     accuracy_AE = []
+    importanceScore_AE = []
+    importanceUnit_AE = []
 
     # Run Classificaion
     for X, y in zip([X_HE, X_HW], [y_HE, y_HW]):
@@ -74,7 +76,7 @@ def EventClassifier(matFilePath, numBin):
         # Run Control Classification
         y_pred_shuffled, _ = fitSVM(X, y_shuffled)
 
-        # Run which unit is important
+        # Recursive Feature Elimination
         unitList = np.arange(int(X.shape[1] / numBin))
         unitRank = []
         accuracy = []
@@ -90,13 +92,35 @@ def EventClassifier(matFilePath, numBin):
             unitRank.append(leastImportantUnitIndex)
             unitList = np.delete(unitList, np.where(unitList == leastImportantUnitIndex))
 
+        # Permutation Feature importance
+        # - first, take only the feature at the highest accuracy, and then do the PFI calculation
+        max_accuracy = np.max(accuracy)
+        max_accuracy_index = np.argmax(accuracy)
+
+        unitList = unitRank[max_accuracy_index:]
+        numRepeat = 30
+        
+        importanceScore = np.zeros((numRepeat, len(unitList)))
+        for unitIndex, unit in enumerate(sorted(unitList)):
+            for rep in range(numRepeat):
+                X_corrupted = X.copy()
+                for bin in range(numBin):
+                    rng.shuffle(X_corrupted[:, numBin * unit + bin])
+                y_pred_corrupted = fitSVM(X_corrupted, y_real)
+                importanceScore[rep,unitIndex] = max_accuracy - balanced_accuracy_score(y_real, y_pred_corrupted)
+
+        importanceScore = np.mean(importanceScore, 0)
+
         balanced_accuracy = [
             balanced_accuracy_score(y_shuffled, y_pred_shuffled),
-            accuracy[0]]
+            accuracy[0],
+            max_accuracy]
 
         balanced_accuracy_AE.append(balanced_accuracy)
         unitRank_AE.append(unitRank)
         accuracy_AE.append(accuracy)
+        importanceScore_AE.append(importanceScore)
+        importanceUnit_AE.append(sorted(unitList))
 
     return {
         'balanced_accuracy_HE': balanced_accuracy_AE[0],
@@ -105,6 +129,10 @@ def EventClassifier(matFilePath, numBin):
         'unitRank_HW': unitRank_AE[1],
         'accuracy_HE' : accuracy_AE[0],
         'accuracy_HW': accuracy_AE[1],
+        'importanceScore_HE' : importanceScore_AE[0],
+        'importanceScore_HW' : importanceScore_AE[1],
+        'importanceUnit_HE' : importanceUnit_AE[0],
+        'importanceUnit_HW' : importanceUnit_AE[1],
         }
 
 def Batch_EventClassifier(baseFolderPath):
@@ -135,4 +163,4 @@ if platform.system() == 'Windows':
     savemat(r'D:\Data\Lobster\Output_AE_RFE.mat', output)
 else:
     output = Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData_4C'))
-    savemat(r'/home/ainav/Data/EventClassificationResult_4C/Output_AE_RFE_max.mat', output)
+    savemat(r'/home/ainav/Data/EventClassificationResult_4C/Output_AE_RFE_max_FI.mat', output)
