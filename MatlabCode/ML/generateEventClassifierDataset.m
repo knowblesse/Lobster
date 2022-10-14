@@ -88,22 +88,22 @@ for u = 1 : numUnit
     clearvars serial_data_kerneled
 
     %% Divide by EVENT Marker
-    IRON = cell(numTrial,1);
+    LICK = cell(numTrial,1);
     IROF = cell(numTrial,1);
 
     [timepoint, ~] = getTimepointFromParsedData(ParsedData); % onset of event (in ms)
     
     for trial = 1 : numTrial
         % Get Peri-Event Window
-        IRON_window = round(TIMEWINDOW + timepoint.first_IRON(trial));
+        LICK_window = round(TIMEWINDOW + timepoint.first_LICK(trial));
         IROF_window = round(TIMEWINDOW + timepoint.valid_IROF(trial));
 
         % Check if the window is out of range
-        if (IRON_window(1) >= 1) && (IRON_window(2) <= numel(whole_serial_data))
+        if (LICK_window(1) >= 1) && (LICK_window(2) <= numel(whole_serial_data))
             % Since the index of the whole_serial_data is actual timepoint in ms,
             % retrive the value in the window by index.
-            IRON{trial} = mean(reshape(...
-                whole_serial_data(IRON_window(1)+1 : IRON_window(2)),...
+            LICK{trial} = mean(reshape(...
+                whole_serial_data(LICK_window(1)+1 : LICK_window(2)),...
                 TIMEWINDOW_BIN, binnedDataSize), 1);
         end
 
@@ -115,29 +115,37 @@ for u = 1 : numUnit
     end
     
     %% Separate Avoid and Escape
+    LICK_A = LICK(behaviorResult == 'A');
+    LICK_E = LICK(behaviorResult == 'E');
     IROF_A = IROF(behaviorResult == 'A');
     IROF_E = IROF(behaviorResult == 'E');
     
     %% Remove Empty Data resulted by index out of the range
     % ex. when you generate -8 ~ -6s offset data, -8 sec goes behind the exp start time in the first
     % trial. This usually does not occur in IROF dataset.
-    IRON = IRON(~cellfun('isempty',IRON)); 
+    LICK_A = LICK_A(~cellfun('isempty',LICK_A)); 
+    LICK_E = LICK_E(~cellfun('isempty',LICK_E)); 
     IROF_A = IROF_A(~cellfun('isempty',IROF_A));
     IROF_E = IROF_E(~cellfun('isempty',IROF_E));
     
     %% Save Data
-    if size([IRON;IROF_A;IROF_E], 1) ~= size(X,1) % if the dataset size is reduced because of the index output the range issue, reinitialize the X
-        X = cell(size([IRON;IROF_A;IROF_E], 1), numUnit);
+    % if the dataset size is reduced because of the index output the range issue, reinitialize the X
+    % Main loop of this code is based on unit. So if the index issue occurs, from the first unit, the
+    % size of the X will be changed. From the next unit, since the X size match,, size changing code
+    % part will not run.
+    if size([LICK_A; LICK_E; IROF_A; IROF_E], 1) ~= size(X,1) 
+        X = cell(size([LICK_A; LICK_E; IROF_A; IROF_E], 1), numUnit);
     end
-    X(:,u) = [IRON;IROF_A;IROF_E];
+    X(:,u) = [LICK_A; LICK_E; IROF_A; IROF_E];
 end
 
 %% Generate X array
 X = cell2mat(X);
 
 %% Generate y array
-y = [1*ones(numel(IRON),1);...
-     2*ones(numel(IROF_A),1);...
-     3*ones(numel(IROF_E),1)];
+y = [1*ones(numel(LICK_A),1);...
+     2*ones(numel(LICK_E),1);...
+     3*ones(numel(IROF_A),1);...
+     4*ones(numel(IROF_E),1)];
 fprintf('generateEventClassifierDataset : Complete %s\n',pathname)
 end
