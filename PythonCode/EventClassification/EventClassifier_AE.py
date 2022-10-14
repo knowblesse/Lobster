@@ -160,7 +160,5 @@ def Batch_EventClassifier(baseFolderPath):
 
 if platform.system() == 'Windows':
     output = Batch_EventClassifier(Path(r'D:\Data\Lobster\EventClassificationData_4C'))
-    savemat(r'D:\Data\Lobster\Output_AE_RFE.mat', output)
-else:
     output = Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData_4C'))
     savemat(r'/home/ainav/Data/EventClassificationResult_4C/Output_AE_RFE_max_FI.mat', output)
