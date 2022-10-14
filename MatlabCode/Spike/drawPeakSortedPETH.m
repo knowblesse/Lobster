@@ -8,16 +8,21 @@ arguments
     ax_hist matlab.graphics.axis.Axes
     options.ManualIndex = []
     options.Name char = ''
+    options.Sort = true
 end
 
 numBin = diff(TIMEWINDOW)/TIMEWINDOW_BIN; % number of bins
 
-if isempty(options.ManualIndex)
-    [~, peak_index] = max(zscores, [], 2);
-    [~, ix] = sort(peak_index);
-    sorted_zscores = zscores(ix, :);
+if options.Sort
+    if isempty(options.ManualIndex)
+        [~, peak_index] = max(zscores, [], 2);
+        [~, ix] = sort(peak_index);
+        sorted_zscores = zscores(ix, :);
+    else
+        sorted_zscores = zscores(options.ManualIndex)
+    end
 else
-    sorted_zscores = zscores(options.ManualIndex)
+    sorted_zscores = zscores;
 end
 
 %% Heat Map
