@@ -47,6 +47,7 @@ for f = 1 : numel(workingfile)
         Zscore = struct();
         
         Zscore.valid_IRON = Neurons{n}.zscore.valid_IRON;
+        Zscore.first_LICK = Neurons{n}.zscore.first_LICK;
         Zscore.valid_IROF = Neurons{n}.zscore.valid_IROF;
         
         % use equal number of trials when calculating mean and std for baseline.

@@ -10,48 +10,40 @@ output_IL = output(output.Area == "IL", :);
 unitData = output;
 %unitData = output_IL;
 
-zscore_threshold = 4;
+zscore_threshold = 3;
 bin_size = 80;
-
+first_LICK_zscores = zeros(size(unitData,1), bin_size);
 first_LICK_A_zscores = zeros(size(unitData,1), bin_size);
 first_LICK_E_zscores = zeros(size(unitData,1), bin_size);
+valid_IROF_zscores = zeros(size(unitData,1), bin_size);
 valid_IROF_A_zscores = zeros(size(unitData,1), bin_size);
 valid_IROF_E_zscores = zeros(size(unitData,1), bin_size);
 
-responsive = zeros(size(unitData,1),4);
+responsive = zeros(size(unitData,1),6);
 
-for i = 1 : size(unitData, 1)        
+for i = 1 : size(unitData, 1)
+    first_LICK_zscores(i,:) = unitData.Zscore{i}.first_LICK;
     first_LICK_A_zscores(i, :) = unitData.Zscore{i}.first_LICK_A;
     first_LICK_E_zscores(i, :) = unitData.Zscore{i}.first_LICK_E;
+    valid_IROF_zscores(i,:) = unitData.Zscore{i}.valid_IROF;
     valid_IROF_A_zscores(i, :) = unitData.Zscore{i}.valid_IROF_A;
     valid_IROF_E_zscores(i, :) = unitData.Zscore{i}.valid_IROF_E;
 
-    responsive(i,1) = any(abs(first_LICK_A_zscores(i, :)) > zscore_threshold);
-    responsive(i,2) = any(abs(first_LICK_E_zscores(i, :)) > zscore_threshold);
-    responsive(i,3) = any(abs(valid_IROF_A_zscores(i, :)) > zscore_threshold);
-    responsive(i,4) = any(abs(valid_IROF_E_zscores(i, :)) > zscore_threshold);
+    responsive(i,1) = any(abs(first_LICK_zscores(i,:)) > zscore_threshold);
+    responsive(i,2) = any(abs(first_LICK_A_zscores(i, :)) > zscore_threshold);
+    responsive(i,3) = any(abs(first_LICK_E_zscores(i, :)) > zscore_threshold);
+    responsive(i,4) = any(abs(valid_IROF_zscores(i,:)) > zscore_threshold);
+    responsive(i,5) = any(abs(valid_IROF_A_zscores(i, :)) > zscore_threshold);
+    responsive(i,6) = any(abs(valid_IROF_E_zscores(i, :)) > zscore_threshold);
 end
 fprintf('General Responsive : %.2f %%\n', sum(any(responsive,2)) / size(unitData,1) * 100);
 fprintf('----------------------------------\n')
-fprintf('ALK Responsive : %.2f %%\n', sum(responsive(:,1)) / size(unitData,1)  *100);
-fprintf('ELK Responsive : %.2f %%\n', sum(responsive(:,2)) / size(unitData,1)  *100);
-fprintf('AHW Responsive : %.2f %%\n', sum(responsive(:,3)) / size(unitData, 1) * 100);
-fprintf('EHW Responsive : %.2f %%\n', sum(responsive(:,4)) / size(unitData, 1) * 100);
-
-fprintf('------------Head Entry----------------------\n')
-resp_all = sum(all(responsive(:,1:2), 2));
-resp_any = sum(any(responsive(:,1:2), 2));
-fprintf('Any : %d\n', resp_any);
-fprintf('Avoid Only : %d   %.2f %%\n', sum(responsive(:,1)) - resp_all, (sum(responsive(:,1)) - resp_all) / resp_any * 100);
-fprintf('Escape Only : %d   %.2f %%\n', sum(responsive(:,2)) - resp_all, (sum(responsive(:,2)) - resp_all) / resp_any * 100);
-fprintf('All : %d   %.2f %%\n', resp_all, resp_all / resp_any * 100);
-fprintf('-------------Head Withdrawal---------------------\n')
-resp_all = sum(all(responsive(:,3:4), 2));
-resp_any = sum(any(responsive(:,3:4), 2));
-fprintf('Any : %d\n', resp_any);
-fprintf('Avoid Only : %d   %.2f %%\n', sum(responsive(:,3)) - resp_all, (sum(responsive(:,3)) - resp_all) / resp_any * 100);
-fprintf('Escape Only : %d   %.2f %%\n', sum(responsive(:,4)) - resp_all, (sum(responsive(:,4)) - resp_all) / resp_any * 100);
-fprintf('All : %d   %.2f %%\n', resp_all, resp_all / resp_any * 100);
+fprintf('LK Responsive : %.2f %%\n', sum(responsive(:,1)) / size(unitData,1)  *100);
+fprintf('ALK Responsive : %.2f %%\n', sum(responsive(:,2)) / size(unitData,1)  *100);
+fprintf('ELK Responsive : %.2f %%\n', sum(responsive(:,3)) / size(unitData,1)  *100);
+fprintf('HW Responsive : %.2f %%\n', sum(responsive(:,4)) / size(unitData, 1) * 100);
+fprintf('AHW Responsive : %.2f %%\n', sum(responsive(:,5)) / size(unitData, 1) * 100);
+fprintf('EHW Responsive : %.2f %%\n', sum(responsive(:,6)) / size(unitData, 1) * 100);
 
 clearvars resp_*
 
@@ -64,36 +56,52 @@ bin_center_size = 2; % 2 bins around the onset of the event (= 50ms * 2 = 100ms 
 % 2 : Near Event 0.025
 % 3 : Post Event 0.4875
 
-data = first_LICK_A_zscores(logical(responsive(:,1)), :);
+data = first_LICK_zscores(logical(responsive(:,1)), :);
+[~, peak_index_LICK] = max(data, [], 2); 
+[first_LICK_type_count, ~, first_LICK_type] = histcounts(peak_index_LICK, [1, bin_size/2-bin_center_size+1, bin_size/2+bin_center_size+1, 80]); 
+first_LICK_type_range = cumsum(first_LICK_type_count); 
+array2append = zeros(size(responsive,1),1);
+array2append(logical(responsive(:,1))) = first_LICK_type; 
+output = [output, table(array2append, 'VariableNames', "first_LICK_type")]; 
+
+data = first_LICK_A_zscores(logical(responsive(:,2)), :);
 [~, peak_index_LICK_A] = max(data, [], 2); 
 [first_LICK_A_type_count, ~, first_LICK_A_type] = histcounts(peak_index_LICK_A, [1, bin_size/2-bin_center_size+1, bin_size/2+bin_center_size+1, 80]); 
 first_LICK_A_type_range = cumsum(first_LICK_A_type_count); 
 array2append = zeros(size(responsive,1),1);
-array2append(logical(responsive(:,1))) = first_LICK_A_type; 
+array2append(logical(responsive(:,2))) = first_LICK_A_type; 
 output = [output, table(array2append, 'VariableNames', "first_LICK_A_type")]; 
 
-data = first_LICK_E_zscores(logical(responsive(:,1)), :);
+data = first_LICK_E_zscores(logical(responsive(:,3)), :);
 [~, peak_index_LICK_E] = max(data, [], 2);
 [first_LICK_E_type_count, ~, first_LICK_E_type] = histcounts(peak_index_LICK_E, [1, bin_size/2-bin_center_size+1, bin_size/2+bin_center_size+1, 80]);
 first_LICK_E_type_range = cumsum(first_LICK_E_type_count);
 array2append = zeros(size(responsive,1),1);
-array2append(logical(responsive(:,1))) = first_LICK_E_type;
+array2append(logical(responsive(:,3))) = first_LICK_E_type;
 output = [output, table(array2append, 'VariableNames', "first_LICK_E_type")];
 
-data = valid_IROF_A_zscores(logical(responsive(:,2)), :);
+data = valid_IROF_zscores(logical(responsive(:,4)), :);
+[~, peak_index_IROF] = max(data, [], 2);
+[valid_IROF_type_count, ~, valid_IROF_type] = histcounts(peak_index_IROF, [1, bin_size/2-bin_center_size+1, bin_size/2+bin_center_size+1, 80]);
+valid_IROF_type_range = cumsum(valid_IROF_type_count);
+array2append = zeros(size(responsive,1),1);
+array2append(logical(responsive(:,4))) = valid_IROF_type;
+output = [output, table(array2append, 'VariableNames', "valid_IROF_type")];
+
+data = valid_IROF_A_zscores(logical(responsive(:,5)), :);
 [~, peak_index_IROF_A] = max(data, [], 2);
 [valid_IROF_A_type_count, ~, valid_IROF_A_type] = histcounts(peak_index_IROF_A, [1, bin_size/2-bin_center_size+1, bin_size/2+bin_center_size+1, 80]);
 valid_IROF_A_type_range = cumsum(valid_IROF_A_type_count);
 array2append = zeros(size(responsive,1),1);
-array2append(logical(responsive(:,2))) = valid_IROF_A_type;
+array2append(logical(responsive(:,5))) = valid_IROF_A_type;
 output = [output, table(array2append, 'VariableNames', "valid_IROF_A_type")];
 
-data = valid_IROF_E_zscores(logical(responsive(:,3)), :);
+data = valid_IROF_E_zscores(logical(responsive(:,6)), :);
 [~, peak_index_IROF_E] = max(data, [], 2);
 [valid_IROF_E_type_count, ~, valid_IROF_E_type] = histcounts(peak_index_IROF_E, [1, bin_size/2-bin_center_size+1, bin_size/2+bin_center_size+1, 80]);
 valid_IROF_E_type_range = cumsum(valid_IROF_E_type_count);
 array2append = zeros(size(responsive,1),1);
-array2append(logical(responsive(:,3))) = valid_IROF_E_type;
+array2append(logical(responsive(:,6))) = valid_IROF_E_type;
 output = [output, table(array2append, 'VariableNames', "valid_IROF_E_type")];
 
 %% Draw Peak Sorted PETH - A/E Lick, A/E Head Withdrawal
@@ -327,3 +335,22 @@ ax2.CellLabelFormat = '%0.2f';
 xlabel('Escape Class');
 ylabel('Avoidance Class');
 title('Head Withdrawal');
+
+
+%% Sorted PETH of AHW Class 1 units
+figureSize = [89, 248, 288, 689];
+
+figure('Name', 'SortedPETH_AHW_AHWC1', 'Position', figureSize);
+ax_hm1 = subplot(4,1,1:3);
+ax_hist1 = subplot(4,1,4);
+drawPeakSortedPETH(valid_IROF_A_zscores(output.valid_IROF_A_type == 1, :), [-2000, 2000], 50, ax_hm1, ax_hist1, 'Name', 'AHW-AHWC1');
+ax_hm1.Clipping = 'off';
+ylim(ax_hist1, [-2, 2]);
+
+figure('Name', 'SortedPETH_EHW_AHWC1', 'Position', figureSize);
+ax_hm2 = subplot(4,1,1:3);
+ax_hist2 = subplot(4,1,4);
+drawPeakSortedPETH(valid_IROF_E_zscores(output.valid_IROF_A_type == 1, :), [-2000, 2000], 50, ax_hm2, ax_hist2, 'Name', 'EHW-AHWC1', 'Sort', false);
+ax_hm2.Clipping = 'off';
+ylim(ax_hist2, [-2, 2]);
+
