@@ -106,7 +106,7 @@ def EventClassifier(matFilePath, numBin):
                 X_corrupted = X.copy()
                 for bin in range(numBin):
                     rng.shuffle(X_corrupted[:, numBin * unit + bin])
-                y_pred_corrupted = fitSVM(X_corrupted, y_real)
+                y_pred_corrupted, _ = fitSVM(X_corrupted, y_real)
                 importanceScore[rep,unitIndex] = max_accuracy - balanced_accuracy_score(y_real, y_pred_corrupted)
 
         importanceScore = np.mean(importanceScore, 0)
@@ -140,7 +140,7 @@ def Batch_EventClassifier(baseFolderPath):
     result = []
     tankNames = []
     sessionNames = []
-    balanced_accuracy = np.empty((0,2))
+    balanced_accuracy = np.empty((0,3))
 
     pbar = tqdm(sorted([p for p in baseFolderPath.glob('#*')]))
 
@@ -155,7 +155,7 @@ def Batch_EventClassifier(baseFolderPath):
         result.append(data_)
         balanced_accuracy = np.vstack((balanced_accuracy, data_['balanced_accuracy_HW']))
 
-    print(f"{np.mean(balanced_accuracy, 0)[0]} | {np.mean(balanced_accuracy, 0)[1]}")
+    print(f"{np.mean(balanced_accuracy, 0)[0]} | {np.mean(balanced_accuracy, 0)[1]} | {np.mean(balanced_accuracy, 0)[2]}")
     return {'tankNames' : tankNames, 'result' : result, 'sessionNames': sessionNames}
 
 if platform.system() == 'Windows':
