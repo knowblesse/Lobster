@@ -17,8 +17,6 @@ for session = 1 : 40
 
     otherTank = regexp(TANK_name, '(?<f1>.*?)_distance_.*', 'names');
 
-    
-    % Scripts
     xyPosition = readmatrix(fullfile('D:\Data\Lobster\LocationRegressionResult', strcat(otherTank.f1, 'result.csv')));
 
     data = [data; xyPosition(:,1:2), readmatrix(TANK_location)];
@@ -41,10 +39,54 @@ for i = 1 : numel(locError)
         accumLocationMatrix(round(data(i,1)), round(data(i,2))) + 1;
 end
 
+meanErrorMatrix = accumErrorMatrix ./ accumLocationMatrix;
+
+%% Interpolate error for unknown location
+x = [];
+y = [];
+v = [];
+for row = 1 : 480
+    for col = 1 : 640
+        if ~isnan(meanErrorMatrix(row, col))
+            x = [x, col];
+            y = [y, row]; 
+            v = [v, meanErrorMatrix(row, col)];
+        end
+    end
+end
+
+[xq, yq] = meshgrid(1:640, 1:480);
+vq = griddata(x, y, v, xq, yq, 'natural');
+
+figure(2);
+clf;
+mesh(xq, yq, vq);
+hold on;
+plot3(x, y, v, 'o');
+xlim([1, 640]);
+ylim([1, 480]);
+
+figure(3);
+imagesc(vq);
+colormap 'jet'
+colorbar
+caxis([0, 400]);
+
+figure(4);
+vq(isnan(vq)) = 0;
+imagesc(imgaussfilt(vq, 5, 'FilterSize', 1001));
+colormap 'jet'
+colorbar
+
+
 %% Draw Location
 accumLocationMatrix = zeros(apparatus.height, apparatus.width);
 accumLocationMatrix(300, 300) = 2;
 accumLocationMatrix(300, 340) = 1;
+
+
+figure(1);
+clf;
 
 locationMatrix = imgaussfilt(accumLocationMatrix, 20, 'FilterSize', 1001);
 locationMatrix = locationMatrix ./ max(locationMatrix, [], 'all')  .* max(accumLocationMatrix, [], 'all');
