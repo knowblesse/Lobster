@@ -8,6 +8,9 @@ sessionPaths = sessionPaths(~cellfun('isempty',sessionPaths));
 
 load("Apparatus.mat");
 
+apparatus.mask(315:465, 205:250) = 0;
+apparatus.mask(100:250, 205:250) = 0;
+
 %% Load Data
 % Session
 data = [];
@@ -23,7 +26,6 @@ for session = 1 : 40
 end
 
 %% Draw
-
 % Calc Location Error
 locError = abs(data(:,3) - abs(data(:,5)));
 
@@ -58,26 +60,18 @@ end
 [xq, yq] = meshgrid(1:640, 1:480);
 vq = griddata(x, y, v, xq, yq, 'natural');
 
-figure(2);
-clf;
-mesh(xq, yq, vq);
-hold on;
-plot3(x, y, v, 'o');
-xlim([1, 640]);
-ylim([1, 480]);
-
-figure(3);
+figure(1);
+title('Original Mean Distance L1 Error');
 imagesc(vq);
 colormap 'jet'
 colorbar
 caxis([0, 400]);
 
-figure(4);
+figure(2);
 vq(isnan(vq)) = 0;
-imagesc(imgaussfilt(vq, 5, 'FilterSize', 1001));
+imagesc(imgaussfilt(vq, 5, 'FilterSize', 1001) .* apparatus.mask);
 colormap 'jet'
 colorbar
-
 
 %% Draw Location
 accumLocationMatrix = zeros(apparatus.height, apparatus.width);
