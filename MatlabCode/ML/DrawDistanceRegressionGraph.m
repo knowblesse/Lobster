@@ -1,4 +1,4 @@
-%% LocationRegressorScripts
+%% DrawDistanceRegressionGraph
 
 basePath = 'D:\Data\Lobster\DistanceRegressionResult';
 
@@ -8,11 +8,11 @@ sessionPaths = sessionPaths(~cellfun('isempty',sessionPaths));
 
 load("Apparatus.mat");
 
-apparatus.mask(315:465, 205:250) = 0;
-apparatus.mask(100:250, 205:250) = 0;
-
 %% Load Data
-% Session
+% Concat data from all session
+% Since the distance regression result file does not contain the original
+% location, get location file from LocationRegressionResult folder.
+
 data = [];
 for session = 1 : 40
     TANK_name = cell2mat(sessionPaths{session});
@@ -27,7 +27,7 @@ end
 
 %% Draw
 % Calc Location Error
-locError = abs(data(:,3) - abs(data(:,5)));
+locError = abs(data(:,3) - data(:,5));
 
 % Apparatus Image Size
 accumErrorMatrix = zeros(apparatus.height, apparatus.width);
@@ -43,88 +43,32 @@ end
 
 meanErrorMatrix = accumErrorMatrix ./ accumLocationMatrix;
 
-%% Interpolate error for unknown location
-x = [];
-y = [];
-v = [];
-for row = 1 : 480
-    for col = 1 : 640
-        if ~isnan(meanErrorMatrix(row, col))
-            x = [x, col];
-            y = [y, row]; 
-            v = [v, meanErrorMatrix(row, col)];
-        end
-    end
-end
-
-[xq, yq] = meshgrid(1:640, 1:480);
-vq = griddata(x, y, v, xq, yq, 'natural');
-
-figure(1);
-title('Original Mean Distance L1 Error');
-imagesc(vq);
-colormap 'jet'
-colorbar
-caxis([0, 400]);
-
-figure(2);
-vq(isnan(vq)) = 0;
-imagesc(imgaussfilt(vq, 5, 'FilterSize', 1001) .* apparatus.mask);
-colormap 'jet'
-colorbar
-
-%% Draw Location
-accumLocationMatrix = zeros(apparatus.height, apparatus.width);
-accumLocationMatrix(300, 300) = 2;
-accumLocationMatrix(300, 340) = 1;
-
+%% Location Index
+locationMatrix = imgaussfilt(accumLocationMatrix, 20, 'FilterSize', 1001);
+locationMatrix = locationMatrix .* apparatus.mask;
 
 figure(1);
 clf;
+surf(accumLocationMatrix, 'LineStyle', 'none');
+title('Number of visit in each pixel');
 
-locationMatrix = imgaussfilt(accumLocationMatrix, 20, 'FilterSize', 1001);
-locationMatrix = locationMatrix ./ max(locationMatrix, [], 'all')  .* max(accumLocationMatrix, [], 'all');
-locationMatrix = locationMatrix .* apparatus.mask;
-
-figure(4);
+figure(2);
 clf;
 imshow(apparatus.image);
 hold on;
 colormap jet;
 imagesc(locationMatrix, 'AlphaData', 0.5*ones(apparatus.height, apparatus.width));
 contour(locationMatrix, 30, 'LineWidth',3);
-scatter(300, 300, 'r');
-scatter(340, 300, 'b');
 title('Proportion of location');
 
-
-% Test how location matrix is calculated
-figure(1);
-clf;
-
-surf(accumLocationMatrix, 'LineStyle', 'none');
-zlim([1, 100])
-
-
-%% Draw Error
-errorMatrix = imgaussfilt(accumErrorMatrix, 20, 'FilterSize', 101);
-errorMatrix = errorMatrix .* apparatus.mask;
-figure(5);
-clf;
-imshow(apparatus.image);
-hold on;
-colormap jet;
-imagesc(errorMatrix, 'AlphaData', 0.5*ones(apparatus.height, apparatus.width));
-contour(errorMatrix, 30, 'LineWidth',3);
-title('Proportion of error');
-
-%% Draw Normalized Error
+%% Method 1 : Draw Normalized Error
+errorMatrix = imgaussfilt(accumErrorMatrix, 20, 'FilterSize', 1001);
 normalizedErrorMatrix = errorMatrix ./ locationMatrix;
 normalizedErrorMatrix(isnan(normalizedErrorMatrix(:))) = 0;
 
 normalizedErrorMatrix = normalizedErrorMatrix .* apparatus.mask;
 
-figure(6);
+figure(3);
 clf;
 imshow(apparatus.image);
 hold on;
@@ -132,3 +76,43 @@ colormap jet;
 imagesc(normalizedErrorMatrix, 'AlphaData', 0.5*ones(apparatus.height, apparatus.width));
 contour(normalizedErrorMatrix, 25, 'LineWidth',3);
 title('Norm Error');
+
+%% Method 2 : Interpolate error for unknown location
+%meanErrorMatrix = meanErrorMatrix .* apparatus.mask;
+apparatus.mask(100:130, :) = 0;
+x = [];
+y = [];
+v = [];
+for row = 1 : 480
+    for col = 1 : 640
+        if ~isnan(meanErrorMatrix(row, col))
+            if apparatus.mask(row, col) == 1
+                x = [x, col];
+                y = [y, row]; 
+                v = [v, meanErrorMatrix(row, col)];
+            end
+        end
+    end
+end
+
+[xq, yq] = meshgrid(1:640, 1:480);
+f = scatteredInterpolant(x', y', v', 'natural', 'nearest');
+vq = f(xq, yq);
+
+figure(4);
+imagesc(vq);
+title('Original Mean Distance L1 Error');
+colormap 'jet'
+colorbar
+caxis([0, 400]);
+
+figure(5);
+clf;
+vq(isnan(vq)) = 0;
+imshow(apparatus.image);
+hold on;
+colormap 'jet'
+imagesc(imgaussfilt(vq, 15, 'FilterSize', 1001) .* apparatus.mask, 'AlphaData', 0.3*(ones(480, 640)));
+contour(imgaussfilt(vq, 15, 'FilterSize', 1001) .* apparatus.mask, 25, 'LineWidth', 3);
+colorbar
+title('Smoothed Mean Distance L1 Error');
