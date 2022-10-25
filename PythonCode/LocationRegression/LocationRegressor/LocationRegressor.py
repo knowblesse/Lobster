@@ -3,11 +3,8 @@ import numpy as np
 from pathlib import Path
 from scipy.interpolate import interp1d
 from sklearn.model_selection import KFold
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import cv2 as cv
 from tqdm import tqdm
+import platform
 import csv
 from LocationRegressionHelper import *
 import time
@@ -15,27 +12,22 @@ import time
 print("Code is running on : " + ("cuda" if torch.cuda.is_available else "cpu"))
 time.sleep(1)
 
-# Location Regressor Function
-def LocationRegressor(tankPath, outputPath, neural_data_rate, truncatedTime_s, train_epoch, init_lr):
-    #Load Tank
-    tank_name = re.search('#.*',str(tankPath))[0]
-    print(tank_name)
-
+def loadData(tankPath, neural_data_rate, truncatedTime_s):
     # Check if the video file is buttered
     butter_location = [p for p in tankPath.glob('*_buttered.csv')]
 
     if len(butter_location) == 0:
-        raise(BaseException("Can not find a butter file in the current Tank location"))
+        raise (BaseException("Can not find a butter file in the current Tank location"))
     elif len(butter_location) > 1:
-        raise(BaseException("There are multiple files ending with _buttered.csv"))
+        raise (BaseException("There are multiple files ending with _buttered.csv"))
 
     # Check if the neural data file is present
     wholeSessionUnitData_location = [p for p in tankPath.glob('*_wholeSessionUnitData.csv')]
 
     if len(wholeSessionUnitData_location) == 0:
-        raise(BaseException("Can not find a regression data file in the current Tank location"))
+        raise (BaseException("Can not find a regression data file in the current Tank location"))
     elif len(wholeSessionUnitData_location) > 1:
-        raise(BaseException("There are multiple files ending with _wholeSessionUnitData.csv"))
+        raise (BaseException("There are multiple files ending with _wholeSessionUnitData.csv"))
 
     # Check Video FPS
     fpsFileName = tankPath / 'FPS.txt'
@@ -47,31 +39,41 @@ def LocationRegressor(tankPath, outputPath, neural_data_rate, truncatedTime_s, t
 
     # Check if -1 value exist in the butter data
     if np.any(butter_data == -1):
-        raise(BaseException("-1 exist in the butter data. check with the relabeler"))
+        raise (BaseException("-1 exist in the butter data. check with the relabeler"))
 
     # Generate Interpolation function
     intp_r = interp1d(butter_data[:, 0], butter_data[:, 1], kind='linear')
     intp_c = interp1d(butter_data[:, 0], butter_data[:, 2], kind='linear')
-    intp_d = interp1d(butter_data[:, 0], correctRotationOffset(butter_data[:, 3]), kind='linear')
 
     # Find midpoint of each neural data
     #   > If neural data is collected from 0 ~ 0.5 sec, (neural_data_rate=2), then the mid-point of the
     #       neural data is 0.25 sec. The next neural data, which is collected during 0.5~1.0 sec, has
     #       the mid-point of 0.75 sec.
-    midPointTimes = truncatedTime_s + (1/neural_data_rate)*np.arange(neural_data.shape[0]) + 0.5 * (1/neural_data_rate)
+    midPointTimes = truncatedTime_s + (1 / neural_data_rate) * np.arange(neural_data.shape[0]) + 0.5 * (
+                1 / neural_data_rate)
 
     y_r = np.expand_dims(intp_r(midPointTimes * video_frame_rate), 1)
     y_c = np.expand_dims(intp_c(midPointTimes * video_frame_rate), 1)
-    y_d = np.expand_dims(intp_d(midPointTimes * video_frame_rate) % 360, 1)
-    
+
+    return(neural_data, y_r, y_c)
+
+# Location Regressor Function
+def LocationRegressor(tankPath, outputPath, neural_data_rate, truncatedTime_s, train_epoch, init_lr):
+    #Load Tank
+    tank_name = re.search('#.*',str(tankPath))[0]
+    print(tank_name)
+
+    # Load Data
+    neural_data, y_r, y_c = loadData(tankPath, neural_data_rate, truncatedTime_s)
+
     # Dataset Prepared
     X = np.clip(neural_data, -5, 5)
-    y = np.concatenate((y_r, y_c, y_d), axis=1)
+    y = np.concatenate((y_r, y_c), axis=1)
 
     # Run Test
     kf = KFold(n_splits=5, shuffle=True)
-    WholeTestResult = np.zeros([X.shape[0], 9])  # num data x [real row, col, deg, fake predicted row, col, deg, predicted row, col, deg]
-    WholeTestResult[:, :3] = y
+    WholeTestResult = np.zeros([X.shape[0], 6])  # num data x [real row, col, fake predicted row, col, predicted row, col]
+    WholeTestResult[:, :2] = y
 
     # Start training
     device = torch.device("cuda" if torch.cuda.is_available else "cpu")
@@ -87,7 +89,7 @@ def LocationRegressor(tankPath, outputPath, neural_data_rate, truncatedTime_s, t
         y_train = torch.tensor(y[train_index,:], dtype=torch.float32, device=device, requires_grad=False)
         y_test = torch.tensor(y[test_index, :], dtype=torch.float32, device=device, requires_grad=False)
 
-        params = {'input_size':X_train.shape[1], 'device':device, 'output_node':3}
+        params = {'input_size':X_train.shape[1], 'device':device, 'output_node':2}
         net_real = dANN(params).to(device)
         net_fake = dANN(params).to(device)
         net_real.init_weights()
@@ -135,12 +137,10 @@ def LocationRegressor(tankPath, outputPath, neural_data_rate, truncatedTime_s, t
                     testLoss_fake = F.mse_loss(net_fake.forward(X_test), y_test, reduction='none') ** 0.5
                 stats = {'epoch': e,
                          'lr': lr,
-                         'train loss': [round(torch.mean(loss[:,0]).item(),2), round(torch.mean(loss[:,1]).item(),2), round(torch.mean(loss[:,2]).item(),2)],
+                         'train loss': [round(torch.mean(loss[:,0]).item(),2), round(torch.mean(loss[:,1]).item(),2)],
                          'validation loss fake': [round(torch.mean(testLoss_fake[:, 0]).item(), 2),
-                                                  round(torch.mean(testLoss_fake[:, 1]).item(), 2),
-                                                  round(torch.mean(testLoss_fake[:, 2]).item(), 2)],
+                                                  round(torch.mean(testLoss_fake[:, 1]).item(), 2)],
                          'validation loss': [round(torch.mean(testLoss[:, 0]).item(), 2),
-                                             round(torch.mean(testLoss[:, 1]).item(), 2),
                                              round(torch.mean(testLoss[:, 2]).item(), 2)]
                          }
                 pbar.set_postfix(stats)
@@ -151,57 +151,16 @@ def LocationRegressor(tankPath, outputPath, neural_data_rate, truncatedTime_s, t
             fakeFit = net_fake.forward(X_test)
             realFit = net_real.forward(X_test)
 
-        WholeTestResult[test_index,3:6] = fakeFit.to('cpu').numpy()
-        WholeTestResult[test_index,6: ] = realFit.to('cpu').numpy()
+        WholeTestResult[test_index,2:4] = fakeFit.to('cpu').numpy()
+        WholeTestResult[test_index,4:6] = realFit.to('cpu').numpy()
     np.savetxt(str(outputPath / (tank_name + 'result.csv')),WholeTestResult, fmt='%.3f', delimiter=',')
-
-
 def DistanceRegressor(tankPath, outputPath, neural_data_rate, truncatedTime_s, train_epoch, init_lr):
     # Load Tank
     tank_name = re.search('#.*', str(tankPath))[0]
     print(tank_name)
 
-    # Check if the video file is buttered
-    butter_location = [p for p in tankPath.glob('*_buttered.csv')]
-
-    if len(butter_location) == 0:
-        raise (BaseException("Can not find a butter file in the current Tank location"))
-    elif len(butter_location) > 1:
-        raise (BaseException("There are multiple files ending with _buttered.csv"))
-
-    # Check if the neural data file is present
-    wholeSessionUnitData_location = [p for p in tankPath.glob('*_wholeSessionUnitData.csv')]
-
-    if len(wholeSessionUnitData_location) == 0:
-        raise (BaseException("Can not find a regression data file in the current Tank location"))
-    elif len(wholeSessionUnitData_location) > 1:
-        raise (BaseException("There are multiple files ending with _wholeSessionUnitData.csv"))
-
-    # Check Video FPS
-    fpsFileName = tankPath / 'FPS.txt'
-    video_frame_rate = int(np.loadtxt(fpsFileName))
-
-    # Load file
-    butter_data = np.loadtxt(str(butter_location[0]), delimiter='\t')
-    neural_data = np.loadtxt(str(wholeSessionUnitData_location[0]), delimiter=',')
-
-    # Check if -1 value exist in the butter data
-    if np.any(butter_data == -1):
-        raise (BaseException("-1 exist in the butter data. check with the relabeler"))
-
-    # Generate Interpolation function
-    intp_r = interp1d(butter_data[:, 0], butter_data[:, 1], kind='linear')
-    intp_c = interp1d(butter_data[:, 0], butter_data[:, 2], kind='linear')
-
-    # Find midpoint of each neural data
-    #   > If neural data is collected from 0 ~ 0.5 sec, (neural_data_rate=2), then the mid-point of the
-    #       neural data is 0.25 sec. The next neural data, which is collected during 0.5~1.0 sec, has
-    #       the mid-point of 0.75 sec.
-    midPointTimes = truncatedTime_s + (1 / neural_data_rate) * np.arange(neural_data.shape[0]) + 0.5 * (
-                1 / neural_data_rate)
-
-    y_r = np.expand_dims(intp_r(midPointTimes * video_frame_rate), 1)
-    y_c = np.expand_dims(intp_c(midPointTimes * video_frame_rate), 1)
+    # Load Data
+    neural_data, y_r, y_c = loadData(tankPath, neural_data_rate, truncatedTime_s)
 
     # Dataset Prepared
     X = np.clip(neural_data, -5, 5)
@@ -293,16 +252,16 @@ def DistanceRegressor(tankPath, outputPath, neural_data_rate, truncatedTime_s, t
     print(f"{tank_name} Complete")
     np.savetxt(str(outputPath / (tank_name + '_distance_result.csv')), WholeTestResult, fmt='%.3f', delimiter=',')
 
-#InputFolder =  Path('/home/ainav/Data/LocationRegressionData')
-#OutputFolder = Path('/home/ainav/Data/LocationRegressionResult')
-#
-#for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
-#    print(f'{i:02} {tank}')
-#    LocationRegressor(tank, OutputFolder, neural_data_rate=2, truncatedTime_s=10, train_epoch=20000, init_lr=0.0001)
-
-InputFolder =  Path('/home/ainav/Data/LocationRegressionData')
-OutputFolder = Path('/home/ainav/Data/DistanceRegressionResult')
-
-for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
-    print(f'{i:02} {tank}')
-    DistanceRegressor(tank, OutputFolder, neural_data_rate=2, truncatedTime_s=10, train_epoch=20000, init_lr=0.0001)
+# LocationRegression
+if platform.system() == 'Windows':
+    InputFolder = Path(r'D:\Data\Lobster\LocationRegressionData')
+    OutputFolder = Path(r'D:\Data\Lobster\LocationRegressionResult')
+    for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
+        print(f'{i:02} {tank}')
+        LocationRegressor(tank, OutputFolder, neural_data_rate=2, truncatedTime_s=10, train_epoch=20000, init_lr=0.0001)
+else:
+    InputFolder = Path('/home/ainav/Data/LocationRegressionData')
+    OutputFolder = Path('/home/ainav/Data/LocationRegressionResult')
+    for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
+        print(f'{i:02} {tank}')
+        LocationRegressor(tank, OutputFolder, neural_data_rate=2, truncatedTime_s=10, train_epoch=20000, init_lr=0.0001)
