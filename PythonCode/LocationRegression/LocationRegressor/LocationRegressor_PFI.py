@@ -73,7 +73,7 @@ def DistanceRegressor(tankPath, outputPath, device, neural_data_rate, truncatedT
     y = ( (y_r - 280) ** 2 + (y_c - 640) ** 2 ) ** 0.5
 
     # Prepare array to store regression result from the test dataset
-    WholeTestResult = np.zeros([X.shape[0], 3])  # num data x [row, col, real, fake, predicted]
+    WholeTestResult = np.zeros([X.shape[0], 5])  # num data x [row, col, true, fake, predicted]
     WholeTestResult[:, :3] = np.hstack((y_r, y_c, y))
 
     # Prepare array to store test dataset from the unit shuffled test dataset
@@ -101,31 +101,25 @@ def DistanceRegressor(tankPath, outputPath, device, neural_data_rate, truncatedT
         net_fake = dANN(params).to(device)
         net_real.init_weights()
         net_fake.init_weights()
-        optimizer_real = torch.optim.SGD(net_real.parameters(), lr=init_lr, momentum=0.7)
-        optimizer_fake = torch.optim.SGD(net_fake.parameters(), lr=init_lr, momentum=0.7)
+        optimizer_real = torch.optim.SGD(net_real.parameters(), lr=init_lr, momentum=0.6)
+        optimizer_fake = torch.optim.SGD(net_fake.parameters(), lr=init_lr, momentum=0.6)
+        scheduler_real = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_real, patience=200, cooldown=100)
+        scheduler_fake = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_fake, patience=200, cooldown=100)
+        earlyStopping = EarlyStopping(model=net_real, model_control=net_fake, tolerance=500, save_best=True)
+
 
         # Train
         pbar = tqdm(np.arange(train_epoch))
-        lr = init_lr
 
         for e in pbar:
-
-            # Update Learning rate (moving learning rate)
-            if e > 10000:
-                for g in optimizer_real.param_groups:
-                    lr = g['lr'] * np.exp(-0.0005)
-                    g['lr'] = lr
-                for g in optimizer_fake.param_groups:
-                    lr = g['lr'] * np.exp(-0.0005)
-                    g['lr'] = lr
-            else:
-                lr = init_lr
+            # Get learning rate
+            lr = [group['lr'] for group in optimizer_real.param_groups]
 
             # Update net_real
             net_real.train()
-            loss = F.mse_loss(net_real.forward(X_train), y_train)
+            loss_real = F.mse_loss(net_real.forward(X_train), y_train)
             optimizer_real.zero_grad()
-            loss.backward()
+            loss_real.backward()
             torch.nn.utils.clip_grad_norm_(net_real.parameters(), 5)
             optimizer_real.step()
 
@@ -137,6 +131,32 @@ def DistanceRegressor(tankPath, outputPath, device, neural_data_rate, truncatedT
             torch.nn.utils.clip_grad_norm_(net_fake.parameters(), 5)
             optimizer_fake.step()
 
+            # Update tqdm part
+            net_real.eval()
+            net_fake.eval()
+            with torch.no_grad():
+                loss_test_real = F.mse_loss(net_real.forward(X_test), y_test)
+                loss_test_fake = F.mse_loss(net_fake.forward(X_test), y_test)
+
+            pbar.set_postfix_str(\
+                    f'lr:{lr[0]:.0e} ' +
+                    f'fk:{torch.mean(loss_fake).item():.2f} ' +
+                    f'pr:{torch.mean(loss_real).item():.2f} ' +
+                    f'fk(Test):{torch.mean(loss_test_fake).item():.2f} ' +
+                    f'pr(Test):{torch.mean(loss_test_real).item():.2f} ')
+            scheduler_real.step(loss_real)
+            scheduler_fake.step(loss_fake)
+
+            # EarlyStopping
+            if(earlyStopping(loss_test_real)):
+                break
+
+        earlyStopping.loadBest()
+
+        with torch.no_grad():
+            loss_test_real = F.mse_loss(net_real.forward(X_test), y_test)
+        print(f'Loss : {torch.mean(loss_test_real).item():.2f}')
+
         # Generate Regression result for test data
         net_real.eval()
         net_fake.eval()
@@ -145,8 +165,8 @@ def DistanceRegressor(tankPath, outputPath, device, neural_data_rate, truncatedT
             realFit = net_real.forward(X_test)
 
 
-        WholeTestResult[test_index, 1:2] = fakeFit.to('cpu').numpy()
-        WholeTestResult[test_index, 2:3] = realFit.to('cpu').numpy()
+        WholeTestResult[test_index, 3:4] = fakeFit.to('cpu').numpy()
+        WholeTestResult[test_index, 4:5] = realFit.to('cpu').numpy()
 
         # Generate Regression result for corrupted test data (PFI)
         for unit in range(numUnit):
@@ -177,9 +197,9 @@ for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
             device=device, 
             neural_data_rate=2, 
             truncatedTime_s=10, 
-            train_epoch=10000, 
-            init_lr=0.0001,
-            PFI_numRepeat=30,
+            train_epoch=20000, 
+            init_lr=0.0005,
+            PFI_numRepeat=50,
             numBin=10
             )
     
