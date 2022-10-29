@@ -23,9 +23,15 @@ for session = 1 : 40
     locError{session} = abs(data{session}(:,3) - data{session}(:,5));
 end
 
+%% Compare Error btw shuffled and predicted
+result1 = table(zeros(40,1), zeros(40,1), 'VariableNames',["Shuffled", "Predicted"]);
+for session = 1 : 40
+    result1.Shuffled(session) = mean(abs(data{session}(:,1) - data{session}(:,2)));
+    result1.Predicted(session) = mean(abs(data{session}(:,1) - data{session}(:,3)));
+end
 
 %% Compare Error btw Nesting zone and Foraging zone
-result = table(zeros(40,1), zeros(40,1), 'VariableNames', ["NestError", "ForagingError"]);
+result2 = table(zeros(40,1), zeros(40,1), 'VariableNames', ["NestError", "ForagingError"]);
 for session = 1 : 40
     nestError = [];
     foragingError = [];
@@ -39,8 +45,8 @@ for session = 1 : 40
             end
         end
     end
-    result.NestError(session) = mean(nestError);
-    result.ForagingError(session) = mean(foragingError);
+    result2.NestError(session) = mean(nestError);
+    result2.ForagingError(session) = mean(foragingError);
 end
 
 
