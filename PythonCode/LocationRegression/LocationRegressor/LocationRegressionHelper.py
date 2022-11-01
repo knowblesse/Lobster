@@ -13,7 +13,7 @@ class dANN(nn.Module):
         self.fc1 = nn.Linear(
             params['input_size'],
             100)
-        self.dp1 = nn.Dropout(0.4)
+        self.dp1 = nn.Dropout(0.3)
         self.fc2 = nn.Linear(
             100,
             50)
@@ -24,6 +24,7 @@ class dANN(nn.Module):
         self.fc4 = nn.Linear(
             25,
             params['output_node'])
+
 
     def forward(self, x):
         x = x.to(self.device)
@@ -44,6 +45,7 @@ class dANN(nn.Module):
         x = self.fc4(x)
 
         return x
+
 
     def init_weights(self):
         nn.init.normal_(self.fc1.weight, mean=0, std=0.2)
