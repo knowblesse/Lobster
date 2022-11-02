@@ -100,13 +100,24 @@ f = scatteredInterpolant(x', y', v', 'natural', 'nearest');
 vq = f(xq, yq);
 
 figure(4);
+clf;
+scatter(x, y, 10, v, 'filled')
+caxis([0, 400]);
+colormap 'jet';
+colorbar;
+caxis([0, 400]);
+xlim([40, 580])
+ylim([120, 450]);
+title('Raw error value matrix');
+
+figure(5);
 imagesc(vq);
 title('Original Mean Distance L1 Error');
 colormap 'jet'
 colorbar
 caxis([0, 400]);
 
-figure(5);
+figure(6);
 clf;
 vq(isnan(vq)) = 0;
 imshow(apparatus.image);

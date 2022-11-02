@@ -3,29 +3,32 @@
 basePath = 'D:\Data\Lobster\DistanceRegressionResult';
 
 filelist = dir(basePath);
-sessionPaths = regexp({filelist.name},'^#\S*.csv','match');
+sessionPaths = regexp({filelist.name},'^#\S*.mat','match');
 sessionPaths = sessionPaths(~cellfun('isempty',sessionPaths));
 
 load("Apparatus.mat");
 
 %% Load Data by session
 data = cell(1,40);
-locError = cell(1,40);
+FI = cell(1,40);
 for session = 1 : 40
     TANK_name = cell2mat(sessionPaths{session});
     TANK_location = char(strcat(basePath, filesep, TANK_name));
-
-    otherTank = regexp(TANK_name, '(?<f1>.*?)_distance_.*', 'names');
-
-    xyPosition = readmatrix(fullfile('D:\Data\Lobster\LocationRegressionResult', strcat(otherTank.f1, 'result.csv')));
-
-    data{session} = [xyPosition(:,1:2), readmatrix(TANK_location)];
-    locError{session} = abs(data{session}(:,3) - data{session}(:,5));
+    load(TANK_location); % PFITestResult, WholeTestResult(row, col, true d , shuffled d, pred d)
+    
+    data{session} = WholeTestResult;
+    FI{session} = PFITestResult;
 end
 
+%% Compare Error btw shuffled and predicted
+result1 = table(zeros(40,1), zeros(40,1), 'VariableNames',["Shuffled", "Predicted"]);
+for session = 1 : 40
+    result1.Shuffled(session) = mean(abs(data{session}(:,3) - data{session}(:,4)));
+    result1.Predicted(session) = mean(abs(data{session}(:,3) - data{session}(:,5)));
+end
 
 %% Compare Error btw Nesting zone and Foraging zone
-result = table(zeros(40,1), zeros(40,1), 'VariableNames', ["NestError", "ForagingError"]);
+result2 = table(zeros(40,1), zeros(40,1), 'VariableNames', ["NestError", "ForagingError"]);
 for session = 1 : 40
     nestError = [];
     foragingError = [];
@@ -39,8 +42,8 @@ for session = 1 : 40
             end
         end
     end
-    result.NestError(session) = mean(nestError);
-    result.ForagingError(session) = mean(foragingError);
+    result2.NestError(session) = mean(nestError);
+    result2.ForagingError(session) = mean(foragingError);
 end
 
 
