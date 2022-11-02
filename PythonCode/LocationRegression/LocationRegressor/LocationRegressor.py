@@ -18,9 +18,10 @@ time.sleep(1)
 
 parser = argparse.ArgumentParser(prog='LocationRegressor_PFI')
 parser.add_argument('regressor')
+parser.add_argument('--removeNestingData', default=False, required=False)
 args = parser.parse_args()
 
-def loadData(tankPath, neural_data_rate, truncatedTime_s):
+def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=False):
     # Check if the video file is buttered
     butter_location = [p for p in tankPath.glob('*_buttered.csv')]
 
@@ -60,19 +61,26 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s):
     midPointTimes = truncatedTime_s + (1 / neural_data_rate) * np.arange(neural_data.shape[0]) + 0.5 * (
                 1 / neural_data_rate)
 
-    y_r = np.expand_dims(intp_r(midPointTimes * video_frame_rate), 1)
-    y_c = np.expand_dims(intp_c(midPointTimes * video_frame_rate), 1)
+    y_r = intp_r(midPointTimes * video_frame_rate)
+    y_c = intp_c(midPointTimes * video_frame_rate)
 
-    return(neural_data, y_r, y_c)
+    # If removeNestingData is set True, remove all points which has the column value smaller than 200
+    if removeNestingData:
+        print('removing nesting')
+        neural_data = neural_data[y_c >= 200, :]
+        y_r = y_r[y_c >= 200]
+        y_c = y_c[y_c >= 200]
 
-def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, truncatedTime_s, train_epoch, init_lr, PFI_numRepeat, numBin):
+    return(neural_data, np.expand_dims(y_r, 1), np.expand_dims(y_c, 1))
+
+def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, truncatedTime_s, train_epoch, init_lr, PFI_numRepeat, numBin, removeNestingData=False):
     rng = default_rng()
     # Load Tank
     tank_name = re.search('#.*', str(tankPath))[0]
     print(tank_name)
 
     # Load Data
-    neural_data, y_r, y_c = loadData(tankPath, neural_data_rate, truncatedTime_s)
+    neural_data, y_r, y_c = loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData)
 
     # Dataset Prepared
     X = np.clip(neural_data, -5, 5)
@@ -213,5 +221,6 @@ for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
             train_epoch=20000,
             init_lr=0.0005,
             PFI_numRepeat=50,
-            numBin=10
+            numBin=10,
+            removeNestingData=args.removeNestingData
             )
