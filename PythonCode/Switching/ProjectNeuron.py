@@ -1,72 +1,61 @@
 from scipy.io import loadmat
 import re
 import numpy as np
-from pathlib import Path
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
-# from  LocationRegression.LocationRegressor.LocationRegressor import loadData
+from  LocationRegression.LocationRegressor.LocationRegressionHelper import loadData
 from pathlib import Path
 import os
 
-
-def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=False):
-    # Check if the video file is buttered
-    butter_location = [p for p in tankPath.glob('*_buttered.csv')]
-
-    if len(butter_location) == 0:
-        raise (BaseException("Can not find a butter file in the current Tank location"))
-    elif len(butter_location) > 1:
-        raise (BaseException("There are multiple files ending with _buttered.csv"))
-
-    # Check if the neural data file is present
-    wholeSessionUnitData_location = [p for p in tankPath.glob('*_wholeSessionUnitData.csv')]
-
-    if len(wholeSessionUnitData_location) == 0:
-        raise (BaseException("Can not find a regression data file in the current Tank location"))
-    elif len(wholeSessionUnitData_location) > 1:
-        raise (BaseException("There are multiple files ending with _wholeSessionUnitData.csv"))
-
-    # Check Video FPS
-    fpsFileName = tankPath / 'FPS.txt'
-    video_frame_rate = int(np.loadtxt(fpsFileName))
-
-    # Load file
-    butter_data = np.loadtxt(str(butter_location[0]), delimiter='\t')
-    neural_data = np.loadtxt(str(wholeSessionUnitData_location[0]), delimiter=',')
-
-    # Check if -1 value exist in the butter data
-    if np.any(butter_data == -1):
-        raise (BaseException("-1 exist in the butter data. check with the relabeler"))
-
-    # Generate Interpolation function
-    intp_r = interp1d(butter_data[:, 0], butter_data[:, 1], kind='linear')
-    intp_c = interp1d(butter_data[:, 0], butter_data[:, 2], kind='linear')
-
-    # Find midpoint of each neural data
-    #   > If neural data is collected from 0 ~ 0.5 sec, (neural_data_rate=2), then the mid-point of the
-    #       neural data is 0.25 sec. The next neural data, which is collected during 0.5~1.0 sec, has
-    #       the mid-point of 0.75 sec.
-    midPointTimes = truncatedTime_s + (1 / neural_data_rate) * np.arange(neural_data.shape[0]) + 0.5 * (
-                1 / neural_data_rate)
-
-    y_r = intp_r(midPointTimes * video_frame_rate)
-    y_c = intp_c(midPointTimes * video_frame_rate)
-
-    # If removeNestingData is set True, remove all points which has the column value smaller than 200
-    if removeNestingData:
-        print('removing nesting')
-        neural_data = neural_data[y_c >= 200, :]
-        y_r = y_r[y_c >= 200]
-        y_c = y_c[y_c >= 200]
-
-    return(neural_data, np.expand_dims(y_r, 1), np.expand_dims(y_c, 1))
-
-tankName = '#21AUG3-211028-165958_PL'
+tankName = '#21JAN2-210428-195618_IL'
 locationDataPath = Path(r"D:/Data/Lobster/LocationRegressionData") / Path(tankName)
 behaviorDataPath = Path(r"D:/Data/Lobster/BehaviorData") / Path(tankName).with_suffix('.mat')
-neural_data, y_r, y_c = loadData(locationDataPath, neural_data_rate=2, truncatedTime_s=10, removeNestingData=False)
+neural_data, y_r, y_c, midPointTimes = loadData(locationDataPath, neural_data_rate=2, truncatedTime_s=10, removeNestingData=False)
+neural_data = np.clip(neural_data, -5, 5)
 behavior_data = loadmat(behaviorDataPath)
+#'Attacks', 'IRs', 'Licks', 'ParsedData', 'Trials'
 
-# Parse behavior Data
-behavior_data['ParsedData']
+# Parse behavior Data and Generate Class Vectors
+IRs = behavior_data['IRs']
+
+isEncounterZone = np.zeros(midPointTimes.shape, dtype=bool)
+isNestingZone = np.zeros(midPointTimes.shape, dtype=bool)
+
+for i in range(len(midPointTimes)):
+    isEncounterZone[i] = np.any((IRs[:, 0] < midPointTimes[i]) & (midPointTimes[i] < IRs[:, 1]))
+    isNestingZone[i] = y_c[i] < 200
+
+zoneClass = (~isNestingZone).astype(int) + isEncounterZone.astype(int)
+# 0 : nesting
+# 1 : foraging
+# 2 : encounter
+
+# PCA
+
+from sklearn.decomposition import PCA
+
+pca = PCA(n_components=2)
+
+neural_data_transformed = pca.fit_transform(neural_data)
+fig1 = plt.figure(1)
+fig1.clf()
+ax1 = fig1.subplots(1,1)
+ax1.scatter(neural_data_transformed[zoneClass==0, 0], neural_data_transformed[zoneClass==0, 1], c='r', s=4)
+ax1.scatter(neural_data_transformed[zoneClass==1, 0], neural_data_transformed[zoneClass==1, 1], c='b', s=4)
+ax1.scatter(neural_data_transformed[zoneClass==2, 0], neural_data_transformed[zoneClass==2, 1], c='g', s=4)
+
+
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+
+lda = LinearDiscriminantAnalysis()
+lda.fit(neural_data, zoneClass)
+neural_data_transformed = lda.transform(neural_data)
+
+fig2 = plt.figure(2)
+fig2.clf()
+ax2 = fig2.subplots(1,1)
+ax2.scatter(neural_data_transformed[zoneClass==0, 0], neural_data_transformed[zoneClass==0, 1], c='r', s=4)
+ax2.scatter(neural_data_transformed[zoneClass==1, 0], neural_data_transformed[zoneClass==1, 1], c='b', s=4)
+ax2.scatter(neural_data_transformed[zoneClass==2, 0], neural_data_transformed[zoneClass==2, 1], c='g', s=4)
+ax2.legend(["Nesting", "Foraging", "Encounter"])
 
