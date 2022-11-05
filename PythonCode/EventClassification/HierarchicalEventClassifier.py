@@ -1,9 +1,11 @@
 """
-EventClassifier_AE
+HierarchicalEventClassifier
 @ 2022 Knowblesse
 Using the preprocessed Neural Ensemble dataset with behavior labels, build and test the SVM.
 Along with the accuracy, feature importance is calculated.
-Divide all dataset into Head Entry and Head Withdrawal, and generate two svm for A/E classification.
+Two classification is done.
+    1) Is it HE or HW?
+    2) Is it data from Avoidance trial or Escape trial?
 - Description
     - .mat dataset must have two variable, X and y. (mind the case of the variable name)
     - using the sklearn SVC class, build and test the SVM
@@ -43,21 +45,92 @@ def EventClassifier(matFilePath, numBin):
             clf.fit(X_train, y_train)
             y_pred[test_index] = clf.predict(X_test)
             weights[test_index, :] = np.abs(clf.coef_)
+            """ weights : 
+                sample1 : w_unit1_time1, w_unit1_time2, ..., w_unit1_time40, w_unit2_time1, ...
+                sample2 : w_unit1_time1, w_unit1_time2, ..., w_unit1_time40, w_unit2_time1, ...
+            """
+                
         return [y_pred, np.mean(weights, axis=0)]
 
     # Load Data
     data = loadmat(str(matFilePath.absolute()))
     X = data.get('X')
-    y = np.squeeze(data.get('y'))
+    y = np.squeeze(data.get('y'))# 1: HE-Avoid, 2: HE-Escape, 3: HW-Avoid, 4: HW-Escape
 
     # Clip
     X = np.clip(X, -5, 5)
 
-    # Divide HE and HW dataset
+    # Divide datasets
+    # 1) HE/HW Classification
+    y_HEHW = np.hstack([
+            np.ones(np.sum(np.any([(y == 1), (y == 2)], 0)), int) * 1,
+            np.ones(np.sum(np.any([(y == 3), (y == 4)], 0)), int) * 2
+            ])
+
+    # 2) Avoidance/Escape Classificaion
     X_HE = X[np.any([(y == 1), (y == 2)], 0), :] # remember that the class label starts from 1
     X_HW = X[np.any([(y == 3), (y == 4)], 0), :]
     y_HE = y[np.any([(y == 1), (y == 2)], 0)]
     y_HW = y[np.any([(y == 3), (y == 4)], 0)]
+
+    ########################################################
+    #             Classification - HE / HW                 #
+    ########################################################
+
+    # Generate Shuffled Data
+    y_real = y_HEHW.copy()
+    y_shuffled = y_HEHW.copy()
+    rng.shuffle(y_shuffled)
+
+    # Run Control Classification
+    y_pred_shuffled, _ = fitSVM(X, y_shuffled)
+
+    # Recursive Feature Elimination
+    unitList = np.arange(int(X.shape[1] / numBin))
+    unitRank = []
+    accuracy = []
+    while len(unitList) > 0:
+        # Generate partial X
+        X_partial = np.empty((X.shape[0], 0))
+        for i in unitList:
+            X_partial = np.hstack((X_partial, X[:, i * numBin: (i + 1) * numBin]))
+        y_pred_partial, weights = fitSVM(X_partial, y_real)
+        accuracy.append(balanced_accuracy_score(y_real, y_pred_partial))
+        # Find the least important unit
+        leastImportantUnitIndex = unitList[np.argmin(np.max(np.reshape(weights, (numBin, -1), order='F'), 0))]
+        unitRank.append(leastImportantUnitIndex)
+        unitList = np.delete(unitList, np.where(unitList == leastImportantUnitIndex))
+
+    # Permutation Feature importance
+    # - first, take only the feature at the highest accuracy, and then do the PFI calculation
+    max_accuracy = np.max(accuracy)
+    max_accuracy_index = np.argmax(accuracy)
+
+    unitList = unitRank[max_accuracy_index:]
+    numRepeat = 30
+    
+    importanceScore = np.zeros((numRepeat, len(unitList)))
+    for unitIndex, unit in enumerate(sorted(unitList)):
+        for rep in range(numRepeat):
+            X_corrupted = X.copy()
+            for bin in range(numBin):
+                rng.shuffle(X_corrupted[:, numBin * unit + bin])
+            y_pred_corrupted, _ = fitSVM(X_corrupted, y_real)
+            importanceScore[rep,unitIndex] = max_accuracy - balanced_accuracy_score(y_real, y_pred_corrupted)
+
+    importanceScore = np.mean(importanceScore, 0)
+    balanced_accuracy_HEHW = [
+        balanced_accuracy_score(y_shuffled, y_pred_shuffled), # shuffled
+        accuracy[0], # real
+        max_accuracy] # best after removing some units
+    unitRank_HEHW = unitRank
+    accuracy_HEHW = accuracy
+    importanceScore_HEHW = importanceScore
+    importanceUnit_HEHW = sorted(unitList)
+
+    ########################################################
+    #               Classification - A/E                   #
+    ########################################################
 
     balanced_accuracy_AE = []
     unitRank_AE = []
@@ -123,14 +196,19 @@ def EventClassifier(matFilePath, numBin):
         importanceUnit_AE.append(sorted(unitList))
 
     return {
-        'balanced_accuracy_HE': balanced_accuracy_AE[0],
-        'balanced_accuracy_HW': balanced_accuracy_AE[1],
-        'unitRank_HE' : unitRank_AE[0],
-        'unitRank_HW': unitRank_AE[1],
-        'accuracy_HE' : accuracy_AE[0],
-        'accuracy_HW': accuracy_AE[1],
-        'importanceScore_HE' : importanceScore_AE[0],
-        'importanceScore_HW' : importanceScore_AE[1],
+        'balanced_accuracy_HEHW' : balanced_accuracy_HEHW,
+        'balanced_accuracy_HE_AE': balanced_accuracy_AE[0],
+        'balanced_accuracy_HW_AE': balanced_accuracy_AE[1],
+        'unitRank_HEHW' : unitRank_HEHW,
+        'unitRank_HE_AE' : unitRank_AE[0],
+        'unitRank_HW_AE': unitRank_AE[1],
+        'accuracy_HEHW' : accuracy_HEHW,
+        'accuracy_HE_AE' : accuracy_AE[0],
+        'accuracy_HW_AE': accuracy_AE[1],
+        'importanceScore_HEHW' : importanceScore_HEHW,
+        'importanceScore_HE_AE' : importanceScore_AE[0],
+        'importanceScore_HW_AE' : importanceScore_AE[1],
+        'importanceUnit_HEHW' : importanceUnit_HEHW,
         'importanceUnit_HE' : importanceUnit_AE[0],
         'importanceUnit_HW' : importanceUnit_AE[1],
         }
@@ -140,7 +218,6 @@ def Batch_EventClassifier(baseFolderPath):
     result = []
     tankNames = []
     sessionNames = []
-    balanced_accuracy = np.empty((0,3))
 
     pbar = tqdm(sorted([p for p in baseFolderPath.glob('#*')]))
 
@@ -153,12 +230,13 @@ def Batch_EventClassifier(baseFolderPath):
         tankNames.append(str(dataPath))
         sessionNames.append(sessionName)
         result.append(data_)
-        balanced_accuracy = np.vstack((balanced_accuracy, data_['balanced_accuracy_HW']))
 
-    print(f"{np.mean(balanced_accuracy, 0)[0]} | {np.mean(balanced_accuracy, 0)[1]} | {np.mean(balanced_accuracy, 0)[2]}")
-    return {'tankNames' : tankNames, 'result' : result, 'sessionNames': sessionNames}
+    return {'tankNames' : tankNames, 'sessionNames': sessionNames, 'result' : result}
 
 if platform.system() == 'Windows':
     output = Batch_EventClassifier(Path(r'D:\Data\Lobster\EventClassificationData_4C'))
+    savemat(r'D:/Data/Lobster/HEC_Result.mat', output)
+else:
     output = Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData_4C'))
-    savemat(r'/home/ainav/Data/EventClassificationResult_4C/Output_AE_RFE_max_FI.mat', output)
+    savemat(r'/home/ainav/Data/HEC_Result.mat', output)
+
