@@ -95,6 +95,8 @@ def EventClassifier(matFilePath, numBin):
         for i in unitList:
             X_partial = np.hstack((X_partial, X[:, i * numBin: (i + 1) * numBin]))
         y_pred_partial, weights = fitSVM(X_partial, y_real)
+        if len(accuracy) == 0: # accuracy of classifier using all unit data
+            HEHW_prediction = [y_real, y_pred_partial]
         accuracy.append(balanced_accuracy_score(y_real, y_pred_partial))
         # Find the least important unit
         leastImportantUnitIndex = unitList[np.argmin(np.max(np.reshape(weights, (numBin, -1), order='F'), 0))]
@@ -131,7 +133,8 @@ def EventClassifier(matFilePath, numBin):
     ########################################################
     #               Classification - A/E                   #
     ########################################################
-
+    
+    AE_prediction = []
     balanced_accuracy_AE = []
     unitRank_AE = []
     accuracy_AE = []
@@ -159,6 +162,8 @@ def EventClassifier(matFilePath, numBin):
             for i in unitList:
                 X_partial = np.hstack((X_partial, X[:, i * numBin: (i + 1) * numBin]))
             y_pred_partial, weights = fitSVM(X_partial, y_real)
+            if len(accuracy) == 0: # accuracy of classifier using all unit data
+                AE_prediction.append([y_real, y_pred_partial])
             accuracy.append(balanced_accuracy_score(y_real, y_pred_partial))
             # Find the least important unit
             leastImportantUnitIndex = unitList[np.argmin(np.max(np.reshape(weights, (numBin, -1), order='F'), 0))]
@@ -196,6 +201,9 @@ def EventClassifier(matFilePath, numBin):
         importanceUnit_AE.append(sorted(unitList))
 
     return {
+        'HEHW_prediction' : HEHW_prediction,
+        'HE_AE_prediction' : AE_prediction[0],
+        'HW_AE_prediction' : AE_prediction[1],
         'balanced_accuracy_HEHW' : balanced_accuracy_HEHW,
         'balanced_accuracy_HE_AE': balanced_accuracy_AE[0],
         'balanced_accuracy_HW_AE': balanced_accuracy_AE[1],
