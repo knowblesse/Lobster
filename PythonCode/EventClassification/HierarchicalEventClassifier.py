@@ -163,7 +163,7 @@ def EventClassifier(matFilePath, numBin):
                 X_partial = np.hstack((X_partial, X[:, i * numBin: (i + 1) * numBin]))
             y_pred_partial, weights = fitSVM(X_partial, y_real)
             if len(accuracy) == 0: # accuracy of classifier using all unit data
-                AE_prediction = np.vstack((y_real, y_shuffled, y_pred_partial)).T
+                AE_prediction.append(np.vstack((y_real, y_shuffled, y_pred_partial)).T)
             accuracy.append(balanced_accuracy_score(y_real, y_pred_partial))
             # Find the least important unit
             leastImportantUnitIndex = unitList[np.argmin(np.max(np.reshape(weights, (numBin, -1), order='F'), 0))]
