@@ -8,10 +8,10 @@ from pathlib import Path
 import os
 from warnings import warn
 
-tankName = '#21AUG3-211028-165958_PL'
-locationDataPath = Path(r"D:/Data/Lobster/LocationRegressionData") / Path(tankName)
+tankName = '#20JUN1-200827-171419_PL'
+locationDataPath = Path(r"D:/Data/Lobster/FineDistanceDataset") / Path(tankName)
 behaviorDataPath = Path(r"D:/Data/Lobster/BehaviorData") / Path(tankName).with_suffix('.mat')
-neural_data, y_r, y_c, midPointTimes = loadData(locationDataPath, neural_data_rate=2, truncatedTime_s=10, removeNestingData=False)
+neural_data, y_r, y_c, midPointTimes = loadData(locationDataPath, neural_data_rate=20, truncatedTime_s=10, removeNestingData=False)
 neural_data = np.clip(neural_data, -5, 5)
 behavior_data = loadmat(behaviorDataPath)
 #'Attacks', 'IRs', 'Licks', 'ParsedData', 'Trials'
@@ -78,9 +78,12 @@ neural_data_transformed = lda.transform(neural_data)
 fig2 = plt.figure(2)
 fig2.clf()
 ax2 = fig2.subplots(1,1)
-ax2.scatter(neural_data_transformed[zoneClass==0, 0], neural_data_transformed[zoneClass==0, 1], c='r', s=4)
-ax2.scatter(neural_data_transformed[zoneClass==1, 0], neural_data_transformed[zoneClass==1, 1], c='b', s=4)
-ax2.scatter(neural_data_transformed[zoneClass==2, 0], neural_data_transformed[zoneClass==2, 1], c='g', s=4)
+ax2.scatter(neural_data_transformed[zoneClass==0, 0], neural_data_transformed[zoneClass==0, 1], edgecolor='r', linewidths=0.5, facecolor='none', s=15)
+ax2.scatter(neural_data_transformed[zoneClass==1, 0], neural_data_transformed[zoneClass==1, 1], edgecolor='g', linewidths=0.5, facecolor='none', s=15)
+ax2.scatter(neural_data_transformed[zoneClass==2, 0], neural_data_transformed[zoneClass==2, 1], edgecolor='b', linewidths=0.5, facecolor='none', s=15)
+ax2.scatter(np.mean(neural_data_transformed[zoneClass==0, 0]), np.mean(neural_data_transformed[zoneClass==0, 1]), facecolor='r', edgecolor='k', marker='*', s=500)
+ax2.scatter(np.mean(neural_data_transformed[zoneClass==1, 0]), np.mean(neural_data_transformed[zoneClass==1, 1]), facecolor='g', edgecolor='k', marker='*', s=500)
+ax2.scatter(np.mean(neural_data_transformed[zoneClass==2, 0]), np.mean(neural_data_transformed[zoneClass==2, 1]), facecolor='b', edgecolor='k', marker='*', s=500)
 ax2.legend(["Nesting", "Foraging", "Encounter"])
 ax2.set_title(tankName + "- LDA")
 
