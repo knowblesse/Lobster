@@ -12,6 +12,7 @@ import time
 from numpy.random import default_rng
 import argparse
 from torch.utils.data import TensorDataset, DataLoader
+import requests
 
 print("Code is running on : " + ("cuda" if torch.cuda.is_available else "cpu"))
 time.sleep(1)
@@ -99,6 +100,7 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
 
     # Prepare array to store test dataset from the unit shuffled test dataset
     numUnit = int(X.shape[1] / numBin)
+    print(f'numUnit : {numUnit}')
     PFITestResult = np.zeros([X.shape[0], numUnit, PFI_numRepeat])
    
     # Setup KFold
@@ -122,20 +124,17 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
         net_fake = dANN(params).to(device)
         net_real.init_weights()
         net_fake.init_weights()
-        optimizer_real = torch.optim.SGD(net_real.parameters(), lr=init_lr, momentum=0.3, nesterov=False)
-        optimizer_fake = torch.optim.SGD(net_fake.parameters(), lr=init_lr, momentum=0.3, nesterov=False)
-        scheduler_real = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_real, patience=200, cooldown=100)
-        scheduler_fake = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_fake, patience=200, cooldown=100)
-        earlyStopping = EarlyStopping(model=net_real, model_control=net_fake, tolerance=500, save_best=True)
+        optimizer_real = torch.optim.SGD(net_real.parameters(), lr=init_lr, momentum=0.3, weight_decay=0.0)
+        optimizer_fake = torch.optim.SGD(net_fake.parameters(), lr=init_lr, momentum=0.3, weight_decay=0.0)
+        scheduler_real = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_real, patience=300, cooldown=100)
+        scheduler_fake = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_fake, patience=300, cooldown=100)
+        earlyStopping = EarlyStopping(model=net_real, model_control=net_fake, tolerance=1000, save_best=True)
 
 
         # Train
         pbar = tqdm(np.arange(train_epoch))
 
         for e in pbar:
-            # Get learning rate
-            lr = [group['lr'] for group in optimizer_real.param_groups]
-
             # Update net_real
             net_real.train()
             loss_real = F.mse_loss(net_real.forward(X_train), y_train)
@@ -152,10 +151,15 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
             torch.nn.utils.clip_grad_norm_(net_fake.parameters(), 5)
             optimizer_fake.step()
 
+            # Get learning rate
+            lr = [group['lr'] for group in optimizer_real.param_groups]
+
             # Update tqdm part
             net_real.eval()
             net_fake.eval()
             with torch.no_grad():
+                loss_train_real = F.mse_loss(net_real.forward(X_train), y_train)
+                loss_train_fake = F.mse_loss(net_fake.forward(X_train_shuffled), y_train)
                 loss_test_real = F.mse_loss(net_real.forward(X_test), y_test)
                 loss_test_fake = F.mse_loss(net_fake.forward(X_test), y_test)
 
@@ -207,8 +211,8 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
     
 device = torch.device("cuda" if torch.cuda.is_available else "cpu")
 
-InputFolder = Path('/home/ubuntu/Data/LocationRegressionData')
-OutputFolder = Path('/home/ubuntu/Data/LocationRegressionResult')
+InputFolder = Path('/home/ubuntu/Data/FineDistanceDataset')
+OutputFolder = Path('/home/ubuntu/Data/FineDistanceResult')
 for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
     print(f'{i:02} {tank}')
     NeuralRegressor(
@@ -216,11 +220,14 @@ for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
             outputPath=OutputFolder,
             dataset=args.regressor,
             device=device,
-            neural_data_rate=2,
+            neural_data_rate=20,
             truncatedTime_s=10,
             train_epoch=20000,
-            init_lr=0.0005,
+            init_lr=0.005,
             PFI_numRepeat=50,
-            numBin=10,
+            numBin=1,
             removeNestingData=args.removeNestingData
             )
+
+requests.get(
+    'https://api.telegram.org/bot5269105245:AAGCdJAZ9fzfazxC8nc-WI6MTSrxn2QC52U/sendMessage?chat_id=5520161508&text=Done')
