@@ -53,20 +53,6 @@ zoneClass = (~isNestingZone).astype(int) + isEncounterZone.astype(int)
 # 1 : foraging
 # 2 : encounter
 
-# PCA
-from sklearn.decomposition import PCA
-
-pca = PCA(n_components=2)
-
-neural_data_transformed = pca.fit_transform(neural_data)
-fig1 = plt.figure(1)
-fig1.clf()
-ax1 = fig1.subplots(1,1)
-ax1.scatter(neural_data_transformed[zoneClass==0, 0], neural_data_transformed[zoneClass==0, 1], c='r', s=4)
-ax1.scatter(neural_data_transformed[zoneClass==1, 0], neural_data_transformed[zoneClass==1, 1], c='b', s=4)
-ax1.scatter(neural_data_transformed[zoneClass==2, 0], neural_data_transformed[zoneClass==2, 1], c='g', s=4)
-ax1.set_title(tankName + "- PCA")
-
 # LDA
 
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
@@ -97,16 +83,24 @@ ax21.scatter(neural_data_transformed[np.logical_and(zoneClass==1, inAE==1), 0], 
 ax21.scatter(neural_data_transformed[np.logical_and(zoneClass==2, inAE==0), 0], neural_data_transformed[np.logical_and(zoneClass==2, inAE==0), 1], c='r', s=18, marker='s', alpha=0.5)
 ax21.scatter(neural_data_transformed[np.logical_and(zoneClass==2, inAE==1), 0], neural_data_transformed[np.logical_and(zoneClass==2, inAE==1), 1], c='g', s=18, marker='s', alpha=0.5)
 
-# Calculate Centroid for Encounter neural vector
-lda_encounter = LinearDiscriminantAnalysis()
-neural_data_transformed_lda = lda_encounter.fit_transform(neural_data, isEncounterZone)
+# Calculate Centroids
+c_nesting = (np.mean(neural_data_transformed[zoneClass==0, 0]), np.mean(neural_data_transformed[zoneClass==0, 1]))
+c_foraging = (np.mean(neural_data_transformed[zoneClass==1, 0]), np.mean(neural_data_transformed[zoneClass==1, 1]))
+c_encounter = (np.mean(neural_data_transformed[zoneClass==2, 0]), np.mean(neural_data_transformed[zoneClass==2, 1]))
 
-fig3 = plt.figure(3)
-fig3.clf()
-ax3 = fig3.subplots(1,1)
-ax3.scatter(neural_data_transformed_lda[isEncounterZone==0], np.ones(np.sum(isEncounterZone==0)), c='r', s=6, )
-ax3.scatter(neural_data_transformed_lda[isEncounterZone==1, 0], 2*np.ones(np.sum(isEncounterZone==1)), c='b', s=6)
-ax3.scatter(np.mean(neural_data_transformed_lda[isEncounterZone==0]), 1, c='k', marker='*')
-ax3.scatter(np.mean(neural_data_transformed_lda[isEncounterZone==1]), 2, c='k', marker='*')
-ax3.legend(["Outside Encounter zone", "Inside Encounter zone"])
+# Hypothesis : if, neural vector during the nesting area is closer to the "state of encounter zone",
+# then the higher chance of avoidance failure on the following trial
 
+# in this part, 'trial' is actual trial number = There is no 0 Trial
+AvoidData = []
+EscapeData = []
+for trial in np.arange(2, numTrial+1):
+    betweenTrials = np.logical_and(Trials[trial-2, 1] <= midPointTimes, midPointTimes <  Trials[trial-1, 0])
+    targetIndex = np.logical_and(isNestingZone, betweenTrials)
+    if np.sum(targetIndex) == 0:
+        continue
+    distance2encounterState = np.mean(np.sum((c_encounter - neural_data_transformed[targetIndex,:]) ** 2, 1) ** .5)
+    if AEResult[trial-1] == 0: # current Trial's result is avoid
+        AvoidData.append(distance2encounterState)
+    else:
+        EscapeData.append(distance2encounterState)
