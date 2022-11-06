@@ -1,7 +1,9 @@
 %% drawEventClassificationGraphs
 % Analyse event classification and draw graphs
-
+loadxkcd;
 load('HEC_Result.mat'); %% HEC Result Data
+sessionNames = string(sessionNames);
+tankNames = string(tankNames);
 
 %% Classifier accuracy
 prismOut_HEHW = table(zeros(40,1), zeros(40,1), zeros(40,1), 'VariableNames', ["Shuffled", "Predicted", "Predicted_Max"]);
@@ -28,112 +30,156 @@ for session = 1 : 40
     prismOut_HW_AE.Predicted_Max(session) = result{session}.balanced_accuracy_HW_AE(3);
 end
 
+
+
 %% Classifier Accuracy Confusion Matrix
 
-fig = figure();
+% third dimension : 1:PL 2 : IL
+confusionMatrix_ctrl = zeros(4,4,2); % shuffled
+confusionMatrix_real = zeros(4,4,2);
+
+for session = 1 : 40
+    % Get Brain area index
+    if contains(tankNames(session), "PL")
+        brainAreaIdx = 1;
+    else
+        brainAreaIdx = 2;
+    end
+
+    for s = 1 : size(result{session}.HEHW_prediction,1) / 2
+        %% Input control data
+        % input Head Entry Data
+        rowIdx = result{session}.HE_AE_prediction(s,1); % actual
+        % if HEHW prediction is equal, then nothing happens.
+        % if HEHW preidction is not equal, add 2 ==> assigned to HW's A or E
+        colIdx = +2*(result{session}.HEHW_prediction(s,2) ~= result{session}.HEHW_prediction(s,1)) ... 
+            + result{session}.HE_AE_prediction(s,2);
+        confusionMatrix_ctrl(rowIdx, colIdx, brainAreaIdx) = confusionMatrix_ctrl(rowIdx, colIdx, brainAreaIdx) + 1;
+
+        r = s + size(result{session}.HEHW_prediction,1) / 2;
+        % input Head Withdrawal Data
+        rowIdx = result{session}.HW_AE_prediction(s,1); % actual
+        % if HEHW prediction is equal, then nothing happens.
+        % if HEHW preidction is not equal, subtract 2 ==> assigned to HE's A or E
+        colIdx = -2*(result{session}.HEHW_prediction(r,2) ~= result{session}.HEHW_prediction(r,1)) ... 
+            + result{session}.HW_AE_prediction(s,2);
+        confusionMatrix_ctrl(rowIdx, colIdx, brainAreaIdx) = confusionMatrix_ctrl(rowIdx, colIdx, brainAreaIdx) + 1;
+        
+        %% Input real data
+        % input Head Entry Data
+        rowIdx = result{session}.HE_AE_prediction(s,1); % actual
+        % if HEHW prediction is equal, then nothing happens.
+        % if HEHW preidction is not equal, add 2 ==> assigned to HW's A or E
+        colIdx = +2*(result{session}.HEHW_prediction(s,3) ~= result{session}.HEHW_prediction(s,1)) ... 
+            + result{session}.HE_AE_prediction(s,3);
+        confusionMatrix_real(rowIdx, colIdx, brainAreaIdx) = confusionMatrix_real(rowIdx, colIdx, brainAreaIdx) + 1;
+
+        r = s + size(result{session}.HEHW_prediction,1) / 2;
+        % input Head Withdrawal Data
+        rowIdx = result{session}.HW_AE_prediction(s,1); % actual
+        % if HEHW prediction is equal, then nothing happens.
+        % if HEHW preidction is not equal, subtract 2 ==> assigned to HE's A or E
+        colIdx = -2*(result{session}.HEHW_prediction(r,3) ~= result{session}.HEHW_prediction(r,1)) ... 
+            + result{session}.HW_AE_prediction(s,3);
+        confusionMatrix_real(rowIdx, colIdx, brainAreaIdx) = confusionMatrix_real(rowIdx, colIdx, brainAreaIdx) + 1;
+    end
+end
+
+%% Draw confusion matrix for all session
+fig = figure('Name', 'Confusion Marix : All');
+
+cmap_All = [...
+    linspace(1, xkcd.purple(1), 100)',...
+    linspace(1, xkcd.purple(2), 100)',...
+    linspace(1, xkcd.purple(3), 100)'];
+
+cMat_ctrl_ = sum(confusionMatrix_ctrl, 3);
+cMat_real_ = sum(confusionMatrix_real, 3);
+cMat_ctrl_ = cMat_ctrl_ ./ repmat(sum(cMat_ctrl_,2), 1,4);
+cMat_real_ = cMat_real_ ./ repmat(sum(cMat_real_,2), 1,4);
+
+subplot(1,2,1);
+ax1 = heatmap({'AHE', 'EHE', 'AHW', 'EHW'}, {'AHE', 'EHE', 'AHW', 'EHW'}, cMat_ctrl_);
+caxis([0, 1]);
+colormap(ax1, cmap_All);
+ax1.CellLabelFormat = '%0.2f';
+xlabel('Decoded');
+ylabel('True');
+title('Shuffled');
+
+subplot(1,2,2);
+ax2 = heatmap({'AHE', 'EHE', 'AHW', 'EHW'}, {'AHE', 'EHE', 'AHW', 'EHW'}, cMat_real_);
+caxis([0, 1]);
+colormap(ax2, cmap_All);
+ax2.CellLabelFormat = '%0.2f';
+xlabel('Decoded');
+ylabel('True');
+title('Original');
+
+%% Draw confusion matrix for each brain area
+fig = figure('Name', 'Confusion Matrix : PL IL');
+
+cmap_PL = [...
+    linspace(1, xkcd.pig_pink(1), 100)',...
+    linspace(1, xkcd.pig_pink(2), 100)',...
+    linspace(1, xkcd.pig_pink(3), 100)'];
+cmap_IL = [...
+    linspace(1, xkcd.sky_blue(1), 100)',...
+    linspace(1, xkcd.sky_blue(2), 100)',...
+    linspace(1, xkcd.sky_blue(3), 100)'];
+
+% PL
+cMat_ctrl_ = confusionMatrix_ctrl(:,:,1);
+cMat_real_ = confusionMatrix_real(:,:,1);
+cMat_ctrl_ = cMat_ctrl_ ./ repmat(sum(cMat_ctrl_,2), 1,4);
+cMat_real_ = cMat_real_ ./ repmat(sum(cMat_real_,2), 1,4);
 
 subplot(2,2,1);
-ax1 = heatmap({'AHE', 'EHE', 'AHW', 'EHW'}, {'AHE', 'EHE', 'AHW', 'EHW'}, squeeze(mean(cm_shuffled, 1)));
+ax1 = heatmap({'AHE', 'EHE', 'AHW', 'EHW'}, {'AHE', 'EHE', 'AHW', 'EHW'}, cMat_ctrl_);
 caxis([0, 1]);
 colormap(ax1, cmap_PL);
 ax1.CellLabelFormat = '%0.2f';
-xlabel('Predicted');
-ylabel('Actual');
+xlabel('Decoded');
+ylabel('True');
 title('Shuffled');
 
 subplot(2,2,2);
-ax2 = heatmap({'AHE', 'EHE', 'AHW', 'EHW'}, {'AHE', 'EHE', 'AHW', 'EHW'}, squeeze(mean(cm_real, 1)));
+ax2 = heatmap({'AHE', 'EHE', 'AHW', 'EHW'}, {'AHE', 'EHE', 'AHW', 'EHW'}, cMat_real_);
 caxis([0, 1]);
 colormap(ax2, cmap_PL);
 ax2.CellLabelFormat = '%0.2f';
-xlabel('Predicted');
-ylabel('Actual');
-title('Real');
+xlabel('Decoded');
+ylabel('True');
+title('Original');
 
-% load("ClassifiedUnitData.mat");
-% numSession = 40;
-% 
-% %% Check PL and IL
-% Region = strings(40,1);
-% for session = 1 : numel(result)
-%     if contains(tankNames(session), "PL")
-%         Region(session) = "PL";
-%     else
-%         Region(session) = "IL";
-%     end
-% end
-% 
-% %% Draw classification confusion matrix
-% cmap_PL = [...
-%     linspace(1, xkcd.pig_pink(1), 100)',...
-%     linspace(1, xkcd.pig_pink(2), 100)',...
-%     linspace(1, xkcd.pig_pink(3), 100)'];
-% cmap_IL = [...
-%     linspace(1, xkcd.sky_blue(1), 100)',...
-%     linspace(1, xkcd.sky_blue(2), 100)',...
-%     linspace(1, xkcd.sky_blue(3), 100)'];
-% 
-% PLdata = result(contains(sessionNames, "PL"));
-% ILdata = result(contains(sessionNames, "IL"));
-% 
-% % PL
-% cm_shuffled = zeros(numel(PLdata), 4, 4);
-% cm_real = zeros(numel(PLdata), 4, 4);
-% for i = 1 : numel(PLdata)
-%     cm = double(PLdata{i}.confusion_matrix);
-%     cm_shuffled(i, :, :) = squeeze(cm(1, :, :)) ./ repmat(sum(squeeze(cm(1, :, :)), 2), 1, 4);
-%     cm_real(i, :, :) = squeeze(cm(2, :, :)) ./ repmat(sum(squeeze(cm(2, :, :)), 2), 1, 4);
-% end
-% 
-% fig = figure();
-% 
-% subplot(2,2,1);
-% ax1 = heatmap({'AHE', 'EHE', 'AHW', 'EHW'}, {'AHE', 'EHE', 'AHW', 'EHW'}, squeeze(mean(cm_shuffled, 1)));
-% caxis([0, 1]);
-% colormap(ax1, cmap_PL);
-% ax1.CellLabelFormat = '%0.2f';
-% xlabel('Predicted');
-% ylabel('Actual');
-% title('Shuffled');
-% 
-% subplot(2,2,2);
-% ax2 = heatmap({'AHE', 'EHE', 'AHW', 'EHW'}, {'AHE', 'EHE', 'AHW', 'EHW'}, squeeze(mean(cm_real, 1)));
-% caxis([0, 1]);
-% colormap(ax2, cmap_PL);
-% ax2.CellLabelFormat = '%0.2f';
-% xlabel('Predicted');
-% ylabel('Actual');
-% title('Real');
-% 
-% % IL
-% cm_shuffled = zeros(numel(ILdata), 4, 4);
-% cm_real = zeros(numel(ILdata), 4, 4);
-% for i = 1 : numel(ILdata)
-%     cm = double(ILdata{i}.confusion_matrix);
-%     cm_shuffled(i, :, :) = squeeze(cm(1, :, :)) ./ repmat(sum(squeeze(cm(1, :, :)), 2), 1, 4);
-%     cm_real(i, :, :) = squeeze(cm(2, :, :)) ./ repmat(sum(squeeze(cm(2, :, :)), 2), 1, 4);
-% end
-% 
-% subplot(2,2,3);
-% ax3 = heatmap({'AHE', 'EHE', 'AHW', 'EHW'}, {'AHE', 'EHE', 'AHW', 'EHW'}, squeeze(mean(cm_shuffled, 1)));
-% caxis([0, 1]);
-% colormap(ax3, cmap_IL);
-% ax3.CellLabelFormat = '%0.2f';
-% xlabel('Predicted');
-% ylabel('Actual');
-% title('Shuffled');
-% 
-% subplot(2,2,4);
-% ax4 = heatmap({'AHE', 'EHE', 'AHW', 'EHW'}, {'AHE', 'EHE', 'AHW', 'EHW'}, squeeze(mean(cm_real, 1)));
-% caxis([0, 1]);
-% ax4.CellLabelFormat = '%0.2f';
-% colormap(ax4, cmap_IL);
-% xlabel('Predicted');
-% ylabel('Actual');
-% title('Real');
-% 
-% set(gca, 'FontName', 'Noto Sans');
-% 
+% IL
+cMat_ctrl_ = confusionMatrix_ctrl(:,:,2);
+cMat_real_ = confusionMatrix_real(:,:,2);
+cMat_ctrl_ = cMat_ctrl_ ./ repmat(sum(cMat_ctrl_,2), 1,4);
+cMat_real_ = cMat_real_ ./ repmat(sum(cMat_real_,2), 1,4);
+
+subplot(2,2,3);
+ax3 = heatmap({'AHE', 'EHE', 'AHW', 'EHW'}, {'AHE', 'EHE', 'AHW', 'EHW'}, cMat_ctrl_);
+caxis([0, 1]);
+colormap(ax3, cmap_IL);
+ax3.CellLabelFormat = '%0.2f';
+xlabel('Decoded');
+ylabel('True');
+title('Shuffled');
+
+subplot(2,2,4);
+ax4 = heatmap({'AHE', 'EHE', 'AHW', 'EHW'}, {'AHE', 'EHE', 'AHW', 'EHW'}, cMat_real_);
+caxis([0, 1]);
+ax4.CellLabelFormat = '%0.2f';
+colormap(ax4, cmap_IL);
+xlabel('Decoded');
+ylabel('True');
+title('Original');
+
+set(gca, 'FontName', 'Noto Sans');
+
+%%
+
 % %% Generate Feature Importance Score data
 % % This data is plotted in Prism
 % % `load("ClassifiedUnitData.mat")` must be loaded first.
