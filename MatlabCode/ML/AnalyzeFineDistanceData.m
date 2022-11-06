@@ -1,50 +1,63 @@
-%% DrawDistanceRegressionGraph
+%% AnalyzeFineDistanceData
 
-basePath = 'D:\Data\Lobster\DistanceRegressionResult';
+basePath = 'D:\Data\Lobster\FineDistanceResult';
 
 filelist = dir(basePath);
-sessionPaths = regexp({filelist.name},'^#\S*.csv','match');
+sessionPaths = regexp({filelist.name},'^#\S*.mat','match');
 sessionPaths = sessionPaths(~cellfun('isempty',sessionPaths));
 
 load("Apparatus.mat");
 px2cm = 0.169;
 
-%% Load Data
-% Concat data from all session
-% Since the distance regression result file does not contain the original
-% location, get location file from LocationRegressionResult folder.
-
-data = [];
+%% Load Data by session
+data = cell(1,40);
 for session = 1 : 40
     TANK_name = cell2mat(sessionPaths{session});
     TANK_location = char(strcat(basePath, filesep, TANK_name));
-
-    otherTank = regexp(TANK_name, '(?<f1>.*?)_distance_.*', 'names');
-
-    xyPosition = readmatrix(fullfile('D:\Data\Lobster\LocationRegressionResult', strcat(otherTank.f1, 'result.csv')));
-
-    data = [data; xyPosition(:,1:2), readmatrix(TANK_location)];
+    load(TANK_location); % PFITestResult, WholeTestResult(row, col, true d , shuffled d, pred d)
+    
+    data{session} = WholeTestResult;
 end
 
-%% Draw
-% Calc Location Error
-locError = abs(data(:,3) - data(:,5));
+%% Compare Error btw shuffled and predicted
+result1 = table(zeros(40,1), zeros(40,1), 'VariableNames',["Shuffled", "Predicted"]);
+for session = 1 : 40
+    result1.Shuffled(session) = mean(abs(data{session}(:,3) - data{session}(:,4))) * px2cm;
+    result1.Predicted(session) = mean(abs(data{session}(:,3) - data{session}(:,5))) * px2cm;
+end
 
+%% Compare Error btw Nesting zone and Foraging zone
+result2 = table(zeros(40,1), zeros(40,1), 'VariableNames', ["NestError", "ForagingError"]);
+for session = 1 : 40
+    locError = abs(data{session}(:,3) - data{session}(:,5));
+    
+    isNesting = data{session}(:,2) < 200;
+    
+    result2.NestError(session) = mean(locError(isNesting)) * px2cm;
+    result2.ForagingError(session) = mean(locError(~isNesting)) * px2cm;
+end
+
+
+%% Draw Error Heatmap
 % Apparatus Image Size
 accumErrorMatrix = zeros(apparatus.height, apparatus.width);
 accumLocationMatrix = zeros(apparatus.height, apparatus.width);
 
-for i = 1 : numel(locError)
-    accumErrorMatrix(round(data(i,1)), round(data(i,2))) = ...
-        accumErrorMatrix(round(data(i,1)), round(data(i,2))) + locError(i);
-    
-    accumLocationMatrix(round(data(i,1)), round(data(i,2))) = ...
-        accumLocationMatrix(round(data(i,1)), round(data(i,2))) + 1;
+% Run through all sessions
+for session = 1 : 40
+    locError = abs(data{session}(:,3) - data{session}(:,5)) * px2cm;
+    for i = 1 : numel(locError)
+        accumErrorMatrix(round(data{session}(i,1)), round(data{session}(i,2))) = ...
+            accumErrorMatrix(round(data{session}(i,1)), round(data{session}(i,2))) + locError(i);
+        
+        accumLocationMatrix(round(data{session}(i,1)), round(data{session}(i,2))) = ...
+            accumLocationMatrix(round(data{session}(i,1)), round(data{session}(i,2))) + 1;
+    end
 end
 
 meanErrorMatrix = accumErrorMatrix ./ accumLocationMatrix;
 
-%% Location Index
+% Location Index
 locationMatrix = imgaussfilt(accumLocationMatrix, 20, 'FilterSize', 1001);
 locationMatrix = locationMatrix .* apparatus.mask;
 
@@ -62,7 +75,7 @@ imagesc(locationMatrix, 'AlphaData', 0.5*ones(apparatus.height, apparatus.width)
 contour(locationMatrix, 30, 'LineWidth',3);
 title('Proportion of location');
 
-%% Method 1 : Draw Normalized Error
+% Method 1 : Draw Normalized Error
 errorMatrix = imgaussfilt(accumErrorMatrix, 20, 'FilterSize', 1001);
 normalizedErrorMatrix = errorMatrix ./ locationMatrix;
 normalizedErrorMatrix(isnan(normalizedErrorMatrix(:))) = 0;
@@ -78,7 +91,7 @@ imagesc(normalizedErrorMatrix, 'AlphaData', 0.5*ones(apparatus.height, apparatus
 contour(normalizedErrorMatrix, 25, 'LineWidth',3);
 title('Norm Error');
 
-%% Method 2 : Interpolate error for unknown location
+% Method 2 : Interpolate error for unknown location
 %meanErrorMatrix = meanErrorMatrix .* apparatus.mask;
 apparatus.mask(100:130, :) = 0;
 x = [];
@@ -128,3 +141,4 @@ imagesc(imgaussfilt(vq, 15, 'FilterSize', 1001) .* apparatus.mask, 'AlphaData', 
 contour(imgaussfilt(vq, 15, 'FilterSize', 1001) .* apparatus.mask, 25, 'LineWidth', 3);
 colorbar
 title('Smoothed Mean Distance L1 Error');
+
