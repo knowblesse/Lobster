@@ -27,14 +27,17 @@ for session = 1 : 40
 end
 
 %% Compare Error btw Nesting zone and Foraging zone
-result2 = table(zeros(40,1), zeros(40,1), 'VariableNames', ["NestError", "ForagingError"]);
+result2 = table(zeros(40,1), zeros(40,1), zeros(40,1), 'VariableNames', ["NestError", "ForagingError", "EncounterError"]);
 for session = 1 : 40
     locError = abs(data{session}(:,3) - data{session}(:,5));
     
     isNesting = data{session}(:,2) < 200;
+    isEncounter = data{session}(:,2) > 530;
+
     
     result2.NestError(session) = mean(locError(isNesting)) * px2cm;
-    result2.ForagingError(session) = mean(locError(~isNesting)) * px2cm;
+    result2.ForagingError(session) = mean(locError(and(~isNesting, ~isEncounter))) * px2cm;
+    result2.EncounterError(session) = mean(locError(isEncounter)) * px2cm;
 end
 
 
