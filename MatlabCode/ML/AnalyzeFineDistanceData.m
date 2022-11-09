@@ -1,6 +1,8 @@
 %% AnalyzeFineDistanceData
 
 basePath = 'D:\Data\Lobster\FineDistanceResult';
+behavDataPath = 'D:\Data\Lobster\BehaviorData';
+datasetDataPath = 'D:\Data\Lobster\FineDistanceDataset';
 
 filelist = dir(basePath);
 sessionPaths = regexp({filelist.name},'^#\S*.mat','match');
@@ -8,15 +10,23 @@ sessionPaths = sessionPaths(~cellfun('isempty',sessionPaths));
 
 load("Apparatus.mat");
 px2cm = 0.169;
+truncatedTimes_s = 10;
+neural_data_rate = 20;
 
 %% Load Data by session
 data = cell(1,40);
+data_behav = cell(1,40);
+fps = zeros(40,1);
+midPointTimes = cell(1,40);
 for session = 1 : 40
     TANK_name = cell2mat(sessionPaths{session});
     TANK_location = char(strcat(basePath, filesep, TANK_name));
     load(TANK_location); % PFITestResult, WholeTestResult(row, col, true d , shuffled d, pred d)
-    
+    load(fullfile(behavDataPath, strcat(TANK_name(1:end-19), '.mat')));
+    fps(session) = readmatrix(fullfile(datasetDataPath, TANK_name(1:end-19), 'FPS.txt'));
     data{session} = WholeTestResult;
+    data_behav{session} = ParsedData;
+    midPointTimes{session} = truncatedTimes_s + (1/neural_data_rate)*(0:size(WholeTestResult,1)-1) + 0.5 * (1/neural_data_rate);
 end
 
 %% Compare Error btw shuffled and predicted
@@ -32,9 +42,22 @@ for session = 1 : 40
     locError = abs(data{session}(:,3) - data{session}(:,5));
     
     isNesting = data{session}(:,2) < 200;
-    isEncounter = data{session}(:,2) > 530;
-
     
+    % check isEncounter by IRsensor
+    isEncounter = false(size(data{session},1),1);
+    for trial = 1 : size(data_behav{session},1)
+        TRON_time = data_behav{session}{trial,1}(1);
+        for idxIR = 1 : size(data_behav{session}{trial,2}, 1)
+            isEncounter = or(isEncounter,...
+                and(...
+                    midPointTimes{session} >= data_behav{session}{trial,2}(1) + TRON_time,...
+                    midPointTimes{session} < data_behav{session}{trial,2}(2) + TRON_time...
+                )');
+        end
+    end
+   % check isEncounter by location
+   %  isEncounter = data{session}(:,2) > 530;
+
     result2.NestError(session) = mean(locError(isNesting)) * px2cm;
     result2.ForagingError(session) = mean(locError(and(~isNesting, ~isEncounter))) * px2cm;
     result2.EncounterError(session) = mean(locError(isEncounter)) * px2cm;
