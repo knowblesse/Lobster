@@ -164,7 +164,8 @@ imshow(apparatus.image);
 hold on;
 colormap 'jet'
 imagesc(imgaussfilt(vq, 15, 'FilterSize', 1001) .* apparatus.mask, 'AlphaData', 0.3*(ones(480, 640)));
-contour(imgaussfilt(vq, 15, 'FilterSize', 1001) .* apparatus.mask, 25, 'LineWidth', 3);
+contour(imgaussfilt(vq, 15, 'FilterSize', 1001) .* apparatus.mask, 8, 'LineWidth', 3);
 colorbar
+caxis([0,30])
 title('Smoothed Mean Distance L1 Error');
 
