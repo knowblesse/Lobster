@@ -14,16 +14,16 @@ class dANN(nn.Module):
         self.fc1 = nn.Linear(
             params['input_size'],
             100)
-        self.dp1 = nn.Dropout(0.3)
+        self.dp1 = nn.Dropout(0.2)
         self.fc2 = nn.Linear(
             100,
             50)
         self.dp2 = nn.Dropout(0.2)
         self.fc3 = nn.Linear(
             50,
-            25)
+            50)
         self.fc4 = nn.Linear(
-            25,
+            50,
             params['output_node'])
 
 
@@ -41,7 +41,7 @@ class dANN(nn.Module):
         x = self.dp2(x)
 
         x = self.fc3(x)
-        x = F.relu(x)
+        x = torch.tanh(x)
 
         x = self.fc4(x)
 
