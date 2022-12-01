@@ -10,7 +10,7 @@ output_IL = output(output.Area == "IL", :);
 unitData = output;
 %unitData = output_IL;
 
-zscore_threshold = 3;
+zscore_threshold = 4;
 bin_size = 80;
 first_LICK_zscores = zeros(size(unitData,1), bin_size);
 first_LICK_A_zscores = zeros(size(unitData,1), bin_size);
@@ -46,6 +46,27 @@ fprintf('AHW Responsive : %.2f %%\n', sum(responsive(:,5)) / size(unitData, 1) *
 fprintf('EHW Responsive : %.2f %%\n', sum(responsive(:,6)) / size(unitData, 1) * 100);
 
 clearvars resp_*
+
+%% New Group and label
+output = [output, table(responsive(:, 1), 'VariableNames', "responsive_HE")];
+output = [output, table(responsive(:, 4), 'VariableNames', "responsive_HW")];
+
+
+[h, p] = ttest2(...
+    Unit.FI_Distance(any(abs(first_LICK_zscores) > 4,2)),...
+    Unit.FI_Distance(~any(abs(first_LICK_zscores) > 4,2)))
+
+[h, p] = ttest2(...
+    Unit.FI_Distance(any(abs(valid_IROF_zscores) > 4,2)),...
+    Unit.FI_Distance(~any(abs(valid_IROF_zscores) > 4,2)))
+
+[h, p] = ttest2(...
+    Unit.FI_Distance(any((valid_IROF_zscores) > 4,2)),...
+    Unit.FI_Distance(~any((valid_IROF_zscores) > 4,2)))
+
+[h, p] = ttest2(...
+    Unit.FI_Distance((mean(valid_IROF_zscores(:, 1:30),2) >  mean(valid_IROF_zscores(:, 51:80),2))),...
+    Unit.FI_Distance(~(mean(valid_IROF_zscores(:, 1:30),2) >  mean(valid_IROF_zscores(:, 51:80),2))))
 
 
 %% Gather units into 3 groups and label them
