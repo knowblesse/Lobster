@@ -47,28 +47,6 @@ fprintf('EHW Responsive : %.2f %%\n', sum(responsive(:,6)) / size(unitData, 1) *
 
 clearvars resp_*
 
-%% New Group and label
-output = [output, table(responsive(:, 1), 'VariableNames', "responsive_HE")];
-output = [output, table(responsive(:, 4), 'VariableNames', "responsive_HW")];
-
-
-[h, p] = ttest2(...
-    Unit.FI_Distance(any(abs(first_LICK_zscores) > 4,2)),...
-    Unit.FI_Distance(~any(abs(first_LICK_zscores) > 4,2)))
-
-[h, p] = ttest2(...
-    Unit.FI_Distance(any(abs(valid_IROF_zscores) > 4,2)),...
-    Unit.FI_Distance(~any(abs(valid_IROF_zscores) > 4,2)))
-
-[h, p] = ttest2(...
-    Unit.FI_Distance(any((valid_IROF_zscores) > 4,2)),...
-    Unit.FI_Distance(~any((valid_IROF_zscores) > 4,2)))
-
-[h, p] = ttest2(...
-    Unit.FI_Distance((mean(valid_IROF_zscores(:, 1:30),2) >  mean(valid_IROF_zscores(:, 51:80),2))),...
-    Unit.FI_Distance(~(mean(valid_IROF_zscores(:, 1:30),2) >  mean(valid_IROF_zscores(:, 51:80),2))))
-
-
 %% Gather units into 3 groups and label them
 bin_size = 80; % 2 sec with 50ms bin size
 bin_center_size = 2; % 2 bins around the onset of the event (= 50ms * 2 = 100ms around the event = 200ms)

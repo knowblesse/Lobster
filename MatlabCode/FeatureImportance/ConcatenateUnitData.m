@@ -37,8 +37,7 @@ Unit = [Unit, table(FI_Event, 'VariableNames', {'FI_Distance'})];
 
 
 %% Feature Importance - Event Classifier
-FI_Event = zeros(size(Unit,1),1);
-Unit = [Unit, table(FI_Event, 'VariableNames', {'FI_Event'})];
+Unit = [Unit, table(zeros(size(Unit,1),1), zeros(size(Unit,1),1), zeros(size(Unit,1),1), 'VariableNames', {'FI_Event_Importance', 'FI_Event_Score', 'FI_Event_Score_Relative'})];
 resultPath = 'D:\Data\Lobster\EventClassificationResult_4C\Output_AE_RFE_max_FI.mat';
 
 load(resultPath);
@@ -48,9 +47,13 @@ sessionNames = string(sessionNames);
 for session = 1 : 40
     unit = result{session}.importanceUnit_HW;
     for i_unit = 1 : numel(unit)
-        %Unit.FI_Event(Unit.Session == sessionNames(session) & Unit.Cell == unit(i_unit)+1) = ...
-        %    result{session}.importanceScore_HW(i_unit);% / (result{session}.balanced_accuracy_HW(3) - result{session}.balanced_accuracy_HW(1));
-        Unit.FI_Event(Unit.Session == sessionNames(session) & Unit.Cell == unit(i_unit)+1) = 1;
+        Unit.FI_Event_Importance(Unit.Session == sessionNames(session) & Unit.Cell == unit(i_unit)+1) = 1;
+
+        Unit.FI_Event_Score(Unit.Session == sessionNames(session) & Unit.Cell == unit(i_unit)+1) = ...
+            result{session}.importanceScore_HW(i_unit);
+
+        Unit.FI_Event_Score_Relative(Unit.Session == sessionNames(session) & Unit.Cell == unit(i_unit)+1) = ...
+            result{session}.importanceScore_HW(i_unit) / (result{session}.balanced_accuracy_HW(3) - result{session}.balanced_accuracy_HW(1));
     end
 end
 
