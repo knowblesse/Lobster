@@ -77,6 +77,15 @@ figure(4);
 clf;
 dendrogram(Z_, 632, "Reorder", optimalleaforder(Z_, Y_, 'Criteria','group'), "ColorThreshold",mean(Z_(end-numCellCluster+1:end-numCellCluster+2,3)));
 
+figure(5);
+clf;
+lines = dendrogram(Z_, 632, "Reorder", optimalleaforder(Z_, Y_, 'Criteria','group'));
+for i = 1 : 631
+    lines(i).Color = 'k';
+     pause(0.01);
+     drawnow;
+end
+
 %% Label Table
 zscoreMatrix = zscoreMatrixHE;
 numCellCluster = 8;
