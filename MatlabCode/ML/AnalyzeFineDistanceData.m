@@ -169,3 +169,188 @@ colorbar
 caxis([0,30])
 title('Smoothed Mean Distance L1 Error');
 
+%% Decoding error between Avoidance and Escape point
+timewindow = [-10, 10];
+numDatapoints = diff(timewindow) * neural_data_rate;
+
+decodingError.HE.A = zeros(0,numDatapoints);
+decodingError.HE.E = zeros(0,numDatapoints);
+decodingError.HW.A = zeros(0,numDatapoints);
+decodingError.HW.E = zeros(0,numDatapoints);
+
+for session = 1 : 40
+    numTrial = size(data_behav{session}, 1);
+    behaviorResult = analyticValueExtractor(data_behav{session}, false, false);
+    for trial = 1 : numTrial 
+        % Get Time variables
+        TRON_time = data_behav{session}{trial,1}(1);
+        Attack_time_r = data_behav{session}{trial,4}(1);
+        nearAttackIRindex = find(data_behav{session}{trial,2}(:,1) < Attack_time_r, 1, 'last');
+        valid_IROF_time = data_behav{session}{trial,2}(nearAttackIRindex,2) + TRON_time;
+        first_LICK_time = data_behav{session}{trial,3}(1) + TRON_time;
+    
+        % Get Regression Result during the time
+        regResult_HE = data{session}(...
+            (midPointTimes{session} >= timewindow(1) + first_LICK_time) &...
+            (midPointTimes{session} < timewindow(2) + first_LICK_time),:);
+
+        regResult_HW = data{session}(...
+            (midPointTimes{session} >= timewindow(1) + valid_IROF_time) &...
+            (midPointTimes{session} < timewindow(2) + valid_IROF_time),:);
+
+        % some sessions' first and last few trial data are cropped.
+        if size(regResult_HE,1) ~= numDatapoints | size(regResult_HW,1) ~= numDatapoints
+            fprintf('Session : %02d | trial : %02d data has wronge size of %03d, %03d\n',...
+                session, trial, size(regResult_HE,1), size(regResult_HW,1));
+            continue;
+        end
+        decodingError.HE.(behaviorResult(trial)) = [decodingError.HE.(behaviorResult(trial));...
+            (regResult_HE(:,3) - regResult_HE(:,5))'*px2cm];
+
+        decodingError.HW.(behaviorResult(trial)) = [decodingError.HW.(behaviorResult(trial));...
+            (regResult_HW(:,3) - regResult_HW(:,5))'*px2cm];
+    end
+end
+
+figure('Name', 'Decoding Error at HE')
+subplot(1,1,1);
+hold on;
+plot(mean(decodingError.HE.A,1), 'b', 'LineWidth',2);
+plot(mean(decodingError.HE.E,1), 'r', 'LineWidth',2);
+line([numDatapoints/2, numDatapoints/2], [-100, 100], 'Color', 'k', 'LineStyle', '--');
+line([0, numDatapoints], [0, 0], 'Color', 'k', 'LineStyle', '--');
+ylim([-20, 20]);
+xticks(linspace(0, numDatapoints, 5));
+xticklabels(string(linspace(timewindow(1), timewindow(2), 5)));
+xlabel('Time(s)');
+ylabel('Error_{actual distance - predicted distance}(cm)')
+legend('Avoid Trials', 'Escape Trials');
+title('Decoding Error at HE');
+
+figure('Name', 'Decoding Error at HW')
+subplot(1,1,1);
+hold on;
+plot(mean(decodingError.HW.A,1), 'b', 'LineWidth',2);
+plot(mean(decodingError.HW.E,1), 'r', 'LineWidth',2);
+line([numDatapoints/2, numDatapoints/2], [-100, 100], 'Color', 'k', 'LineStyle', '--');
+line([0, numDatapoints], [0, 0], 'Color', 'k', 'LineStyle', '--');
+ylim([-20, 20]);
+xticks(linspace(0, numDatapoints, 5));
+xticklabels(string(linspace(timewindow(1), timewindow(2), 5)));
+xlabel('Time(s)');
+ylabel('Error_{actual distance - predicted distance}(cm)')
+legend('Avoid Trials', 'Escape Trials');
+title('Decoding Error at HW');
+
+%% Decoding error during whole trial
+% Show Decoding error across the whole trial
+
+timewindow = [-3, 3];
+
+decodingError.beforeTRON.A = zeros(0, -timewindow(1) * neural_data_rate); % 
+decodingError.beforeTRON.E = zeros(0, -timewindow(1) * neural_data_rate); % 
+decodingError.TRON2HE.A = zeros(0, 240); % 12 sec
+decodingError.TRON2HE.E = zeros(0, 240); % 12 sec
+decodingError.HE2HW.A = zeros(0, 120); % 6 sec
+decodingError.HE2HW.E = zeros(0, 120); % 6 sec
+decodingError.afterHW.A = zeros(0, timewindow(2) * neural_data_rate); % 3 sec
+decodingError.afterHW.E = zeros(0, timewindow(2) * neural_data_rate); % 3 sec
+
+for session = 1 : 40
+    numTrial = size(data_behav{session}, 1);
+    behaviorResult = analyticValueExtractor(data_behav{session}, false, false);
+    for trial = 1 : numTrial 
+        % Get Time variables
+        TRON_time = data_behav{session}{trial,1}(1);
+        Attack_time_r = data_behav{session}{trial,4}(1);
+        nearAttackIRindex = find(data_behav{session}{trial,2}(:,1) < Attack_time_r, 1, 'last');
+        valid_IROF_time = data_behav{session}{trial,2}(nearAttackIRindex,2) + TRON_time;
+        first_LICK_time = data_behav{session}{trial,3}(1) + TRON_time;
+    
+        % Get Regression Result during the time
+        regResult_BeforeTRON = data{session}(...
+            (midPointTimes{session} >= timewindow(1) + TRON_time) &...
+            (midPointTimes{session} < TRON_time),:);
+
+        regResult_TRON2HE = data{session}(...
+            (midPointTimes{session} >= TRON_time) &...
+            (midPointTimes{session} < first_LICK_time),:);
+
+        regResult_HE2HW = data{session}(...
+            (midPointTimes{session} >= first_LICK_time) &...
+            (midPointTimes{session} < valid_IROF_time),:);
+
+        regResult_AfterHW = data{session}(...
+            (midPointTimes{session} >= valid_IROF_time) &...
+            (midPointTimes{session} < timewindow(2) + valid_IROF_time),:);
+
+        % some sessions' first and last few trial data are cropped.
+        if size(regResult_BeforeTRON,1) ~= -timewindow(1)*neural_data_rate | size(regResult_AfterHW,1) ~= timewindow(2)*neural_data_rate
+            fprintf('Session : %02d | trial : %02d data has wronge size.\n',...
+                session, trial);
+            continue;
+        end
+
+        decodingError.beforeTRON.(behaviorResult(trial)) = [...
+            decodingError.beforeTRON.(behaviorResult(trial));...
+            (regResult_BeforeTRON(:,3) - regResult_BeforeTRON(:,5))' * px2cm];
+
+        decodingError.TRON2HE.(behaviorResult(trial)) = [...
+            decodingError.TRON2HE.(behaviorResult(trial));...
+            interp1(...
+                1:size(regResult_TRON2HE,1),...
+                (regResult_TRON2HE(:,3) - regResult_TRON2HE(:,5))' * px2cm,...
+                linspace(1,size(regResult_TRON2HE,1),240)...
+               )...
+            ];
+
+        decodingError.HE2HW.(behaviorResult(trial)) = [...
+            decodingError.HE2HW.(behaviorResult(trial));...
+            interp1(...
+                1:size(regResult_HE2HW,1),...
+                (regResult_HE2HW(:,3) - regResult_HE2HW(:,5))' * px2cm,...
+                linspace(1,size(regResult_HE2HW,1),120)...
+               )...
+            ];
+
+        decodingError.afterHW.(behaviorResult(trial)) = [...
+            decodingError.afterHW.(behaviorResult(trial));...
+            (regResult_AfterHW(:,3) - regResult_AfterHW(:,5))' * px2cm];
+    end
+end
+
+figure('Name', 'Decoding Error')
+subplot(1,1,1);
+hold on;
+plot([...
+    mean(decodingError.beforeTRON.A, 1), ...
+    mean(decodingError.TRON2HE.A,1),...
+    mean(decodingError.HE2HW.A,1),...
+    mean(decodingError.afterHW.A,1)...
+    ], 'b', 'LineWidth',2);
+plot([...
+    mean(decodingError.beforeTRON.E, 1), ...
+    mean(decodingError.TRON2HE.E,1),...
+    mean(decodingError.HE2HW.E,1),...
+    mean(decodingError.afterHW.E,1)...
+    ], 'r', 'LineWidth',2);
+
+line([-timewindow(1)*neural_data_rate, -timewindow(1)*neural_data_rate], [-100, 100], 'Color', 'k', 'LineStyle', '--');
+line([-timewindow(1)*neural_data_rate + 240, -timewindow(1)*neural_data_rate + 240], [-100, 100], 'Color', 'k', 'LineStyle', '--');
+line([-timewindow(1)*neural_data_rate + 360, -timewindow(1)*neural_data_rate + 360], [-100, 100], 'Color', 'k', 'LineStyle', '--');
+
+line([0, 480], [0, 0], 'Color', 'k', 'LineStyle', '--');
+ylim([-20, 20]);
+
+xticks(0 : neural_data_rate:480);
+xticklabels(string(0 : 24));
+
+text(-timewindow(1)*neural_data_rate, 20, 'TRON', 'HorizontalAlignment','center');
+text(-timewindow(1)*neural_data_rate + 240, 20, 'HE', 'HorizontalAlignment','center');
+text(-timewindow(1)*neural_data_rate + 360, 20, 'HW', 'HorizontalAlignment','center');
+
+xlabel('Time(s)');
+ylabel('Error_{actual distance - predicted distance}(cm)')
+legend('Avoid Trials', 'Escape Trials');
+title('Decoding Error');
+
