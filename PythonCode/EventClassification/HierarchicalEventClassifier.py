@@ -22,6 +22,7 @@ from scipy.io import loadmat, savemat
 from tqdm import tqdm
 import re
 import platform
+from sklearn.naive_bayes import BernoulliNB
 
 # Check package version
 if (sklearn.__version__ < '0.23.2'):
@@ -41,16 +42,11 @@ def EventClassifier(matFilePath, numBin):
         for train_index, test_index in loo.split(X):
             X_train, X_test = X[train_index], X[test_index]
             y_train = y[train_index]
-            clf = LinearSVC(penalty='l2', C=0.5, dual=True, max_iter=10000, tol=1e-4)
+            clf = BernoulliNB(fit_prior=False)
             clf.fit(X_train, y_train)
             y_pred[test_index] = clf.predict(X_test)
-            weights[test_index, :] = np.abs(clf.coef_)
-            """ weights : 
-                sample1 : w_unit1_time1, w_unit1_time2, ..., w_unit1_time40, w_unit2_time1, ...
-                sample2 : w_unit1_time1, w_unit1_time2, ..., w_unit1_time40, w_unit2_time1, ...
-            """
-                
-        return [y_pred, np.mean(weights, axis=0)]
+
+        return y_pred
 
     # Load Data
     data = loadmat(str(matFilePath.absolute()))
@@ -83,32 +79,14 @@ def EventClassifier(matFilePath, numBin):
     rng.shuffle(y_shuffled)
 
     # Run Control Classification
-    y_pred_shuffled, _ = fitSVM(X, y_shuffled)
+    y_pred_shuffled = fitSVM(X, y_shuffled)
+    y_pred_real = fitSVM(X, y_real)
+    HEHW_prediction = y_pred_real
+    control_accuracy = balanced_accuracy_score(y_real, y_pred_real)
 
-    # Recursive Feature Elimination
+    # Permutation Feature Importance
     unitList = np.arange(int(X.shape[1] / numBin))
-    unitRank = []
-    accuracy = []
-    while len(unitList) > 0:
-        # Generate partial X
-        X_partial = np.empty((X.shape[0], 0))
-        for i in unitList:
-            X_partial = np.hstack((X_partial, X[:, i * numBin: (i + 1) * numBin]))
-        y_pred_partial, weights = fitSVM(X_partial, y_real)
-        if len(accuracy) == 0: # accuracy of classifier using all unit data
-            HEHW_prediction = np.vstack((y_real, y_shuffled, y_pred_partial)).T
-        accuracy.append(balanced_accuracy_score(y_real, y_pred_partial))
-        # Find the least important unit
-        leastImportantUnitIndex = unitList[np.argmin(np.max(np.reshape(weights, (numBin, -1), order='F'), 0))]
-        unitRank.append(leastImportantUnitIndex)
-        unitList = np.delete(unitList, np.where(unitList == leastImportantUnitIndex))
 
-    # Permutation Feature importance
-    # - first, take only the feature at the highest accuracy, and then do the PFI calculation
-    max_accuracy = np.max(accuracy)
-    max_accuracy_index = np.argmax(accuracy)
-
-    unitList = unitRank[max_accuracy_index:]
     numRepeat = 30
     
     importanceScore = np.zeros((numRepeat, len(unitList)))
@@ -117,16 +95,14 @@ def EventClassifier(matFilePath, numBin):
             X_corrupted = X.copy()
             for bin in range(numBin):
                 rng.shuffle(X_corrupted[:, numBin * unit + bin])
-            y_pred_corrupted, _ = fitSVM(X_corrupted, y_real)
-            importanceScore[rep,unitIndex] = max_accuracy - balanced_accuracy_score(y_real, y_pred_corrupted)
+            y_pred_corrupted = fitSVM(X_corrupted, y_real)
+            importanceScore[rep,unitIndex] = control_accuracy - balanced_accuracy_score(y_real, y_pred_corrupted)
 
     importanceScore = np.mean(importanceScore, 0)
     balanced_accuracy_HEHW = [
         balanced_accuracy_score(y_shuffled, y_pred_shuffled), # shuffled
-        accuracy[0], # real
-        max_accuracy] # best after removing some units
-    unitRank_HEHW = unitRank
-    accuracy_HEHW = accuracy
+        control_accuracy] # original
+
     importanceScore_HEHW = importanceScore
     importanceUnit_HEHW = sorted(unitList)
 
@@ -136,8 +112,6 @@ def EventClassifier(matFilePath, numBin):
     
     AE_prediction = []
     balanced_accuracy_AE = []
-    unitRank_AE = []
-    accuracy_AE = []
     importanceScore_AE = []
     importanceUnit_AE = []
 
@@ -150,32 +124,14 @@ def EventClassifier(matFilePath, numBin):
         rng.shuffle(y_shuffled)
 
         # Run Control Classification
-        y_pred_shuffled, _ = fitSVM(X, y_shuffled)
+        y_pred_shuffled = fitSVM(X, y_shuffled)
+        y_pred_real = fitSVM(X, y_real)
+        AE_prediction.append(y_pred_real)
+        control_accuracy = balanced_accuracy_score(y_real, y_pred_real)
 
         # Recursive Feature Elimination
         unitList = np.arange(int(X.shape[1] / numBin))
-        unitRank = []
-        accuracy = []
-        while len(unitList) > 0:
-            # Generate partial X
-            X_partial = np.empty((X.shape[0], 0))
-            for i in unitList:
-                X_partial = np.hstack((X_partial, X[:, i * numBin: (i + 1) * numBin]))
-            y_pred_partial, weights = fitSVM(X_partial, y_real)
-            if len(accuracy) == 0: # accuracy of classifier using all unit data
-                AE_prediction.append(np.vstack((y_real, y_shuffled, y_pred_partial)).T)
-            accuracy.append(balanced_accuracy_score(y_real, y_pred_partial))
-            # Find the least important unit
-            leastImportantUnitIndex = unitList[np.argmin(np.max(np.reshape(weights, (numBin, -1), order='F'), 0))]
-            unitRank.append(leastImportantUnitIndex)
-            unitList = np.delete(unitList, np.where(unitList == leastImportantUnitIndex))
 
-        # Permutation Feature importance
-        # - first, take only the feature at the highest accuracy, and then do the PFI calculation
-        max_accuracy = np.max(accuracy)
-        max_accuracy_index = np.argmax(accuracy)
-
-        unitList = unitRank[max_accuracy_index:]
         numRepeat = 30
         
         importanceScore = np.zeros((numRepeat, len(unitList)))
@@ -184,19 +140,16 @@ def EventClassifier(matFilePath, numBin):
                 X_corrupted = X.copy()
                 for bin in range(numBin):
                     rng.shuffle(X_corrupted[:, numBin * unit + bin])
-                y_pred_corrupted, _ = fitSVM(X_corrupted, y_real)
-                importanceScore[rep,unitIndex] = max_accuracy - balanced_accuracy_score(y_real, y_pred_corrupted)
+                y_pred_corrupted = fitSVM(X_corrupted, y_real)
+                importanceScore[rep,unitIndex] = control_accuracy - balanced_accuracy_score(y_real, y_pred_corrupted)
 
         importanceScore = np.mean(importanceScore, 0)
 
         balanced_accuracy = [
             balanced_accuracy_score(y_shuffled, y_pred_shuffled),
-            accuracy[0],
-            max_accuracy]
+            control_accuracy]
 
         balanced_accuracy_AE.append(balanced_accuracy)
-        unitRank_AE.append(unitRank)
-        accuracy_AE.append(accuracy)
         importanceScore_AE.append(importanceScore)
         importanceUnit_AE.append(sorted(unitList))
 
@@ -207,12 +160,6 @@ def EventClassifier(matFilePath, numBin):
         'balanced_accuracy_HEHW' : balanced_accuracy_HEHW,
         'balanced_accuracy_HE_AE': balanced_accuracy_AE[0],
         'balanced_accuracy_HW_AE': balanced_accuracy_AE[1],
-        'unitRank_HEHW' : unitRank_HEHW,
-        'unitRank_HE_AE' : unitRank_AE[0],
-        'unitRank_HW_AE': unitRank_AE[1],
-        'accuracy_HEHW' : accuracy_HEHW,
-        'accuracy_HE_AE' : accuracy_AE[0],
-        'accuracy_HW_AE': accuracy_AE[1],
         'importanceScore_HEHW' : importanceScore_HEHW,
         'importanceScore_HE_AE' : importanceScore_AE[0],
         'importanceScore_HW_AE' : importanceScore_AE[1],
@@ -226,6 +173,7 @@ def Batch_EventClassifier(baseFolderPath):
     result = []
     tankNames = []
     sessionNames = []
+    balancedAccuracy = np.zeros([0, 2])
 
     pbar = tqdm(sorted([p for p in baseFolderPath.glob('#*')]))
 
@@ -238,13 +186,15 @@ def Batch_EventClassifier(baseFolderPath):
         tankNames.append(str(dataPath))
         sessionNames.append(sessionName)
         result.append(data_)
-
+        balancedAccuracy = np.vstack(
+            [balancedAccuracy, np.array([data_['balanced_accuracy_HE_AE'][1], data_['balanced_accuracy_HW_AE'][1]])])
+    print(np.mean(balancedAccuracy, 0))
     return {'tankNames' : tankNames, 'sessionNames': sessionNames, 'result' : result}
 
 if platform.system() == 'Windows':
     output = Batch_EventClassifier(Path(r'D:\Data\Lobster\EventClassificationData_4C'))
-    savemat(r'D:/Data/Lobster/HEC_Result.mat', output)
+    savemat(r'D:/Data/Lobster/HEC_Result_BNB.mat', output)
 else:
     output = Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData_4C'))
-    savemat(r'/home/ainav/Data/HEC_Result.mat', output)
+    savemat(r'/home/ainav/Data/HEC_Result_BNB.mat', output)
 
