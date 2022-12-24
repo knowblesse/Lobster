@@ -22,6 +22,7 @@ from scipy.io import loadmat, savemat
 from tqdm import tqdm
 import re
 import platform
+from sklearn.naive_bayes import BernoulliNB
 
 # Check package version
 if (sklearn.__version__ < '0.23.2'):
@@ -51,10 +52,12 @@ def EventClassifier(matFilePath, numBin, numRepeat=10):
             X_test = X[test_index, :]
             y_test = y[test_index]
             
-            clf_real = LinearSVC(penalty='l2', C=0.5, dual=True, max_iter=10000, tol=1e-4)
+            #clf_real = LinearSVC(penalty='l2', C=0.5, dual=True, max_iter=10000, tol=1e-4)
+            clf_real = BernoulliNB(fit_prior=False)
             clf_real.fit(X_train, y_train)
 
-            clf_fake = LinearSVC(penalty='l2', C=0.5, dual=True, max_iter=10000, tol=1e-4)
+            #clf_fake = LinearSVC(penalty='l2', C=0.5, dual=True, max_iter=10000, tol=1e-4)
+            clf_fake = BernoulliNB(fit_prior=False)
             clf_fake.fit(X_train, y_train_shuffle)
 
             WholeTestResult[test_index,0] = y_test
@@ -74,7 +77,7 @@ def EventClassifier(matFilePath, numBin, numRepeat=10):
                 balanced_accuracy_score(WholeTestResult[:,0], WholeTestResult[:,1]),
                 balanced_accuracy_score(WholeTestResult[:,0], WholeTestResult[:,2])]
 
-        return [balanced_accuracy, WholeTestResult, PFITestResult]
+        return [balanced_accuracy, WholeTestResult, PFITestResult, clf_real.feature_log_prob_]
 
 
     # Load Data
@@ -83,7 +86,6 @@ def EventClassifier(matFilePath, numBin, numRepeat=10):
     y = np.squeeze(data.get('y'))# 1: HE-Avoid, 2: HE-Escape, 3: HW-Avoid, 4: HW-Escape
 
     numUnit = int(X.shape[1] / numBin)
-    print(f'numUnit : {numUnit}')
 
     # Clip
     X = np.clip(X, -5, 5)
@@ -107,9 +109,9 @@ def EventClassifier(matFilePath, numBin, numRepeat=10):
 
     # Generate Shuffled Data
 
-    [balanced_accuracy_HEHW, WholeTestResult_HEHW, PFITestResult_HEHW] = fitSVM(X, y_HEHW, numUnit, numRepeat)
-    [balanced_accuracy_HEAE, WholeTestResult_HEAE, PFITestResult_HEAE] = fitSVM(X_HE, y_HE, numUnit, numRepeat)
-    [balanced_accuracy_HWAE, WholeTestResult_HWAE, PFITestResult_HWAE] = fitSVM(X_HW, y_HW, numUnit, numRepeat)
+    [balanced_accuracy_HEHW, WholeTestResult_HEHW, PFITestResult_HEHW, feature_prob_HEHW] = fitSVM(X, y_HEHW, numUnit, numRepeat)
+    [balanced_accuracy_HEAE, WholeTestResult_HEAE, PFITestResult_HEAE, feature_prob_HEAE] = fitSVM(X_HE, y_HE, numUnit, numRepeat)
+    [balanced_accuracy_HWAE, WholeTestResult_HWAE, PFITestResult_HWAE, feature_prob_HWAE] = fitSVM(X_HW, y_HW, numUnit, numRepeat)
 
     return {
         'balanced_accuracy_HEHW' : balanced_accuracy_HEHW,
@@ -120,7 +122,10 @@ def EventClassifier(matFilePath, numBin, numRepeat=10):
         'WholeTestResult_HWAE': WholeTestResult_HWAE,
         'PFITestResult_HEHW': PFITestResult_HEHW,
         'PFITestResult_HEAE': PFITestResult_HEAE,
-        'PFITestResult_HWAE': PFITestResult_HWAE
+        'PFITestResult_HWAE': PFITestResult_HWAE,
+        'feature_prob_HEHW': feature_prob_HEHW,
+        'feature_prob_HEAE': feature_prob_HEAE,
+        'feature_prob_HWAE': feature_prob_HWAE,
         }
 
 def Batch_EventClassifier(baseFolderPath):
@@ -128,6 +133,7 @@ def Batch_EventClassifier(baseFolderPath):
     result = []
     tankNames = []
     sessionNames = []
+    balancedAccuracy = np.zeros([0,2])
 
     pbar = tqdm(sorted([p for p in baseFolderPath.glob('#*')]))
 
@@ -140,13 +146,14 @@ def Batch_EventClassifier(baseFolderPath):
         tankNames.append(str(dataPath))
         sessionNames.append(sessionName)
         result.append(data_)
-
+        balancedAccuracy = np.vstack([balancedAccuracy, np.array([data_['balanced_accuracy_HEAE'][1], data_['balanced_accuracy_HWAE'][1]])])
+    print(np.mean(balancedAccuracy, 0))
     return {'tankNames' : tankNames, 'sessionNames': sessionNames, 'result' : result}
 
 if platform.system() == 'Windows':
     output = Batch_EventClassifier(Path(r'D:\Data\Lobster\EventClassificationData_4C'))
-    savemat(r'D:/Data/Lobster/CV5_HEC_Result.mat', output)
+    savemat(r'D:/Data/Lobster/CV5_HEC_Result_BNB.mat', output)
 else:
     output = Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData_4C'))
-    savemat(r'/home/ainav/Data/CV5_HEC_Result.mat', output)
+    savemat(r'/home/ainav/Data/CV5_HEC_Result_BNB_[-2500,-500].mat', output)
 
