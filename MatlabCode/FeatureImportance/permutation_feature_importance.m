@@ -8,7 +8,9 @@ original_data_accuracy = balanced_accuracy_score(WholeTestResult(:,1), WholeTest
 shuffled_data_accuracy = balanced_accuracy_score(WholeTestResult(:,1), WholeTestResult(:,2));
 
 if (original_data_accuracy <= shuffled_data_accuracy)
-    error("original data accuracy is too low");
+    warning("original data accuracy is too low");
+    pfi = zeros(numUnit,1);
+    return 
 end
 
 pfi = zeros(numUnit,1);
@@ -21,6 +23,7 @@ for unit = 1 : numUnit
     end
     
     pfi(unit) = ...
-        mean(original_data_accuracy - accuracy) / (original_data_accuracy - shuffled_data_accuracy);
+        mean(original_data_accuracy - accuracy);% / (original_data_accuracy - shuffled_data_accuracy);
+    warning('check how pfi is calculated');
 end
 end
