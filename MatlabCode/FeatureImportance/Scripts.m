@@ -1,3 +1,17 @@
+%% Script to check correlation between event classifier score of LOO and 5-fold CV
+pfi_cv5 = [];
+
+accuracy_all = zeros(40,2);
+accuracy_cv5 = zeros(40,2);
+
+for i = 1 : 40
+    %pfi_cv5 = [pfi_cv5; permutation_feature_importance(result_CV5{i}.WholeTestResult_HWAE, result_CV5{i}.PFITestResult_HWAE)];
+    accuracy_all(i, :) = result_All{i}.balanced_accuracy_HW(1:2);
+    accuracy_cv5(i, :) = result_CV5{i}.balanced_accuracy_HWAE;
+end
+
+%% Calculate feature importance score of the Event Classifier
+
 % HEHW = zeros(40, 2);
 % HEAE = zeros(40, 2);
 % HWAE = zeros(40, 2);
