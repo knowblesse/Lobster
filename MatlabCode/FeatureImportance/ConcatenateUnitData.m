@@ -12,7 +12,9 @@ filelist = dir(resultPath);
 sessionPaths = regexp({filelist.name},'^#\S*.mat','match');
 sessionPaths = sessionPaths(~cellfun('isempty',sessionPaths));
 
-FI_Event = zeros(size(Unit,1),1);
+FI_Distance_Ratio = zeros(size(Unit,1),1);
+FI_Distance_Difference = zeros(size(Unit,1),1);
+FI_Distance_Relative = zeros(size(Unit,1),1);
 
 fprintf('session : 00/40');
 for session = 1 : 40
@@ -27,13 +29,21 @@ for session = 1 : 40
     for unit = 1 : size(PFITestResult, 2)
         err_corrupted = mean(mean(abs(WholeTestResult(:,3) - PFITestResult(:,unit, :))));
         
-        FI_factor = (err_corrupted - err_original) / (err_shuffled - err_original);
-        FI_Event(Unit.Session == sessionName & Unit.Cell == unit) = FI_factor;
+        % FI Factor Ratio
+        FI_Distance_Ratio(Unit.Session == sessionName & Unit.Cell == unit) = ...
+            err_corrupted / err_original;
+
+        % FI Factor Difference
+        FI_Distance_Difference(Unit.Session == sessionName & Unit.Cell == unit) = ...
+            err_corrupted - err_original;
+
+        FI_Distance_Relative(Unit.Session == sessionName & Unit.Cell == unit) = ...
+            (err_corrupted - err_original) / (err_shuffled - err_original);
     end
     fprintf('\b\b\b\b\b%02d/40', session);
 end
 
-Unit = [Unit, table(FI_Event, 'VariableNames', {'FI_Distance'})];
+Unit = [Unit, table(FI_Distance_Ratio, FI_Distance_Difference, FI_Distance_Relative, 'VariableNames', {'FI_Distance_Ratio', 'FI_Distance_Difference', 'FI_Distance_Relative'})];
 
 %% Feature Importance - Event Classifier
 Unit = [Unit, table(zeros(size(Unit,1),1), zeros(size(Unit,1),1), zeros(size(Unit,1),1), 'VariableNames', {'FI_Event_Importance', 'FI_Event_Score', 'FI_Event_Score_Relative'})];
