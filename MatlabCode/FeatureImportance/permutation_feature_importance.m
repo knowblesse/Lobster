@@ -1,4 +1,9 @@
-function pfi = permutation_feature_importance(WholeTestResult, PFITestResult)
+function pfi = permutation_feature_importance(WholeTestResult, PFITestResult, options)
+arguments
+    WholeTestResult;
+    PFITestResult;
+    options.method {mustBeMember(options.method, {'difference', 'ratio', 'relative'})} = 'difference';
+end
 
 numDatapoint = size(PFITestResult, 1); 
 numUnit = size(PFITestResult, 2);
@@ -21,9 +26,15 @@ for unit = 1 : numUnit
             WholeTestResult(:,1),...
             PFITestResult(:, unit, rep));
     end
-    
+    if strcmp(options.method, 'difference')
     pfi(unit) = ...
-        mean(original_data_accuracy - accuracy);% / (original_data_accuracy - shuffled_data_accuracy);
-    warning('check how pfi is calculated');
+        mean(original_data_accuracy - accuracy);
+    elseif strcmp(options.method, 'ratio')
+    pfi(unit) = ...
+        mean(accuracy ./ original_data_accuracy);
+    elseif strcmp(options.method, 'relative')
+    pfi(unit) = ...
+        mean(original_data_accuracy - accuracy) / (original_data_accuracy - shuffled_data_accuracy);
+    end
 end
 end

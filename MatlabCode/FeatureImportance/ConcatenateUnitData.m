@@ -46,31 +46,41 @@ end
 Unit = [Unit, table(FI_Distance_Ratio, FI_Distance_Difference, FI_Distance_Relative, 'VariableNames', {'FI_Distance_Ratio', 'FI_Distance_Difference', 'FI_Distance_Relative'})];
 
 %% Feature Importance - Event Classifier
-Unit = [Unit, table(zeros(size(Unit,1),1), zeros(size(Unit,1),1), zeros(size(Unit,1),1), 'VariableNames', {'FI_Event_Importance', 'FI_Event_Score', 'FI_Event_Score_Relative'})];
 resultPath = 'D:\Data\Lobster\EventClassificationResult_4C\Output_AE_RFE_max_FI.mat';
 
 load(resultPath);
 
 sessionNames = string(sessionNames);
 
+FI_Event_Ratio = [];
+FI_Event_Difference = [];
+FI_Event_Relative = [];
+EC_Score = [];
+
 for session = 1 : 40
-    unit = result{session}.importanceUnit_HW;
-    for i_unit = 1 : numel(unit)
-        Unit.FI_Event_Importance(Unit.Session == sessionNames(session) & Unit.Cell == unit(i_unit)+1) = 1;
-
-        Unit.FI_Event_Score(Unit.Session == sessionNames(session) & Unit.Cell == unit(i_unit)+1) = ...
-            result{session}.importanceScore_HW(i_unit);
-
-        Unit.FI_Event_Score_Relative(Unit.Session == sessionNames(session) & Unit.Cell == unit(i_unit)+1) = ...
-            result{session}.importanceScore_HW(i_unit) / (result{session}.balanced_accuracy_HW(3) - result{session}.balanced_accuracy_HW(1));
-    end
+    FI_Event_Ratio = [FI_Event_Ratio; permutation_feature_importance(result{session}.WholeTestResult_HWAE, result{session}.PFITestResult_HWAE, ...
+        'method', 'ratio')];
+    FI_Event_Difference = [FI_Event_Difference; permutation_feature_importance(result{session}.WholeTestResult_HWAE, result{session}.PFITestResult_HWAE, ...
+        'method', 'difference')];
+    FI_Event_Relative = [FI_Event_Relative; permutation_feature_importance(result{session}.WholeTestResult_HWAE, result{session}.PFITestResult_HWAE, ...
+        'method', 'relative')];
+    EC_Score = [EC_Score; repmat(result{session}.balanced_accuracy_HWAE(2), size(result{session}.PFITestResult_HWAE,2),1)];
 end
+
+Unit = [Unit, table(FI_Event_Ratio, FI_Event_Difference, FI_Event_Relative, EC_Score, 'VariableNames', {'FI_Event_Ratio', 'FI_Event_Difference', 'FI_Event_Relative', 'EC_Score'})];
+
+%% Clip FI
+Unit.FI_Distance_Ratio(Unit.FI_Distance_Ratio < 1) = 1; % smaller than 1 means corrupted performs better
+Unit.FI_Distance_Difference(Unit.FI_Distance_Ratio < 0) = 0;
+
+Unit.FI_Event_Ratio(Unit.FI_Event_Ratio > 1) = 1; % larger than 1 means corrupted performs better
+Unit.FI_Event_Difference(Unit.FI_Event_Difference < 0) = 0;
 
 %% 
 
 [h, p] = ttest2(...
-    Unit.FI_Event_Score((Unit.HEClass == 1) & (Unit.EC_Score(:,2) > 0.7) & (Unit.FI_Event_Importance > 0)),...
-    Unit.FI_Event_Score((Unit.HEClass == 2) & (Unit.EC_Score(:,2) > 0.7) & (Unit.FI_Event_Importance > 0)))
+    Unit.FI_Distance_Ratio((Unit.Group_HE == 1) & (Unit.EC_Score > 0.6)),...
+    Unit.FI_Distance_Ratio((Unit.Group_HE == 2) & (Unit.EC_Score > 0.6)))
 
 
 
