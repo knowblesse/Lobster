@@ -1,28 +1,28 @@
 """
 HierarchicalEventClassifier
 @ 2022 Knowblesse
-Using the preprocessed Neural Ensemble dataset with behavior labels, build and test the SVM.
+Using the preprocessed Neural Ensemble dataset with behavior labels, build and test the Bernoulli Naive Bayes Classifier
 Along with the accuracy, feature importance is calculated.
 Two classification is done.
     1) Is it HE or HW?
     2) Is it data from Avoidance trial or Escape trial?
 - Description
     - .mat dataset must have two variable, X and y. (mind the case of the variable name)
-    - using the sklearn SVC class, build and test the SVM
-    - for the evaluation, Leave One Out method is used
+    - using the sklearn BernulliNB class, build and test the classifier
+    - for the evaluation, 5-fold Cross Validation method is used
 """
 import numpy as np
 from numpy.random import default_rng
 from pathlib import Path
 import sklearn
-from sklearn.svm import SVC, LinearSVC
-from sklearn.model_selection import LeaveOneOut
-from sklearn.metrics import balanced_accuracy_score
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import balanced_accuracy_score, log_loss
+from sklearn.naive_bayes import BernoulliNB
+from sklearn.preprocessing import LabelBinarizer
 from scipy.io import loadmat, savemat
 from tqdm import tqdm
 import re
 import platform
-from sklearn.naive_bayes import BernoulliNB
 
 # Check package version
 if (sklearn.__version__ < '0.23.2'):
@@ -31,27 +31,87 @@ if (sklearn.__version__ < '0.23.2'):
 rng = default_rng()
 
 # SVC Event Classifier Function
-def EventClassifier(matFilePath, numBin):
+def EventClassifier(matFilePath, numBin, numRepeat=10):
     # Input : matFilePath : Path object
-    # Define Classification function
-    def fitSVM(X,y):
-        # Leave One Out, and collect all predict result
-        y_pred = np.zeros((len(y),), dtype=int)
-        weights = np.zeros((len(y), X.shape[1]))
-        loo = LeaveOneOut()
-        for train_index, test_index in loo.split(X):
-            X_train, X_test = X[train_index], X[test_index]
-            y_train = y[train_index]
-            clf = BernoulliNB(fit_prior=False)
-            clf.fit(X_train, y_train)
-            y_pred[test_index] = clf.predict(X_test)
 
-        return y_pred
+    # Define classification function 
+    def fitBNB(X, y, numUnit, numRepeat):
+        CV_split = 5
+
+        # Init. array to hold output info
+        WholeTestResult = np.zeros([X.shape[0], 3]) # num data x [true, fake, pred]
+        CrossEntropy = 0
+        PFITestResult = np.zeros([X.shape[0], numUnit, numRepeat])
+        PFICrossEntropy = np.zeros([numUnit,1])
+        FeatureProb = np.zeros([CV_split, 2, X.shape[1]])
+
+        # Binarize y
+        lb = LabelBinarizer()
+        y = lb.fit_transform(y)
+        y = np.ravel(y)
+
+        # Setup KFold
+        kf = StratifiedKFold(n_splits=CV_split, shuffle=True, random_state=930622)
+
+        for cv_index, [train_index, test_index] in enumerate(kf.split(X, y)):
+
+            X_train = X[train_index, :]
+            y_train = y[train_index].copy()
+            y_train_shuffle = y[train_index].copy()
+            rng.shuffle(y_train_shuffle)
+
+            X_test = X[test_index, :]
+            y_test = y[test_index]
+            
+            clf_real = BernoulliNB(fit_prior=False)
+            clf_real.fit(X_train, y_train)
+
+            clf_fake = BernoulliNB(fit_prior=False)
+            clf_fake.fit(X_train, y_train_shuffle)
+
+            WholeTestResult[test_index,0] = y_test
+            WholeTestResult[test_index,1] = clf_fake.predict_proba(X_test)[:,1] # prob. of being 1
+            WholeTestResult[test_index,2] = clf_real.predict_proba(X_test)[:,1] # prob. of being 1
+            
+            # Permutation Feature Importance
+            for unit in range(numUnit):
+                for rep in range(numRepeat):
+                    X_corrupted = X.copy()
+                    # shuffle only selected unit data(=corrupted)
+                    # for bin in range(numBin):
+                    #     rng.shuffle(X_corrupted[:, numBin*unit + bin])
+                    # # evaluate corrupted data
+                    # PFITestResult[test_index, unit, rep] = clf_real.predict_proba(X_corrupted[test_index, :])[:,1]
+                    rng.shuffle(X_corrupted[:, numBin*unit : numBin*(unit+1)])
+                    # evaluate corrupted data
+                    PFITestResult[test_index, unit, rep] = clf_real.predict_proba(X_corrupted[test_index, :])[:,1]
+
+            # Feature Probability
+            FeatureProb[cv_index, :, :] = clf_real.feature_log_prob_
+            clf_real.predict_proba(X_test[1:2, :])
+
+        # Calculate Cross Entropy
+        CrossEntropy = log_loss(WholeTestResult[:,0], WholeTestResult[:,2])
+
+        for unit in range(numUnit):
+            crossEntropy_ = np.zeros([numRepeat])
+            for rep in range(numRepeat):
+                crossEntropy_[rep] = log_loss(WholeTestResult[:,0], PFITestResult[:, unit, rep])
+            PFICrossEntropy[unit] = np.mean(crossEntropy_) - CrossEntropy
+
+        balanced_accuracy = [
+            balanced_accuracy_score(WholeTestResult[:,0], WholeTestResult[:,1] >= 0.5),
+            balanced_accuracy_score(WholeTestResult[:,0], WholeTestResult[:,2] >= 0.5)]
+
+        return [balanced_accuracy, CrossEntropy, WholeTestResult, PFITestResult, PFICrossEntropy, FeatureProb]
+
 
     # Load Data
     data = loadmat(str(matFilePath.absolute()))
     X = data.get('X')
     y = np.squeeze(data.get('y'))# 1: HE-Avoid, 2: HE-Escape, 3: HW-Avoid, 4: HW-Escape
+
+    numUnit = int(X.shape[1] / numBin)
 
     # Clip
     X = np.clip(X, -5, 5)
@@ -70,102 +130,34 @@ def EventClassifier(matFilePath, numBin):
     y_HW = y[np.any([(y == 3), (y == 4)], 0)]
 
     ########################################################
-    #             Classification - HE / HW                 #
+    #                     Classification                   #
     ########################################################
 
     # Generate Shuffled Data
-    y_real = y_HEHW.copy()
-    y_shuffled = y_HEHW.copy()
-    rng.shuffle(y_shuffled)
 
-    # Run Control Classification
-    y_pred_shuffled = fitSVM(X, y_shuffled)
-    y_pred_real = fitSVM(X, y_real)
-    HEHW_prediction = y_pred_real
-    control_accuracy = balanced_accuracy_score(y_real, y_pred_real)
-
-    # Permutation Feature Importance
-    unitList = np.arange(int(X.shape[1] / numBin))
-
-    numRepeat = 30
-    
-    importanceScore = np.zeros((numRepeat, len(unitList)))
-    for unitIndex, unit in enumerate(sorted(unitList)):
-        for rep in range(numRepeat):
-            X_corrupted = X.copy()
-            for bin in range(numBin):
-                rng.shuffle(X_corrupted[:, numBin * unit + bin])
-            y_pred_corrupted = fitSVM(X_corrupted, y_real)
-            importanceScore[rep,unitIndex] = control_accuracy - balanced_accuracy_score(y_real, y_pred_corrupted)
-
-    importanceScore = np.mean(importanceScore, 0)
-    balanced_accuracy_HEHW = [
-        balanced_accuracy_score(y_shuffled, y_pred_shuffled), # shuffled
-        control_accuracy] # original
-
-    importanceScore_HEHW = importanceScore
-    importanceUnit_HEHW = sorted(unitList)
-
-    ########################################################
-    #               Classification - A/E                   #
-    ########################################################
-    
-    AE_prediction = []
-    balanced_accuracy_AE = []
-    importanceScore_AE = []
-    importanceUnit_AE = []
-
-    # Run Classificaion
-    for X, y in zip([X_HE, X_HW], [y_HE, y_HW]):
-
-        # Generate Shuffled Data
-        y_real = y.copy()
-        y_shuffled = y.copy()
-        rng.shuffle(y_shuffled)
-
-        # Run Control Classification
-        y_pred_shuffled = fitSVM(X, y_shuffled)
-        y_pred_real = fitSVM(X, y_real)
-        AE_prediction.append(y_pred_real)
-        control_accuracy = balanced_accuracy_score(y_real, y_pred_real)
-
-        # Recursive Feature Elimination
-        unitList = np.arange(int(X.shape[1] / numBin))
-
-        numRepeat = 30
-        
-        importanceScore = np.zeros((numRepeat, len(unitList)))
-        for unitIndex, unit in enumerate(sorted(unitList)):
-            for rep in range(numRepeat):
-                X_corrupted = X.copy()
-                for bin in range(numBin):
-                    rng.shuffle(X_corrupted[:, numBin * unit + bin])
-                y_pred_corrupted = fitSVM(X_corrupted, y_real)
-                importanceScore[rep,unitIndex] = control_accuracy - balanced_accuracy_score(y_real, y_pred_corrupted)
-
-        importanceScore = np.mean(importanceScore, 0)
-
-        balanced_accuracy = [
-            balanced_accuracy_score(y_shuffled, y_pred_shuffled),
-            control_accuracy]
-
-        balanced_accuracy_AE.append(balanced_accuracy)
-        importanceScore_AE.append(importanceScore)
-        importanceUnit_AE.append(sorted(unitList))
+    [balanced_accuracy_HEHW, CrossEntropy_HEHW, WholeTestResult_HEHW, PFITestResult_HEHW, PFICrossEntropy_HEHW, FeatureProb_HEHW] = fitBNB(X, y_HEHW, numUnit, numRepeat)
+    [balanced_accuracy_HEAE, CrossEntropy_HEAE, WholeTestResult_HEAE, PFITestResult_HEAE, PFICrossEntropy_HEAE, FeatureProb_HEAE] = fitBNB(X_HE, y_HE, numUnit, numRepeat)
+    [balanced_accuracy_HWAE, CrossEntropy_HWAE, WholeTestResult_HWAE, PFITestResult_HWAE, PFICrossEntropy_HWAE, FeatureProb_HWAE] = fitBNB(X_HW, y_HW, numUnit, numRepeat)
 
     return {
-        'HEHW_prediction' : HEHW_prediction,
-        'HE_AE_prediction' : AE_prediction[0],
-        'HW_AE_prediction' : AE_prediction[1],
         'balanced_accuracy_HEHW' : balanced_accuracy_HEHW,
-        'balanced_accuracy_HE_AE': balanced_accuracy_AE[0],
-        'balanced_accuracy_HW_AE': balanced_accuracy_AE[1],
-        'importanceScore_HEHW' : importanceScore_HEHW,
-        'importanceScore_HE_AE' : importanceScore_AE[0],
-        'importanceScore_HW_AE' : importanceScore_AE[1],
-        'importanceUnit_HEHW' : importanceUnit_HEHW,
-        'importanceUnit_HE' : importanceUnit_AE[0],
-        'importanceUnit_HW' : importanceUnit_AE[1],
+        'balanced_accuracy_HEAE': balanced_accuracy_HEAE,
+        'balanced_accuracy_HWAE': balanced_accuracy_HWAE,
+        'CrossEntropy_HEHW': CrossEntropy_HEHW,
+        'CrossEntropy_HEAE': CrossEntropy_HEAE,
+        'CrossEntropy_HWAE': CrossEntropy_HWAE,
+        'WholeTestResult_HEHW': WholeTestResult_HEHW,
+        'WholeTestResult_HEAE': WholeTestResult_HEAE,
+        'WholeTestResult_HWAE': WholeTestResult_HWAE,
+        'PFITestResult_HEHW': PFITestResult_HEHW,
+        'PFITestResult_HEAE': PFITestResult_HEAE,
+        'PFITestResult_HWAE': PFITestResult_HWAE,
+        'PFICrossEntropy_HEHW': PFICrossEntropy_HEHW,
+        'PFICrossEntropy_HEAE': PFICrossEntropy_HEAE,
+        'PFICrossEntropy_HWAE': PFICrossEntropy_HWAE,
+        'feature_prob_HEHW': FeatureProb_HEHW,
+        'feature_prob_HEAE': FeatureProb_HEAE,
+        'feature_prob_HWAE': FeatureProb_HWAE,
         }
 
 def Batch_EventClassifier(baseFolderPath):
@@ -173,7 +165,7 @@ def Batch_EventClassifier(baseFolderPath):
     result = []
     tankNames = []
     sessionNames = []
-    balancedAccuracy = np.zeros([0, 2])
+    balancedAccuracy = np.zeros([0,2])
 
     pbar = tqdm(sorted([p for p in baseFolderPath.glob('#*')]))
 
@@ -186,15 +178,16 @@ def Batch_EventClassifier(baseFolderPath):
         tankNames.append(str(dataPath))
         sessionNames.append(sessionName)
         result.append(data_)
-        balancedAccuracy = np.vstack(
-            [balancedAccuracy, np.array([data_['balanced_accuracy_HE_AE'][1], data_['balanced_accuracy_HW_AE'][1]])])
+        balancedAccuracy = np.vstack([balancedAccuracy, np.array([data_['balanced_accuracy_HEAE'][1], data_['balanced_accuracy_HWAE'][1]])])
     print(np.mean(balancedAccuracy, 0))
     return {'tankNames' : tankNames, 'sessionNames': sessionNames, 'result' : result}
 
-if platform.system() == 'Windows':
-    output = Batch_EventClassifier(Path(r'D:\Data\Lobster\EventClassificationData_4C'))
-    savemat(r'D:/Data/Lobster/HEC_Result_BNB.mat', output)
-else:
-    output = Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData_4C'))
-    savemat(r'/home/ainav/Data/HEC_Result_BNB.mat', output)
 
+# output = Batch_EventClassifier(Path(r'D:\Data\Lobster\EventClassificationData_4C_[-1200,-200]'))
+# savemat(r'D:/Data/Lobster/BNB_Result_unitshffle_[-1200,-200].mat', output)
+
+outputData = np.zeros([40,9])
+for i in np.arange(1, 10):
+    output = Batch_EventClassifier(Path(r'D:\Data\Lobster\EventClassificationData_4C_'+str(i)))
+    for j in np.arange(40):
+        outputData[j, i-1] = output['result'][j]['balanced_accuracy_HWAE'][1]
