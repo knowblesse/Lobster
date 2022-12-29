@@ -24,7 +24,7 @@ for clt = 1 : options.numCluster
 end
 
 if options.showGraph
-    figure('Name', 'HW');
+    fig = figure();
     axes();
     hold on;
     lines = [];

@@ -1,6 +1,4 @@
 %% ConcatenateUnitData
-% To create "AllUnitData_PETHincl.mat", 
-% run partially run ./Spike/SortedPETH_Scripts.m
 ClassifyUnits;
 
 clearvars -except Unit
@@ -46,41 +44,48 @@ end
 Unit = [Unit, table(FI_Distance_Ratio, FI_Distance_Difference, FI_Distance_Relative, 'VariableNames', {'FI_Distance_Ratio', 'FI_Distance_Difference', 'FI_Distance_Relative'})];
 
 %% Feature Importance - Event Classifier
-resultPath = 'D:\Data\Lobster\EventClassificationResult_4C\Output_AE_RFE_max_FI.mat';
+resultPath = 'D:\Data\Lobster\BNB_Result_unitshffle.mat';
 
 load(resultPath);
 
 sessionNames = string(sessionNames);
 
-FI_Event_Ratio = [];
+
 FI_Event_Difference = [];
-FI_Event_Relative = [];
 EC_Score = [];
 
 for session = 1 : 40
-    FI_Event_Ratio = [FI_Event_Ratio; permutation_feature_importance(result{session}.WholeTestResult_HWAE, result{session}.PFITestResult_HWAE, ...
-        'method', 'ratio')];
-    FI_Event_Difference = [FI_Event_Difference; permutation_feature_importance(result{session}.WholeTestResult_HWAE, result{session}.PFITestResult_HWAE, ...
-        'method', 'difference')];
-    FI_Event_Relative = [FI_Event_Relative; permutation_feature_importance(result{session}.WholeTestResult_HWAE, result{session}.PFITestResult_HWAE, ...
-        'method', 'relative')];
-    EC_Score = [EC_Score; repmat(result{session}.balanced_accuracy_HWAE(2), size(result{session}.PFITestResult_HWAE,2),1)];
+    
+    FI_Event_Difference = [FI_Event_Difference; result{session}.PFICrossEntropy_HWAE];
+%     numBin = 40;
+%     numCell = numel(result{session}.PFICrossEntropy_HEAE);
+%     mean(...
+%         squeeze(...
+%             sum(...
+%                 reshape(...
+%                     permute(result{session}.feature_prob_HWAE, [3,2,1]),...
+%                     numBin, numCell, 2, 5)...
+%                 ,1)... % sum of all log(Prob) from all units. => joint Prob.
+%             )...
+%         ,3)
+
+    EC_Score = [EC_Score;...
+        repmat([...
+            result{session}.balanced_accuracy_HEHW,...
+            result{session}.balanced_accuracy_HEAE,...
+            result{session}.balanced_accuracy_HWAE],...
+            numel(result{session}.PFICrossEntropy_HWAE), 1)...
+        ];
 end
 
-Unit = [Unit, table(FI_Event_Ratio, FI_Event_Difference, FI_Event_Relative, EC_Score, 'VariableNames', {'FI_Event_Ratio', 'FI_Event_Difference', 'FI_Event_Relative', 'EC_Score'})];
-
-%% Clip FI
-Unit.FI_Distance_Ratio(Unit.FI_Distance_Ratio < 1) = 1; % smaller than 1 means corrupted performs better
-Unit.FI_Distance_Difference(Unit.FI_Distance_Ratio < 0) = 0;
-
-Unit.FI_Event_Ratio(Unit.FI_Event_Ratio > 1) = 1; % larger than 1 means corrupted performs better
+Unit = [Unit, table(FI_Event_Difference, EC_Score, 'VariableNames', {'FI_Event_Difference', 'EC_Score'})];
 Unit.FI_Event_Difference(Unit.FI_Event_Difference < 0) = 0;
 
 %% 
 
 [h, p] = ttest2(...
-    Unit.FI_Distance_Ratio((Unit.Group_HE == 1) & (Unit.EC_Score > 0.6)),...
-    Unit.FI_Distance_Ratio((Unit.Group_HE == 2) & (Unit.EC_Score > 0.6)))
+    Unit.FI_Event_Difference((Unit.Group_HW_E ~= 1) & (Unit.EC_Score(:,6) > 0.6)),...
+    Unit.FI_Event_Difference((Unit.Group_HW_E == 1) & (Unit.EC_Score(:,6) > 0.6)))
 
 
 
