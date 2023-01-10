@@ -98,10 +98,14 @@ imshow(apparatus.image);
 hold on;
 colormap jet;
 imagesc(locationMatrix, 'AlphaData', 0.5*ones(apparatus.height, apparatus.width));
-contour(locationMatrix, 30, 'LineWidth',3);
+contour(locationMatrix, 30, 'LineWidth',1.8);
 title('Proportion of location');
+caxis([0, 100]);
+colorbar;
+set(gca, 'FontName', 'Noto Sans');
+set(gcf, 'Position', [428, 234, 731, 492]);
 
-% Method 1 : Draw Normalized Error
+% Method 1 : Draw Normalized Error (Just for the reference, use the method 2 instead)
 errorMatrix = imgaussfilt(accumErrorMatrix, 20, 'FilterSize', 1001);
 normalizedErrorMatrix = errorMatrix ./ locationMatrix;
 normalizedErrorMatrix(isnan(normalizedErrorMatrix(:))) = 0;
@@ -157,17 +161,27 @@ colormap 'jet'
 colorbar
 caxis([0, 400]);
 
+% This is main figure
 figure(6);
 clf;
 vq(isnan(vq)) = 0;
 imshow(apparatus.image);
 hold on;
 colormap 'jet'
-imagesc(imgaussfilt(vq, 15, 'FilterSize', 1001) .* apparatus.mask, 'AlphaData', 0.3*(ones(480, 640)));
-contour(imgaussfilt(vq, 15, 'FilterSize', 1001) .* apparatus.mask, 8, 'LineWidth', 3);
+smoothedError = imgaussfilt(vq, 15, 'FilterSize', 1001) .* apparatus.mask;
+imagesc(smoothedError, 'AlphaData', 0.3*(ones(480, 640)));
+contour(smoothedError, 25, 'LineWidth', 1.8);
 colorbar
 caxis([0,30])
 title('Smoothed Mean Distance L1 Error');
+set(gca, 'FontName', 'Noto Sans');
+set(gcf, 'Position', [428, 234, 731, 492]);
+
+%% Correlation between smoothed Error vs locationMatrix
+% to test whether the location with more data has low decoding accuracy
+% the result shows that there is no correlation, indicating that the heterogenic accuracy
+% distribution is not due to the imbalanced dataset.
+[R, p] = corrcoef(locationMatrix(locationMatrix ~= 0 ), smoothedError(locationMatrix~=0))
 
 %% Decoding error between Avoidance and Escape point
 timewindow = [-10, 10];
