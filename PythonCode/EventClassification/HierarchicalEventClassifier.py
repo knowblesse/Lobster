@@ -51,7 +51,7 @@ def EventClassifier(matFilePath, numBin, numRepeat=10):
         y = np.ravel(y)
 
         # Setup KFold
-        kf = StratifiedKFold(n_splits=CV_split, shuffle=True, random_state=930622)
+        kf = StratifiedKFold(n_splits=CV_split, shuffle=True, random_state=622)
 
         for cv_index, [train_index, test_index] in enumerate(kf.split(X, y)):
 
