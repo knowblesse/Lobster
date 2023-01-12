@@ -122,7 +122,7 @@ for trial in np.arange(1, numTrial): # data from the first trial (trial=0) is ig
         ParsedData[trial, 0][0,0] <= midPointTimes,
         midPointTimes <  (ParsedData[trial, 1][0,0] + ParsedData[trial, 0][0,0])
     )
-    latency2HeadEntry = ParsedData[trial-1, 1][0, 0]
+    latency2HeadEntry = ParsedData[trial, 1][0, 0]
 
     # get behavior types
     isStartInNest = np.logical_or(isStartInNest, np.logical_and(betweenTRON_firstIRON, zoneClass==0))

@@ -25,12 +25,12 @@ for tank in pbar:
     isWanderingInNest = np.zeros(neural_data_transformed.shape[0], dtype=bool)
     isReadyInNest = np.zeros(neural_data_transformed.shape[0], dtype=bool)
 
-    for trial in np.arange(2, numTrial + 1):
-        latency2HeadEntry = ParsedData[trial - 1, 1][0, 0]
+    for trial in np.arange(1, numTrial): 
+        latency2HeadEntry = ParsedData[trial, 1][0, 0] # first IRON from TRON
 
         betweenTRON_firstIRON = np.logical_and(
-            ParsedData[trial - 1, 0][0, 0] <= midPointTimes,
-            midPointTimes < (ParsedData[trial - 1, 1][0, 0] + ParsedData[trial - 1, 0][0, 0])
+            ParsedData[trial, 0][0, 0] <= midPointTimes,
+            midPointTimes < (ParsedData[trial, 1][0, 0] + ParsedData[trial, 0][0, 0])
         )
 
         # get behavior types
