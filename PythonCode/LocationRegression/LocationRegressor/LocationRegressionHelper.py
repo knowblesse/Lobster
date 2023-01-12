@@ -172,6 +172,7 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
         numTrial = len(ParsedData)
 
         # get delete indice
+        deleteIndex = np.zeros(midPointTimes.shape, dtype=bool)
         for trial in range(1, numTrial): # skip first trial
             betweenTRON_firstIRON = np.logical_and(
                 ParsedData[trial, 0][0,0] <= midPointTimes,
@@ -181,20 +182,14 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
             if latency2HeadEntry >= 5: # Wander
                 continue
 
-            neural_data = neural_data[np.logical_and(
+            deleteIndex[np.logical_and(
                 y_c >= 225, 
                 betweenTRON_firstIRON
-                ), :]
-            y_r = y_r[np.logical_and(
-                y_c >= 225, 
-                betweenTRON_firstIRON
-                ), :]
-            y_c = y_c[np.logical_and(
-                y_c >= 225, 
-                betweenTRON_firstIRON
-                ), :]
-            midPointTimes = midPointTimes[np.logical_and(
-                y_c >= 225, 
-                betweenTRON_firstIRON
-                ), :]
+                )] = True
+
+        neural_data = neural_data[np.logical_not(deleteIndex), :]
+        y_r = y_r[np.logical_not(deleteIndex)]
+        y_c = y_c[np.logical_not(deleteIndex)]
+        midPointTimes = midPointTimes[np.logical_not(deleteIndex)]
+
     return(neural_data, np.expand_dims(y_r, 1), np.expand_dims(y_c, 1), midPointTimes)

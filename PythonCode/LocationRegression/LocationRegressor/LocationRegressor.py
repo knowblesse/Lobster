@@ -30,7 +30,8 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
     print(tank_name)
 
     # Load Data
-    neural_data, y_r, y_c = loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData, removeEngagedData)
+    neural_data, y_r, y_c, midPointTimes = loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData, removeEngagedData)
+    print(neural_data.shape)
 
     # Dataset Prepared
     X = np.clip(neural_data, -5, 5)
@@ -161,7 +162,7 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
 device = torch.device("cuda" if torch.cuda.is_available else "cpu")
 
 InputFolder = Path('/home/ubuntu/Data/FineDistanceDataset')
-OutputFolder = Path('/home/ubuntu/Data/FineDistanceResult')
+OutputFolder = Path('/home/ubuntu/Data/FineDistanceResult_rmEngaged')
 for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
     print(f'{i:02} {tank}')
     NeuralRegressor(
