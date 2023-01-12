@@ -1,6 +1,6 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
+# import torch
+# import torch.nn as nn
+# import torch.nn.functional as F
 import numpy as np
 from pathlib import Path
 from scipy.interpolate import interp1d
@@ -9,7 +9,6 @@ class dANN(nn.Module):
     def __init__(self, params):
         # params : device , input_size
         super(dANN, self).__init__()
-
         self.device = params['device']
         self.fc1 = nn.Linear(
             params['input_size'],
@@ -159,4 +158,4 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
         y_r = y_r[y_c >= 200]
         y_c = y_c[y_c >= 200]
 
-    return(neural_data, np.expand_dims(y_r, 1), np.expand_dims(y_c, 1))
+    return(neural_data, np.expand_dims(y_r, 1), np.expand_dims(y_c, 1), midPointTimes)
