@@ -1,9 +1,10 @@
-# import torch
-# import torch.nn as nn
-# import torch.nn.functional as F
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 from pathlib import Path
 from scipy.interpolate import interp1d
+from scipy.io import loadmat
 
 class dANN(nn.Module):
     def __init__(self, params):
@@ -108,7 +109,7 @@ def correctRotationOffset(rotationData):
         prev_head_direction = rotationData[i]
     return rotationData + degree_offset_value
 
-def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=False):
+def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=False, removeEnagedData=False):
     # Check if the video file is buttered
     butter_location = [p for p in tankPath.glob('*_buttered.csv')]
 
@@ -151,11 +152,49 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
     y_r = intp_r(midPointTimes * video_frame_rate)
     y_c = intp_c(midPointTimes * video_frame_rate)
 
-    # If removeNestingData is set True, remove all points which has the column value smaller than 200
+    # If removeNestingData is set True, remove all points which has the column value smaller than 225
     if removeNestingData:
         print('removing nesting')
-        neural_data = neural_data[y_c >= 200, :]
-        y_r = y_r[y_c >= 200]
-        y_c = y_c[y_c >= 200]
+        neural_data = neural_data[y_c >= 225, :]
+        y_r = y_r[y_c >= 225]
+        y_c = y_c[y_c >= 225]
+        midPointTimes = midPointTimes[y_c >= 225]
 
+    # If removeEnagedData is set True, load behavior data and remove all points of following condition
+    #   1. the animal is in the nest zone
+    #   2. time between last TROF and current trial's first IRON is longer than 5 sec.
+    if removeEnagedData:
+        print('removing engaged')
+        behaviorDataBasePath = Path(r"/home/ubuntu/Data/BehaviorData/")
+        behaviorDataPath = behaviorDataBasePath / str(tankPath.name + ".mat")
+        behavior_data = loadmat(behaviorDataPath)
+        ParsedData = behavior_data['ParsedData']
+        numTrial = len(ParsedData)
+
+        # get delete indice
+        for trial in range(1, numTrial): # skip first trial
+            betweenTRON_firstIRON = np.logical_and(
+                ParsedData[trial, 0][0,0] <= midPointTimes,
+                midPointTimes <  (ParsedData[trial, 1][0,0] + ParsedData[trial, 0][0,0])
+            )
+            latency2HeadEntry = ParsedData[trial, 1][0, 0]
+            if latency2HeadEntry >= 5: # Wander
+                continue
+
+            neural_data = neural_data[np.logical_and(
+                y_c >= 225, 
+                betweenTRON_firstIRON
+                ), :]
+            y_r = y_r[np.logical_and(
+                y_c >= 225, 
+                betweenTRON_firstIRON
+                ), :]
+            y_c = y_c[np.logical_and(
+                y_c >= 225, 
+                betweenTRON_firstIRON
+                ), :]
+            midPointTimes = midPointTimes[np.logical_and(
+                y_c >= 225, 
+                betweenTRON_firstIRON
+                ), :]
     return(neural_data, np.expand_dims(y_r, 1), np.expand_dims(y_c, 1), midPointTimes)

@@ -20,16 +20,17 @@ time.sleep(1)
 parser = argparse.ArgumentParser(prog='LocationRegressor_PFI')
 parser.add_argument('regressor')
 parser.add_argument('--removeNestingData', default=False, required=False)
+parser.add_argument('--removeEngagedData', default=False, required=False)
 args = parser.parse_args()
 
-def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, truncatedTime_s, train_epoch, init_lr, PFI_numRepeat, numBin, removeNestingData=False):
+def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, truncatedTime_s, train_epoch, init_lr, PFI_numRepeat, numBin, removeNestingData=False, removeEngagedData=False):
     rng = default_rng()
     # Load Tank
     tank_name = re.search('#.*', str(tankPath))[0]
     print(tank_name)
 
     # Load Data
-    neural_data, y_r, y_c = loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData)
+    neural_data, y_r, y_c = loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData, removeEngagedData)
 
     # Dataset Prepared
     X = np.clip(neural_data, -5, 5)
@@ -172,10 +173,9 @@ for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
             truncatedTime_s=10,
             train_epoch=20000,
             init_lr=0.005,
-            PFI_numRepeat=50,
+            PFI_numRepeat=1, # used 50 in the original code. changed for remove Engaged Data
             numBin=1,
-            removeNestingData=args.removeNestingData
+            removeNestingData=args.removeNestingData,
+            removeEngagedData=args.removeEngagedData
             )
 
-requests.get(
-    'https://api.telegram.org/bot5269105245:AAGCdJAZ9fzfazxC8nc-WI6MTSrxn2QC52U/sendMessage?chat_id=5520161508&text=Done')
