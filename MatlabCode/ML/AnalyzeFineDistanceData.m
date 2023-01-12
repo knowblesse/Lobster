@@ -400,3 +400,22 @@ for session = 1 : 40
         mean(abs(Nest_engaged(:,3) - Nest_engaged(:,4))) * px2cm,...
         mean(abs(Nest_not_engaged(:,3) - Nest_not_engaged(:,4))) * px2cm];
 end
+
+%% Check Accuracy of the Engaged removed FD Result
+basePath = 'C:\Users\knowb\Desktop\rmEngaged\FineDistanceResult_rmEngaged';
+
+filelist = dir(basePath);
+sessionPaths = regexp({filelist.name},'^#\S*.mat','match');
+sessionPaths = sessionPaths(~cellfun('isempty',sessionPaths));
+data = cell(40,1);
+result_rmEngaged = table(zeros(40,1), zeros(40,1), 'VariableNames',["Shuffled", "Predicted"]);
+
+for session = 1 : 40
+    TANK_name = cell2mat(sessionPaths{session});
+    TANK_location = char(strcat(basePath, filesep, TANK_name));
+    load(TANK_location); % PFITestResult, WholeTestResult(row, col, true d , shuffled d, pred d)
+    data{session} = WholeTestResult;
+    result_rmEngaged.Shuffled(session) = mean(abs(WholeTestResult(:,3) - WholeTestResult(:,4))) * px2cm;
+    result_rmEngaged.Predicted(session) = mean(abs(WholeTestResult(:,3) - WholeTestResult(:,5))) * px2cm;
+    
+end
