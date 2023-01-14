@@ -10,11 +10,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from Switching.SwitchingHelper import parseAllData, getZoneLDA
 plt.rcParams["font.family"] = "Noto Sans"
+plt.rcParams["font.size"] = 6.6
 def drawLDAResult(neural_data_transformed, zoneClass, centroids, tankName, dotNumber=200, drawOnlyCloserObjects=False, useOldFigure=False, points2draw=['n', 'f', 'e']):
     if useOldFigure:
         fig = plt.gcf()
     else:
-        fig = plt.figure(figsize=(10,10))
+        fig = plt.figure(figsize=(3.,2.7))
     fig.clf()
     ax = fig.subplots(1,1)
 
@@ -38,25 +39,32 @@ def drawLDAResult(neural_data_transformed, zoneClass, centroids, tankName, dotNu
         zC0 = np.random.choice(np.where(zoneClass==0)[0], dotNumber)
         zC1 = np.random.choice(np.where(zoneClass==1)[0], dotNumber)
         zC2 = np.random.choice(np.where(zoneClass==2)[0], dotNumber)
-    
+
     legendText = []
+    legendItems = []
     if 'n' in points2draw:
-        ax.scatter(neural_data_transformed[zC0, 0], neural_data_transformed[zC0, 1], color=np.array([85,98,112,90])/255, s=15)
-        ax.scatter(centroids['nest'][0], centroids['nest'][1], color=np.array([85,98,112])/255, edgecolor='grey', marker='D', s=100)
+        ax.scatter(neural_data_transformed[zC0, 0], neural_data_transformed[zC0, 1], color=np.array([207,63,66,90])/255, s=7)
+        sc = ax.scatter(centroids['nest'][0], centroids['nest'][1], color=np.array([207,63,66])/255, edgecolor='black', marker='D', s=80)
         legendText.append('Nesting')
-        legendText.append('center - Nesting')
+        #legendText.append('center - Nesting')
+        legendItems.append(sc)
     if 'f' in points2draw:
-        ax.scatter(neural_data_transformed[zC1, 0], neural_data_transformed[zC1, 1], color=np.array([78,205,196,90])/255, s=15)
-        ax.scatter(centroids['foraging'][0], centroids['foraging'][1], color=np.array([78,205,196])/255, edgecolor='grey', marker='D', s=100)
+        ax.scatter(neural_data_transformed[zC1, 0], neural_data_transformed[zC1, 1], color=np.array([84,193,223,90])/255, s=7)
+        sc = ax.scatter(centroids['foraging'][0], centroids['foraging'][1], color=np.array([84,193,223])/255, edgecolor='black', marker='D', s=80)
         legendText.append('Foraging')
-        legendText.append('center - Foraging')
+        #legendText.append('center - Foraging')
+        legendItems.append(sc)
     if 'e' in points2draw:
-        ax.scatter(neural_data_transformed[zC2, 0], neural_data_transformed[zC2, 1], color=np.array([255,107,107,90])/255, s=15)
-        ax.scatter(centroids['encounter'][0], centroids['encounter'][1], color=np.array([255,107,107])/255, edgecolor='grey', marker='D', s=100)
+        ax.scatter(neural_data_transformed[zC2, 0], neural_data_transformed[zC2, 1], color=np.array([241,136,26,90])/255, s=7)
+        sc = ax.scatter(centroids['encounter'][0], centroids['encounter'][1], color=np.array([241,136,26])/255, edgecolor='black', marker='D', s=80)
         legendText.append('Encounter')
-        legendText.append('center - Encounter')
-    ax.legend(legendText)
-    ax.set_title(tankName + "- LDA")
+        #legendText.append('center - Encounter')
+        legendItems.append(sc)
+    #ax.legend(legendText)
+    ax.legend(legendItems, legendText, fontsize=6.6, markerscale=0.4)
+    ax.set_xlabel("Dim 1")
+    ax.set_ylabel("Dim 2")
+    #ax.set_title(tankName + "- LDA")
     return (fig, ax, legendText)
 def drawConnectingArrows(ax, points):
     for idx in range(len(points)):
