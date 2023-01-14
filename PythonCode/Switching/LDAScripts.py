@@ -74,6 +74,7 @@ def drawConnectingArrows(ax, points):
 tankName = '#21JAN2-210406-190737_IL'
 
 data = parseAllData(tankName)
+neural_data = data['neural_data']
 ParsedData = data['ParsedData']
 zoneClass = data['zoneClass']
 numTrial = data['numTrial']
@@ -86,7 +87,7 @@ AEResult = data['AEResult']
 #####################################################################
 #                  Draw LDA result with scatter                     #
 #####################################################################
-neural_data_transformed, centroids = getZoneLDA(data['neural_data'], zoneClass)
+neural_data_transformed, centroids = getZoneLDA(neural_data, zoneClass)
 fig, ax, legendText = drawLDAResult(neural_data_transformed, zoneClass, centroids, tankName, 200, useOldFigure=False, drawOnlyCloserObjects=True)
 
 
