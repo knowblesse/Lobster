@@ -79,3 +79,17 @@ def getZoneLDA(neural_data, zoneClass):
     centroids = {'nest': c_nesting, 'foraging': c_foraging, 'encounter': c_encounter}
 
     return (neural_data_transformed, centroids)
+
+def mahal(points, dataset):
+    # return mahalanobis distance
+    # row => new points to query
+    # col => dimension
+    inv_cov = np.linalg.inv(np.cov(dataset, rowvar=False))
+    dataset_mean = np.mean(dataset, axis=0)
+
+    output = np.zeros(points.shape[0])
+
+    for i, point in enumerate(points):
+        output[i] = np.dot(np.dot(point- dataset_mean, inv_cov), (point-dataset_mean).T) ** 0.5
+
+    return output
