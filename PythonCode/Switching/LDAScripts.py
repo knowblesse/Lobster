@@ -65,7 +65,7 @@ def drawLDAResult(neural_data_transformed, zoneClass, centroids, tankName, dotNu
     ax.set_xlabel("Dim 1")
     ax.set_ylabel("Dim 2")
     #ax.set_title(tankName + "- LDA")
-    return (fig, ax, legendText)
+    return (fig, ax, legendText, legendItems)
 def drawConnectingArrows(ax, points):
     for idx in range(len(points)):
         ax.arrow(
@@ -78,8 +78,9 @@ def drawConnectingArrows(ax, points):
             )
 
 #tankName =  '#20JUN1-200916-111545_PL' # Good
-#tankName = '#21JAN5-210622-180202_PL' # wandering
-tankName = '#21JAN2-210406-190737_IL'
+tankName = '#21JAN5-210622-180202_PL' # wandering
+#tankName = '#21JAN2-210406-190737_IL'
+#tankName = '#21JAN2-210419-175714_IL'
 
 data = parseAllData(tankName)
 neural_data = data['neural_data']
@@ -93,10 +94,10 @@ AEResult = data['AEResult']
 
 
 #####################################################################
-#                  Draw LDA result with scatter                     #
+#              Draw Example LDA result with scatter                 #
 #####################################################################
 neural_data_transformed, centroids = getZoneLDA(neural_data, zoneClass)
-fig, ax, legendText = drawLDAResult(neural_data_transformed, zoneClass, centroids, tankName, 200, useOldFigure=False, drawOnlyCloserObjects=True)
+fig, ax, legendText, legendItems = drawLDAResult(neural_data_transformed, zoneClass, centroids, tankName, 200, useOldFigure=False, drawOnlyCloserObjects=True)
 
 
 #####################################################################
@@ -161,7 +162,7 @@ centroids['encounterEscape'] = np.mean(neural_data_transformed[isEncounterEscape
 #####################################################################
 #                 Draw Neural State Change Path                     #
 #####################################################################
-fig2, ax2, legendText = drawLDAResult(neural_data_transformed, zoneClass, centroids, tankName, 200, useOldFigure=False, drawOnlyCloserObjects=True)
+fig2, ax2, legendText, legendItems = drawLDAResult(neural_data_transformed, zoneClass, centroids, tankName, 200, useOldFigure=False, drawOnlyCloserObjects=True)
 
 ax2.scatter(centroids['startInNest'][0], centroids['startInNest'][1], color=np.array([85,98,112])/255)
 ax2.scatter(centroids['running2Robot'][0], centroids['running2Robot'][1], color=np.array([249,115,6])/255)
@@ -176,23 +177,24 @@ points = [
         ]
 drawConnectingArrows(ax2, points)
 legendText.extend(['start from the nest', 'run to the robot', 'return to the nest'])
-ax2.legend(legendText)
+ax2.legend(legendItems, legendText)
 
 #####################################################################
 #                 Draw Wander and Ready difference                  #
 #####################################################################
-fig3, ax3, legendText = drawLDAResult(neural_data_transformed, zoneClass, centroids, tankName, 200, useOldFigure=False, drawOnlyCloserObjects=True, points2draw=['n','f'])
+fig3, ax3, legendText, legendItems = drawLDAResult(neural_data_transformed, zoneClass, centroids, tankName, 200, useOldFigure=False, drawOnlyCloserObjects=True, points2draw=['n','f'])
 
-ax3.scatter(centroids['wanderInNest'][0], centroids['wanderInNest'][1], s=100, marker='x', color='g')
-ax3.scatter(centroids['readyInNest'][0], centroids['readyInNest'][1], s=100, marker='x', color='r')
-legendText.extend(['center_wander', 'center_ready'])
-ax3.legend(legendText)
+sc1 = ax3.scatter(centroids['wanderInNest'][0], centroids['wanderInNest'][1], s=50, marker='^', color='k')
+sc2 = ax3.scatter(centroids['readyInNest'][0], centroids['readyInNest'][1], s=50, marker='v', color='k')
+legendItems.extend([sc1, sc2])
+legendText.extend(['Wander', 'Engaged'])
+ax3.legend(legendItems, legendText, fontsize=6.6, markerscale=0.4)
 
 
 #####################################################################
 #                  Draw Avoid vs Escape difference                  #
 #####################################################################
-fig4, ax4, legendText = drawLDAResult(neural_data_transformed, zoneClass, centroids, tankName, 200, useOldFigure=False, drawOnlyCloserObjects=True)
+fig4, ax4, legendText, legendItems = drawLDAResult(neural_data_transformed, zoneClass, centroids, tankName, 200, useOldFigure=False, drawOnlyCloserObjects=True)
 ax4.scatter(centroids['encounterAvoid'][0], centroids['encounterAvoid'][1], s=100, marker='x', color='g')
 ax4.scatter(centroids['encounterEscape'][0], centroids['encounterEscape'][1], s=100, marker='x', color='r')
 legendText.extend(['center_Avoid', 'center_escape'])
