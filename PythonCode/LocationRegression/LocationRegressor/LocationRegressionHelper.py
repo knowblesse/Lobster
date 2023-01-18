@@ -140,10 +140,14 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
     if len(frameInfo_location) != 1:
         raise (BaseException("Can not find proper frameInfo.mat"))
     frameInfo = loadmat(str(frameInfo_location[0]))
-    frameNumber = frameInfo['frameNumber']
-    frameTime = frameInfo['frameTime']
+    frameNumber = np.squeeze(frameInfo['frameNumber'])
+    frameTime = np.squeeze(frameInfo['frameTime'])
 
-    intp_frame = interp1d(np.squeeze(frameTime), np.squeeze(frameNumber), kind='linear')
+    # cure weird frame number
+    wrongFrameNumberIndex = np.where(np.diff(frameNumber) < 0)[0]
+    frameNumber[wrongFrameNumberIndex] = (frameNumber[wrongFrameNumberIndex-1] + frameNumber[wrongFrameNumberIndex+1]) / 2
+
+    intp_frame = interp1d(frameTime, frameNumber, kind='linear')
 
     # Load file
     butter_data = np.loadtxt(str(butter_location[0]), delimiter='\t')
@@ -208,3 +212,6 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
         midPointTimes = midPointTimes[np.logical_not(deleteIndex)]
 
     return(neural_data, np.expand_dims(y_r, 1), np.expand_dims(y_c, 1), midPointTimes)
+
+# tankPath = Path('D:\Data\Lobster\FineDistanceDataset\#20JUN1-200831-110125_PL')
+# neural_data, y_r, y_c, midPointTimes = loadData(tankPath, neural_data_rate=20, truncatedTime_s=10, removeEnagedData=False, removeNestingData=False)
