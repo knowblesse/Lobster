@@ -1,17 +1,15 @@
 import re
-import numpy as np
-from pathlib import Path
-from scipy.interpolate import interp1d
 from scipy.io import savemat
 from sklearn.model_selection import KFold
 from tqdm import tqdm
-import platform
-import csv
 from LocationRegressionHelper import *
 import time
 from numpy.random import default_rng
 import argparse
-from torch.utils.data import TensorDataset, DataLoader
+import platform
+import numpy as np
+from pathlib import Path
+
 import requests
 
 print("Code is running on : " + ("cuda" if torch.cuda.is_available else "cpu"))
@@ -161,8 +159,12 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
     
 device = torch.device("cuda" if torch.cuda.is_available else "cpu")
 
-InputFolder = Path('/home/ubuntu/Data/FineDistanceDataset')
-OutputFolder = Path('/home/ubuntu/Data/FineDistanceResult_rmEngaged')
+if platform.system() == 'Windows':
+    InputFolder = Path('D:\Data\Lobster\FineDistanceDataset')
+    OutputFolder = Path('D:\Data\Lobster\FineDistanceResult')
+else:
+    InputFolder = Path('/home/ubuntu/Data/FineDistanceDataset')
+    OutputFolder = Path('/home/ubuntu/Data/FineDistanceResult_rmEngaged')
 for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
     print(f'{i:02} {tank}')
     NeuralRegressor(

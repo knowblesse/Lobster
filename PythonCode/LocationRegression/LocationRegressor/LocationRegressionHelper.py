@@ -132,8 +132,18 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
         raise (BaseException("There are multiple files ending with _wholeSessionUnitData.csv"))
 
     # Check Video FPS
-    fpsFileName = tankPath / 'FPS.txt'
-    video_frame_rate = int(np.loadtxt(fpsFileName))
+    # fpsFileName = tankPath / 'FPS.txt'
+    # video_frame_rate = int(np.loadtxt(fpsFileName))
+
+    # Check actual timepoint of the frame
+    frameInfo_location = [p for p in tankPath.glob('*_frameInfo.mat')]
+    if len(frameInfo_location) != 1:
+        raise (BaseException("Can not find proper frameInfo.mat"))
+    frameInfo = loadmat(str(frameInfo_location[0]))
+    frameNumber = frameInfo['frameNumber']
+    frameTime = frameInfo['frameTime']
+
+    intp_frame = interp1d(np.squeeze(frameTime), np.squeeze(frameNumber), kind='linear')
 
     # Load file
     butter_data = np.loadtxt(str(butter_location[0]), delimiter='\t')
@@ -154,8 +164,8 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
     midPointTimes = truncatedTime_s + (1 / neural_data_rate) * np.arange(neural_data.shape[0]) + 0.5 * (
                 1 / neural_data_rate)
 
-    y_r = intp_r(midPointTimes * video_frame_rate)
-    y_c = intp_c(midPointTimes * video_frame_rate)
+    y_r = intp_r(intp_frame(midPointTimes))
+    y_c = intp_c(intp_frame(midPointTimes))
 
     # If removeNestingData is set True, remove all points which has the column value smaller than 225
     if removeNestingData:
