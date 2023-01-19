@@ -53,45 +53,41 @@ for tank in pbar:
     D_nest_foraging = np.sum((np.array(centroids['nest']) - np.array(centroids['foraging'])) ** 2) ** 0.5
     D_nest_encounter = np.sum((np.array(centroids['nest']) - np.array(centroids['encounter'])) ** 2) ** 0.5
     D_encounter_foraging = np.sum((np.array(centroids['encounter']) - np.array(centroids['foraging'])) ** 2) ** 0.5
-    #D_all = D_nest_foraging + D_nest_encounter + D_encounter_foraging
-    D_all = 1
-    array2append.extend([D_nest_foraging/D_all, D_nest_encounter/D_all, D_encounter_foraging/D_all])
+    array2append.extend([D_nest_foraging, D_nest_encounter, D_encounter_foraging])
 
-    outputData.append(array2append)
+    # Compare Wander vs Engaged
+    isWanderingInNest = np.zeros(neural_data_transformed.shape[0], dtype=bool)
+    isReadyInNest = np.zeros(neural_data_transformed.shape[0], dtype=bool)
 
-    # isWanderingInNest = np.zeros(neural_data_transformed.shape[0], dtype=bool)
-    # isReadyInNest = np.zeros(neural_data_transformed.shape[0], dtype=bool)
-    #
-    # for trial in np.arange(1, numTrial):
-    #     latency2HeadEntry = ParsedData[trial, 1][0, 0] # first IRON from TRON
-    #
-    #     betweenTRON_firstIRON = np.logical_and(
-    #         ParsedData[trial, 0][0, 0] <= midPointTimes,
-    #         midPointTimes < (ParsedData[trial, 1][0, 0] + ParsedData[trial, 0][0, 0])
-    #     )
-    #
-    #     # get behavior types
-    #     if latency2HeadEntry >= 5:
-    #         isWanderingInNest = np.logical_or(isWanderingInNest, np.logical_and(betweenTRON_firstIRON, zoneClass == 0))
-    #     else:
-    #         isReadyInNest = np.logical_or(isReadyInNest, np.logical_and(betweenTRON_firstIRON, zoneClass == 0))
-    #
-    # centroids['wanderInNest'] = np.mean(neural_data_transformed[isWanderingInNest, :], 0)
-    # centroids['readyInNest'] = np.mean(neural_data_transformed[isReadyInNest, :], 0)
-    #
-    # wander_nest = np.sum((np.array(centroids['nest']) - centroids['wanderInNest']) ** 2) ** 0.5
-    # wander_foraging = np.sum((np.array(centroids['foraging']) - centroids['wanderInNest']) ** 2) ** 0.5
-    #
-    # ready_nest = np.sum((np.array(centroids['nest']) - centroids['readyInNest']) ** 2) ** 0.5
-    # ready_foraging = np.sum((np.array(centroids['foraging']) - centroids['readyInNest']) ** 2) ** 0.5
-    #
-    # outputData.append([tankName,
-    #                    wander_nest/(wander_nest+wander_foraging),
-    #                    wander_foraging / (wander_nest + wander_foraging),
-    #                    ready_nest / (ready_nest + ready_foraging),
-    #                    ready_nest / (ready_nest + ready_foraging)
-    #                    ])
+    for trial in np.arange(1, numTrial):
+        latency2HeadEntry = ParsedData[trial, 1][0, 0] # first IRON from TRON
 
+        betweenTRON_firstIRON = np.logical_and(
+            ParsedData[trial, 0][0, 0] <= midPointTimes,
+            midPointTimes < (ParsedData[trial, 1][0, 0] + ParsedData[trial, 0][0, 0])
+        )
+
+        # get behavior types
+        if latency2HeadEntry >= 5:
+            isWanderingInNest = np.logical_or(isWanderingInNest, np.logical_and(betweenTRON_firstIRON, zoneClass == 0))
+        else:
+            isReadyInNest = np.logical_or(isReadyInNest, np.logical_and(betweenTRON_firstIRON, zoneClass == 0))
+
+    centroids['wanderInNest'] = np.mean(neural_data_transformed[isWanderingInNest, :], 0)
+    centroids['readyInNest'] = np.mean(neural_data_transformed[isReadyInNest, :], 0)
+
+    wander_nest = np.sum((np.array(centroids['nest']) - centroids['wanderInNest']) ** 2) ** 0.5
+    wander_foraging = np.sum((np.array(centroids['foraging']) - centroids['wanderInNest']) ** 2) ** 0.5
+
+    ready_nest = np.sum((np.array(centroids['nest']) - centroids['readyInNest']) ** 2) ** 0.5
+    ready_foraging = np.sum((np.array(centroids['foraging']) - centroids['readyInNest']) ** 2) ** 0.5
+
+    array2append.extend([
+                       wander_nest/(wander_nest+wander_foraging),
+                       wander_foraging / (wander_nest + wander_foraging),
+                       ready_nest / (ready_nest + ready_foraging),
+                       ready_foraging / (ready_nest + ready_foraging)
+                       ])
 
     # Hypothesis : if, neural vector during the nesting area is closer to the "state of encounter zone",
     # then the higher chance of avoidance failure on the following trial
@@ -138,4 +134,6 @@ for tank in pbar:
     #         EscapeData.append(vec)
     # if (len(AvoidData) > 5) and (len(EscapeData) > 5):
     #     outputData.append([tankName, np.mean(AvoidData), np.mean(EscapeData)])
-np.savetxt('C:/Users/knowb/Desktop/distances.csv', np.array(outputData), delimiter=',', fmt='%s')
+
+    outputData.append(array2append)
+np.savetxt('C:/Users/Knowblesse/Desktop/distances.csv', np.array(outputData), delimiter=',', fmt='%s')
