@@ -1,6 +1,6 @@
 %% AnalyzeFineDistanceData
 
-basePath = 'D:\Data\Lobster\FineDistanceResult';
+basePath = 'D:\Data\Lobster\FineDistanceResult_syncFixed';
 behavDataPath = 'D:\Data\Lobster\BehaviorData';
 datasetDataPath = 'D:\Data\Lobster\FineDistanceDataset';
 
@@ -16,14 +16,12 @@ neural_data_rate = 20;
 %% Load Data by session
 data = cell(1,40);
 data_behav = cell(1,40);
-fps = zeros(40,1);
 midPointTimes = cell(1,40);
 for session = 1 : 40
     TANK_name = cell2mat(sessionPaths{session});
     TANK_location = char(strcat(basePath, filesep, TANK_name));
     load(TANK_location); % PFITestResult, WholeTestResult(row, col, true d , shuffled d, pred d)
     load(fullfile(behavDataPath, strcat(TANK_name(1:end-19), '.mat')));
-    fps(session) = readmatrix(fullfile(datasetDataPath, TANK_name(1:end-19), 'FPS.txt'));
     data{session} = WholeTestResult;
     data_behav{session} = ParsedData;
     midPointTimes{session} = truncatedTimes_s + (1/neural_data_rate)*(0:size(WholeTestResult,1)-1) + 0.5 * (1/neural_data_rate);
@@ -36,7 +34,7 @@ for session = 1 : 40
     result1.Predicted(session) = mean(abs(data{session}(:,3) - data{session}(:,5))) * px2cm;
 end
 
-%% Compare Error btw Nesting zone and Foraging zone
+%% Compare Error btw N, F, and E
 result2 = table(zeros(40,1), zeros(40,1), zeros(40,1), 'VariableNames', ["NestError", "ForagingError", "EncounterError"]);
 for session = 1 : 40
     locError = abs(data{session}(:,3) - data{session}(:,5));
@@ -402,7 +400,10 @@ for session = 1 : 40
 end
 
 %% Check Accuracy of the Engaged removed FD Result
-basePath = 'C:\Users\knowb\Desktop\rmEngaged\FineDistanceResult_rmEngaged';
+basePath = 'D:\Data\Lobster\FineDistanceResult_NestingVariation\FineDistanceResult_rmWander';
+px2cm = 0.169;
+truncatedTimes_s = 10;
+neural_data_rate = 20;
 
 filelist = dir(basePath);
 sessionPaths = regexp({filelist.name},'^#\S*.mat','match');
@@ -417,5 +418,5 @@ for session = 1 : 40
     data{session} = WholeTestResult;
     result_rmEngaged.Shuffled(session) = mean(abs(WholeTestResult(:,3) - WholeTestResult(:,4))) * px2cm;
     result_rmEngaged.Predicted(session) = mean(abs(WholeTestResult(:,3) - WholeTestResult(:,5))) * px2cm;
-    
+    midPointTimes{session} = truncatedTimes_s + (1/neural_data_rate)*(0:size(WholeTestResult,1)-1) + 0.5 * (1/neural_data_rate);
 end
