@@ -164,7 +164,7 @@ if platform.system() == 'Windows':
     OutputFolder = Path('D:\Data\Lobster\FineDistanceResult')
 else:
     InputFolder = Path('/home/ubuntu/Data/FineDistanceDataset')
-    OutputFolder = Path('/home/ubuntu/Data/FineDistanceResult_rmEngaged')
+    OutputFolder = Path('/home/ubuntu/Data/FineDistanceResult_syncFixed')
 for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
     print(f'{i:02} {tank}')
     NeuralRegressor(
