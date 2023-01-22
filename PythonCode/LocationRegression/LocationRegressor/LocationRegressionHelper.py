@@ -114,7 +114,7 @@ def correctRotationOffset(rotationData):
         prev_head_direction = rotationData[i]
     return rotationData + degree_offset_value
 
-def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=False, removeEnagedData=False):
+def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=False, removeWanderData=False):
     # Check if the video file is buttered
     butter_location = [p for p in tankPath.glob('*_buttered.csv')]
 
@@ -179,11 +179,11 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
         y_c = y_c[y_c >= 225]
         midPointTimes = midPointTimes[y_c >= 225]
 
-    # If removeEnagedData is set True, load behavior data and remove all points of following condition
+    # If removeWanderData is set True, load behavior data and remove all points of following condition
     #   1. the animal is in the nest zone
-    #   2. time between last TROF and current trial's first IRON is longer than 5 sec.
-    if removeEnagedData:
-        print('removing engaged')
+    #   2. TROF to IRON interval is longer than 12 sec
+    if removeWanderData:
+        print('removing wander')
         behaviorDataBasePath = Path(r"/home/ubuntu/Data/BehaviorData/")
         behaviorDataPath = behaviorDataBasePath / str(tankPath.name + ".mat")
         behavior_data = loadmat(behaviorDataPath)
@@ -197,13 +197,18 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
                 ParsedData[trial, 0][0,0] <= midPointTimes,
                 midPointTimes <  (ParsedData[trial, 1][0,0] + ParsedData[trial, 0][0,0])
             )
+            betweenTROF_firstIRON = np.logical_and(
+                ParsedData[trial-1, 0][0,1] <= midPointTimes,
+                midPointTimes <  (ParsedData[trial, 1][0,0] + ParsedData[trial, 0][0,0])
+            )
             latency2HeadEntry = ParsedData[trial, 1][0, 0]
-            if latency2HeadEntry >= 5: # Wander
+            TROF2IRONInterval = ParsedData[trial, 0][0, 0] - ParsedData[trial-1, 0][0,1] + latency2HeadEntry
+            if TROF2IRONInterval <= 12: # Engaged
                 continue
 
             deleteIndex[np.logical_and(
-                y_c >= 225, 
-                betweenTRON_firstIRON
+                y_c <= 225, 
+                betweenTROF_firstIRON
                 )] = True
 
         neural_data = neural_data[np.logical_not(deleteIndex), :]
