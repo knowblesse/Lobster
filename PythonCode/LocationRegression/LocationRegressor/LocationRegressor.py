@@ -12,8 +12,6 @@ from pathlib import Path
 
 import requests
 
-requests.get(
-    'https://api.telegram.org/bot5269105245:AAHq_oVhURsX1A1ngqNs26t2vSbBMkPZHT8/sendMessage?chat_id=5520161508&text=Started')
 
 print("Code is running on : " + ("cuda" if torch.cuda.is_available else "cpu"))
 time.sleep(1)
@@ -22,16 +20,17 @@ parser = argparse.ArgumentParser(prog='LocationRegressor_PFI')
 parser.add_argument('regressor')
 parser.add_argument('--removeNestingData', default=False, required=False)
 parser.add_argument('--removeWanderData', default=False, required=False)
+parser.add_argument('--stratifyData', default=False, required=False)
 args = parser.parse_args()
 
-def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, truncatedTime_s, train_epoch, init_lr, PFI_numRepeat, numBin, removeNestingData=False, removeWanderData=False):
+def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, truncatedTime_s, train_epoch, init_lr, PFI_numRepeat, numBin, removeNestingData=False, removeWanderData=False, stratifyData=False):
     rng = default_rng()
     # Load Tank
     tank_name = re.search('#.*', str(tankPath))[0]
     print(tank_name)
 
     # Load Data
-    neural_data, y_r, y_c, midPointTimes = loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData, removeWanderData)
+    neural_data, y_r, y_c, midPointTimes = loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData, removeWanderData, stratifyData)
     print(neural_data.shape)
 
     # Dataset Prepared
@@ -164,7 +163,7 @@ device = torch.device("cuda" if torch.cuda.is_available else "cpu")
 
 if platform.system() == 'Windows':
     InputFolder = Path('D:\Data\Lobster\FineDistanceDataset')
-    OutputFolder = Path('D:\Data\Lobster\FineDistanceResult')
+    OutputFolder = Path('D:\Data\Lobster\FineDistanceResult_stratify')
 else:
     InputFolder = Path('/home/ubuntu/Data/FineDistanceDataset')
     OutputFolder = Path('/home/ubuntu/Data/FineDistanceResult_rmWander')
@@ -182,6 +181,7 @@ for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
             PFI_numRepeat=1, # used 50 in the original code. changed for remove Engaged Data
             numBin=1,
             removeNestingData=args.removeNestingData,
-            removeWanderData=args.removeWanderData
+            removeWanderData=args.removeWanderData,
+            stratifyData=args.stratifyData
             )
 

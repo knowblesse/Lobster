@@ -80,8 +80,8 @@ if 'torch' in sys.modules:
                 self.lowest_loss = loss
                 self.tolerance_counter = 0
                 if self.save_best:
-                    torch.save(self.model.state_dict(), Path('./.tempModel'))
-                    torch.save(self.model_control.state_dict(), Path('./.tempControlModel'))
+                    torch.save(self.model.state_dict(), Path('./tempModel'))
+                    torch.save(self.model_control.state_dict(), Path('./tempControlModel'))
                     self.model_ever_saved = True
             return False
 
@@ -91,8 +91,8 @@ if 'torch' in sys.modules:
                 raise(BaseException("Earlystopping : 'save_best' was set as False"))
             if not self.model_ever_saved:
                 raise(BaseException("Earlystopping : saved model does not exist"))
-            self.model.load_state_dict(torch.load(Path('./.tempModel')))
-            self.model_control.load_state_dict(torch.load(Path('./.tempControlModel')))
+            self.model.load_state_dict(torch.load(Path('./tempModel')))
+            self.model_control.load_state_dict(torch.load(Path('./tempControlModel')))
             self.model.eval()
             self.model_control.eval()
 
@@ -114,7 +114,10 @@ def correctRotationOffset(rotationData):
         prev_head_direction = rotationData[i]
     return rotationData + degree_offset_value
 
-def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=False, removeWanderData=False):
+def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=False, removeWanderData=False, stratifyData=False):
+
+    default_rng = np.random.default_rng()
+
     # Check if the video file is buttered
     butter_location = [p for p in tankPath.glob('*_buttered.csv')]
 
@@ -215,6 +218,39 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
         y_r = y_r[np.logical_not(deleteIndex)]
         y_c = y_c[np.logical_not(deleteIndex)]
         midPointTimes = midPointTimes[np.logical_not(deleteIndex)]
+
+    if stratifyData:
+        print('stratifying Data')
+        behaviorDataBasePath = Path(r"D:\Data\Lobster\BehaviorData")
+        behaviorDataPath = behaviorDataBasePath / str(tankPath.name + ".mat")
+        behavior_data = loadmat(behaviorDataPath)
+        ParsedData = behavior_data['ParsedData']
+        numTrial = len(ParsedData)
+
+        # Collect IR Info
+        IRs = np.empty((0, 2))
+        for trialIdx in range(numTrial):
+            IRs = np.vstack((IRs, ParsedData[trialIdx, 1] + ParsedData[trialIdx, 0][0, 0]))
+
+        # Get Zone Info
+        isEncounterZone = np.zeros(midPointTimes.shape, dtype=bool)
+        isNestingZone = np.zeros(midPointTimes.shape, dtype=bool)
+        for i in range(len(midPointTimes)):
+            isEncounterZone[i] = np.any((IRs[:, 0] < midPointTimes[i]) & (midPointTimes[i] < IRs[:, 1]))
+            isNestingZone[i] = y_c[i] < 225
+
+        zoneClass = (~isNestingZone).astype(int) + isEncounterZone.astype(int)
+        datacount = np.bincount(((~isNestingZone).astype(int) + isEncounterZone.astype(int)))
+        print(f'N-zone {datacount[0]}, F-zone {datacount[1]}, E-zone {datacount[2]} detected. using {np.min(datacount)} dataset')
+
+        selectedIndex = np.concatenate((default_rng.choice(np.where(zoneClass == 0)[0], np.min(datacount)),
+                        default_rng.choice(np.where(zoneClass == 1)[0], np.min(datacount)),
+                        default_rng.choice(np.where(zoneClass == 2)[0], np.min(datacount))))
+
+        neural_data = neural_data[selectedIndex,:]
+        y_r = y_r[selectedIndex]
+        y_c = y_c[selectedIndex]
+
 
     return(neural_data, np.expand_dims(y_r, 1), np.expand_dims(y_c, 1), midPointTimes)
 
