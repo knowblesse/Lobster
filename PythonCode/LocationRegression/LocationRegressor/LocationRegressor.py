@@ -157,7 +157,7 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
                 PFITestResult[test_index, unit, rep] = np.squeeze(y_corrupted.to('cpu').numpy())
 
     savemat(outputPath/f'{tank_name}result_{dataset}.mat', 
-            {'WholeTestResult': WholeTestResult, 'PFITestResult': PFITestResult})
+            {'WholeTestResult': WholeTestResult, 'PFITestResult': PFITestResult, 'midPointTimes': midPointTimes})
     
 device = torch.device("cuda" if torch.cuda.is_available else "cpu")
 
