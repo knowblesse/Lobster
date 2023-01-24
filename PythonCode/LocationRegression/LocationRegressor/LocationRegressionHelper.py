@@ -250,6 +250,7 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
         neural_data = neural_data[selectedIndex,:]
         y_r = y_r[selectedIndex]
         y_c = y_c[selectedIndex]
+        midPointTimes = midPointTimes[selectedIndex]
 
 
     return(neural_data, np.expand_dims(y_r, 1), np.expand_dims(y_c, 1), midPointTimes)
