@@ -1,6 +1,6 @@
 %% AnalyzeFineDistanceData
 
-basePath = 'D:\Data\Lobster\FineDistanceResult_syncFixed';
+basePath = 'D:\Data\Lobster\FineDistanceResult_rmWander';
 behavDataPath = 'D:\Data\Lobster\BehaviorData';
 datasetDataPath = 'D:\Data\Lobster\FineDistanceDataset';
 
@@ -13,17 +13,24 @@ px2cm = 0.169;
 truncatedTimes_s = 10;
 neural_data_rate = 20;
 
+%% Load Behavior Data
+data_behav = cell(1,40);
+for session = 1 : 40
+    TANK_name = cell2mat(sessionPaths{session});
+    TANK_location = char(strcat(basePath, filesep, TANK_name));
+    load(fullfile(behavDataPath, strcat(cell2mat(regexp(TANK_name, '#.*?[PI]L', 'match')), '.mat')));
+    data_behav{session} = ParsedData;
+end
+
 %% Load Data by session
 data = cell(1,40);
-data_behav = cell(1,40);
 midPointTimes = cell(1,40);
 for session = 1 : 40
     TANK_name = cell2mat(sessionPaths{session});
     TANK_location = char(strcat(basePath, filesep, TANK_name));
     load(TANK_location); % PFITestResult, WholeTestResult(row, col, true d , shuffled d, pred d)
-    load(fullfile(behavDataPath, strcat(TANK_name(1:end-19), '.mat')));
     data{session} = WholeTestResult;
-    data_behav{session} = ParsedData;
+    warning('Currently midPointTimes are not loaded, but calculated');
     midPointTimes{session} = truncatedTimes_s + (1/neural_data_rate)*(0:size(WholeTestResult,1)-1) + 0.5 * (1/neural_data_rate);
 end
 
@@ -36,10 +43,11 @@ end
 
 %% Compare Error btw N, F, and E
 result2 = table(zeros(40,1), zeros(40,1), zeros(40,1), 'VariableNames', ["NestError", "ForagingError", "EncounterError"]);
+datapointNumber = table(zeros(40,1), zeros(40,1), zeros(40,1), 'VariableNames', ["Nest", "Foraging", "Encounter"]);
 for session = 1 : 40
     locError = abs(data{session}(:,3) - data{session}(:,5));
     
-    isNesting = data{session}(:,2) < 200;
+    isNesting = data{session}(:,2) < 225;
     
     % check isEncounter by IRsensor
     isEncounter = false(size(data{session},1),1);
@@ -59,6 +67,10 @@ for session = 1 : 40
     result2.NestError(session) = mean(locError(isNesting)) * px2cm;
     result2.ForagingError(session) = mean(locError(and(~isNesting, ~isEncounter))) * px2cm;
     result2.EncounterError(session) = mean(locError(isEncounter)) * px2cm;
+    
+    datapointNumber.Nest(session) = sum(isNesting);
+    datapointNumber.Foraging(session) = sum(and(~isNesting, ~isEncounter));
+    datapointNumber.Encounter(session) = sum(isEncounter);
 end
 
 
@@ -365,58 +377,3 @@ xlabel('Time(s)');
 ylabel('Error_{actual distance - predicted distance}(cm)')
 legend('Avoid Trials', 'Escape Trials');
 title('Decoding Error');
-
-%% Divide Decoding Error in Nest zone, during engaged vs not engaged trial
-L1Error_Engaged_Non_Engaged = zeros(40,2);
-for session = 1 : 40
-    Nest_engaged = [];
-    Nest_not_engaged = [];
-    numTrial = size(data_behav{session}, 1);
-    for trial = 2 : numTrial 
-        % Get time variables
-        TRON_time = data_behav{session}{trial,1}(1); % in sec, absolute
-        last_TROF_time = data_behav{session}{trial-1,1}(2); % in sec, absolute
-        latencyToHeadEntry = data_behav{session}{trial,2}(1); % first IR ON Time, in sec, relative
-
-        % Get Target WholeTestResult
-        %   data during last TROF to current first IRON
-        targetResult = data{session}(last_TROF_time <= midPointTimes{session} & midPointTimes{session} < TRON_time + latencyToHeadEntry,:);
-
-        %   only select data where animal is in the next zone (col < 225)
-        if latencyToHeadEntry >= 5 
-            % not engaged trial
-            Nest_not_engaged = [Nest_not_engaged; targetResult(targetResult(:,2) < 225, :)];
-        else
-            % engaged trial
-            Nest_engaged = [Nest_engaged; targetResult(targetResult(:,2) < 225, :)];
-        end
-    end
-    if isempty(Nest_engaged) | isempty(Nest_not_engaged)
-        continue;
-    end
-    L1Error_Engaged_Non_Engaged(session, :) = [...
-        mean(abs(Nest_engaged(:,3) - Nest_engaged(:,4))) * px2cm,...
-        mean(abs(Nest_not_engaged(:,3) - Nest_not_engaged(:,4))) * px2cm];
-end
-
-%% Check Accuracy of the Engaged removed FD Result
-basePath = 'D:\Data\Lobster\FineDistanceResult_NestingVariation\FineDistanceResult_rmWander';
-px2cm = 0.169;
-truncatedTimes_s = 10;
-neural_data_rate = 20;
-
-filelist = dir(basePath);
-sessionPaths = regexp({filelist.name},'^#\S*.mat','match');
-sessionPaths = sessionPaths(~cellfun('isempty',sessionPaths));
-data = cell(40,1);
-result_rmEngaged = table(zeros(40,1), zeros(40,1), 'VariableNames',["Shuffled", "Predicted"]);
-
-for session = 1 : 40
-    TANK_name = cell2mat(sessionPaths{session});
-    TANK_location = char(strcat(basePath, filesep, TANK_name));
-    load(TANK_location); % PFITestResult, WholeTestResult(row, col, true d , shuffled d, pred d)
-    data{session} = WholeTestResult;
-    result_rmEngaged.Shuffled(session) = mean(abs(WholeTestResult(:,3) - WholeTestResult(:,4))) * px2cm;
-    result_rmEngaged.Predicted(session) = mean(abs(WholeTestResult(:,3) - WholeTestResult(:,5))) * px2cm;
-    midPointTimes{session} = truncatedTimes_s + (1/neural_data_rate)*(0:size(WholeTestResult,1)-1) + 0.5 * (1/neural_data_rate);
-end
