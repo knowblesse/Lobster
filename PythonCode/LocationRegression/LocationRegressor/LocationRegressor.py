@@ -41,6 +41,9 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
         y = y_r
     elif dataset == 'column':
         y = y_c
+    elif dataset == 'speed':
+        X = X[1:, :]
+        y = ( np.diff(y_r,1,0) ** 2 + np.diff(y_c,1,0) ** 2 ) ** 0.5
     else:
         raise(BaseException('Wrong dataset. use distance, row, or column'))
 
