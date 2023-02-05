@@ -18,10 +18,23 @@ time.sleep(1)
 
 parser = argparse.ArgumentParser(prog='LocationRegressor_PFI')
 parser.add_argument('regressor')
-parser.add_argument('--removeNestingData', default=False, required=False)
-parser.add_argument('--removeWanderData', default=False, required=False)
-parser.add_argument('--stratifyData', default=False, required=False)
+parser.add_argument('--removeNestingData', default='False', required=False)
+parser.add_argument('--removeWanderData', default='False', required=False)
+parser.add_argument('--stratifyData', default='False', required=False)
 args = parser.parse_args()
+
+def strinput2bool(str_input):
+    if str_input in ('True', 'true', 'y', 'yes'):
+        return True
+    elif str_input in ('False', 'false', 'n', 'no'):
+        return False
+    else:
+        raise BaseException('Wrong argument input')
+
+# Convert to bool
+args.removeNestingData = strinput2bool(args.removeNestingData)
+args.removeWanderData = strinput2bool(args.removeWanderData)
+args.stratifyData = strinput2bool(args.stratifyData)
 
 def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, truncatedTime_s, train_epoch, init_lr, PFI_numRepeat, numBin, removeNestingData=False, removeWanderData=False, stratifyData=False):
     rng = default_rng()
@@ -44,6 +57,8 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
     elif dataset == 'speed':
         X = X[1:, :]
         y = ( np.diff(y_r,1,0) ** 2 + np.diff(y_c,1,0) ** 2 ) ** 0.5
+        y_r = y_r[1:]
+        y_c = y_c[1:]
     else:
         raise(BaseException('Wrong dataset. use distance, row, or column'))
 
@@ -168,8 +183,8 @@ if platform.system() == 'Windows':
     InputFolder = Path('D:\Data\Lobster\FineDistanceDataset')
     OutputFolder = Path('D:\Data\Lobster\FineDistanceResult_stratify')
 else:
-    InputFolder = Path('/home/ubuntu/Data/FineDistanceDataset')
-    OutputFolder = Path('/home/ubuntu/Data/FineDistanceResult_rmWander')
+    InputFolder = Path.home() / 'Data/FineDistanceDataset'
+    OutputFolder = Path.home() / 'Data/FineDistanceResult_syncFixed'
 for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
     print(f'{i:02} {tank}')
     NeuralRegressor(
@@ -181,7 +196,7 @@ for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
             truncatedTime_s=10,
             train_epoch=20000,
             init_lr=0.005,
-            PFI_numRepeat=1, # used 50 in the original code. changed for remove Engaged Data
+            PFI_numRepeat=50, # used 50 in the original code. changed for remove Engaged Data
             numBin=1,
             removeNestingData=args.removeNestingData,
             removeWanderData=args.removeWanderData,

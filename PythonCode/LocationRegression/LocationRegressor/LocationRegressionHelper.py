@@ -9,6 +9,8 @@ import numpy as np
 from pathlib import Path
 from scipy.interpolate import interp1d
 from scipy.io import loadmat
+import platform
+import warnings
 
 if 'torch' in sys.modules:
     class dANN(nn.Module):
@@ -118,6 +120,18 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
 
     default_rng = np.random.default_rng()
 
+    # Load Behavior Data if necessary
+    if removeWanderData | stratifyData:
+        if platform.system() == 'Windows':
+            behaviorDataBasePath = Path(r"D:\Data\Lobster\BehaviorData")
+        else:
+            behaviorDataBasePath = Path.home() / 'Data/BehaviorData'
+        behaviorDataPath = behaviorDataBasePath / str(tankPath.name + ".mat")
+        behavior_data = loadmat(behaviorDataPath)
+        ParsedData = behavior_data['ParsedData']
+        numTrial = len(ParsedData)
+
+
     # Check if the video file is buttered
     butter_location = [p for p in tankPath.glob('*_buttered.csv')]
 
@@ -187,11 +201,6 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
     #   2. TROF to IRON interval is longer than 12 sec
     if removeWanderData:
         print('removing wander')
-        behaviorDataBasePath = Path(r"/home/ubuntu/Data/BehaviorData/")
-        behaviorDataPath = behaviorDataBasePath / str(tankPath.name + ".mat")
-        behavior_data = loadmat(behaviorDataPath)
-        ParsedData = behavior_data['ParsedData']
-        numTrial = len(ParsedData)
 
         # get delete indice
         deleteIndex = np.zeros(midPointTimes.shape, dtype=bool)
@@ -206,7 +215,8 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
             )
             latency2HeadEntry = ParsedData[trial, 1][0, 0]
             TROF2IRONInterval = ParsedData[trial, 0][0, 0] - ParsedData[trial-1, 0][0,1] + latency2HeadEntry
-            if TROF2IRONInterval <= 12: # Engaged
+            warnings.warn('Currently Engaged Trials are removed')
+            if TROF2IRONInterval >= 12: # Engaged
                 continue
 
             deleteIndex[np.logical_and(
@@ -221,11 +231,6 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
 
     if stratifyData:
         print('stratifying Data')
-        behaviorDataBasePath = Path(r"D:\Data\Lobster\BehaviorData")
-        behaviorDataPath = behaviorDataBasePath / str(tankPath.name + ".mat")
-        behavior_data = loadmat(behaviorDataPath)
-        ParsedData = behavior_data['ParsedData']
-        numTrial = len(ParsedData)
 
         # Collect IR Info
         IRs = np.empty((0, 2))
