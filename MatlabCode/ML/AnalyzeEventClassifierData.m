@@ -6,11 +6,11 @@ sessionNames = string(sessionNames);
 tankNames = string(tankNames);
 
 %% Classifier accuracy
-prismOut_balancedAccuracy = table(zeros(40,1), zeros(40,1), 'VariableNames', ["Shuffled", "Predicted"]);
+prismOut_accuracy = table(zeros(40,1), zeros(40,1), 'VariableNames', ["Shuffled", "Predicted"]);
 
 for session = 1 : 40
-    prismOut_balancedAccuracy.Shuffled(session) = result{session}.balanced_accuracy_HEHW(1);
-    prismOut_balancedAccuracy.Predicted(session) = result{session}.balanced_accuracy_HEHW(2);
+    prismOut_accuracy.Shuffled(session) = result{session}.balanced_accuracy_HEHW(1);
+    prismOut_accuracy.Predicted(session) = result{session}.balanced_accuracy_HEHW(2);
 end
 
 prismOut_HEAE = table(zeros(40,1), zeros(40,1), 'VariableNames', ["Shuffled", "Predicted"]);
@@ -28,6 +28,7 @@ for session = 1 : 40
 end
 
 %% Classifier accuracy (Whole = Hierarchical)
+prismOut_accuracy = table(zeros(40,1), zeros(40,1), 'VariableNames', ["Shuffled", "Predicted"]);
 prismOut_balancedAccuracy = table(zeros(40,1), zeros(40,1), 'VariableNames', ["Shuffled", "Predicted"]);
 
 for session = 1 : 40
@@ -35,10 +36,28 @@ for session = 1 : 40
     HEAE_result = result{session}.WholeTestResult_HEAE >= 0.5;
     HWAE_result = result{session}.WholeTestResult_HWAE >= 0.5;
     numTrial = size(result{session}.WholeTestResult_HEAE,1);
+
+    tot_result = HEHW_result .* 2 + [HEAE_result; HWAE_result] + 1;
+    
+    % accuracy
+    prismOut_accuracy.Shuffled(session) = ...
+        sum(tot_result(:,1) == tot_result(:,2));
+    prismOut_accuracy.Predicted(session) = ...
+        sum(tot_result(:,1) == tot_result(:,3));
+
+    % balanced accuracy
     prismOut_balancedAccuracy.Shuffled(session) = ...
-        sum((HEHW_result(:,1) == HEHW_result(:,2)) & ([HEAE_result(:,1) == HEAE_result(:,2); HWAE_result(:,1) == HWAE_result(:,2)])) / (2*numTrial);
+        1/4*(...
+        sum(tot_result(tot_result(:,1) == 1, 2) == 1) / sum(tot_result(:,1) == 1) +...
+        sum(tot_result(tot_result(:,1) == 2, 2) == 2) / sum(tot_result(:,1) == 2) +...
+        sum(tot_result(tot_result(:,1) == 3, 2) == 3) / sum(tot_result(:,1) == 3) +...
+        sum(tot_result(tot_result(:,1) == 4, 2) == 4) / sum(tot_result(:,1) == 4));
     prismOut_balancedAccuracy.Predicted(session) = ...
-        sum((HEHW_result(:,1) == HEHW_result(:,3)) & ([HEAE_result(:,1) == HEAE_result(:,3); HWAE_result(:,1) == HWAE_result(:,3)])) / (2*numTrial);
+        1/4*(...
+        sum(tot_result(tot_result(:,1) == 1, 3) == 1) / sum(tot_result(:,1) == 1) +...
+        sum(tot_result(tot_result(:,1) == 2, 3) == 2) / sum(tot_result(:,1) == 2) +...
+        sum(tot_result(tot_result(:,1) == 3, 3) == 3) / sum(tot_result(:,1) == 3) +...
+        sum(tot_result(tot_result(:,1) == 4, 3) == 4) / sum(tot_result(:,1) == 4));
 end
 
 %% Classifier Accuracy Confusion Matrix

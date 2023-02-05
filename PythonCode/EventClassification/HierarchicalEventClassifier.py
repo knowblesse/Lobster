@@ -183,11 +183,6 @@ def Batch_EventClassifier(baseFolderPath):
     return {'tankNames' : tankNames, 'sessionNames': sessionNames, 'result' : result}
 
 
-# output = Batch_EventClassifier(Path(r'D:\Data\Lobster\EventClassificationData_4C_[-1200,-200]'))
-# savemat(r'D:/Data/Lobster/BNB_Result_unitshffle_[-1200,-200].mat', output)
+output = Batch_EventClassifier(Path(r'D:\Data\Lobster\EventClassificationData_4C'))
+savemat(r'D:/Data/Lobster/BNB_Result_unitshffle.mat', output)
 
-outputData = np.zeros([40,9])
-for i in np.arange(1, 10):
-    output = Batch_EventClassifier(Path(r'D:\Data\Lobster\EventClassificationData_4C_'+str(i)))
-    for j in np.arange(40):
-        outputData[j, i-1] = output['result'][j]['balanced_accuracy_HWAE'][1]
