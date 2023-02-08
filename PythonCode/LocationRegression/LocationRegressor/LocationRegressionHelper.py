@@ -177,6 +177,7 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
     # Generate Interpolation function
     intp_r = interp1d(butter_data[:, 0], butter_data[:, 1], kind='linear')
     intp_c = interp1d(butter_data[:, 0], butter_data[:, 2], kind='linear')
+    intp_deg = interp1d(butter_data[:, 0], correctRotationOffset(butter_data[:,3]), kind='linear')
 
     # Find midpoint of each neural data
     #   > If neural data is collected from 0 ~ 0.5 sec, (neural_data_rate=2), then the mid-point of the
@@ -187,6 +188,7 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
 
     y_r = intp_r(intp_frame(midPointTimes))
     y_c = intp_c(intp_frame(midPointTimes))
+    y_deg = intp_deg(intp_frame(midPointTimes)) % 360
 
     # If removeNestingData is set True, remove all points which has the column value smaller than 225
     if removeNestingData:
@@ -194,6 +196,7 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
         neural_data = neural_data[y_c >= 225, :]
         y_r = y_r[y_c >= 225]
         y_c = y_c[y_c >= 225]
+        y_deg = y_deg[y_c >= 255]
         midPointTimes = midPointTimes[y_c >= 225]
 
     # If removeWanderData is set True, load behavior data and remove all points of following condition
@@ -227,6 +230,7 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
         neural_data = neural_data[np.logical_not(deleteIndex), :]
         y_r = y_r[np.logical_not(deleteIndex)]
         y_c = y_c[np.logical_not(deleteIndex)]
+        y_deg = y_deg[np.logical_not(deleteIndex)]
         midPointTimes = midPointTimes[np.logical_not(deleteIndex)]
 
     if stratifyData:
@@ -255,10 +259,11 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
         neural_data = neural_data[selectedIndex,:]
         y_r = y_r[selectedIndex]
         y_c = y_c[selectedIndex]
+        y_deg = y_deg[selectedIndex]
         midPointTimes = midPointTimes[selectedIndex]
 
 
-    return(neural_data, np.expand_dims(y_r, 1), np.expand_dims(y_c, 1), midPointTimes)
+    return(neural_data, np.expand_dims(y_r, 1), np.expand_dims(y_c, 1), np.expand_dims(y_deg, 1), midPointTimes)
 
 # tankPath = Path('D:\Data\Lobster\FineDistanceDataset\#20JUN1-200831-110125_PL')
 # neural_data, y_r, y_c, midPointTimes = loadData(tankPath, neural_data_rate=20, truncatedTime_s=10, removeEnagedData=False, removeNestingData=False)

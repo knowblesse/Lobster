@@ -43,22 +43,29 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
     print(tank_name)
 
     # Load Data
-    neural_data, y_r, y_c, midPointTimes = loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData, removeWanderData, stratifyData)
+    neural_data, y_r, y_c, y_deg, midPointTimes = loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData, removeWanderData, stratifyData)
     print(neural_data.shape)
 
     # Dataset Prepared
     X = np.clip(neural_data, -5, 5)
     if dataset == 'distance':
+        print('Distance Regressor')
         y = ( (y_r - 280) ** 2 + (y_c - 640) ** 2 ) ** 0.5
     elif dataset == 'row':
+        print('Row Regressor')
         y = y_r
     elif dataset == 'column':
+        print('Column Regressor')
         y = y_c
     elif dataset == 'speed':
+        print('Speed Regressor')
         X = X[1:, :]
         y = ( np.diff(y_r,1,0) ** 2 + np.diff(y_c,1,0) ** 2 ) ** 0.5
         y_r = y_r[1:]
         y_c = y_c[1:]
+    elif dataset == 'degree':
+        print('Degree Regressor')
+        y = y_deg
     else:
         raise(BaseException('Wrong dataset. use distance, row, or column'))
 
@@ -184,7 +191,7 @@ if platform.system() == 'Windows':
     OutputFolder = Path('D:\Data\Lobster\FineDistanceResult_stratify')
 else:
     InputFolder = Path.home() / 'Data/FineDistanceDataset'
-    OutputFolder = Path.home() / 'Data/FineDistanceResult_syncFixed'
+    OutputFolder = Path.home() / 'Data/FineDistanceResult_degree'
 for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
     print(f'{i:02} {tank}')
     NeuralRegressor(
