@@ -1,6 +1,6 @@
 %% AnalyzeFineDistanceData
 
-basePath = 'D:\Data\Lobster\FineDistanceResult_speed';
+basePath = 'D:\Data\Lobster\FineDistanceResult_degree';
 behavDataPath = 'D:\Data\Lobster\BehaviorData';
 datasetDataPath = 'D:\Data\Lobster\FineDistanceDataset';
 
@@ -30,16 +30,27 @@ for session = 1 : 40
     TANK_location = char(strcat(basePath, filesep, TANK_name));
     load(TANK_location); % PFITestResult, WholeTestResult(row, col, true d , shuffled d, pred d)
     data{session} = WholeTestResult;
-    warning('Currently first point of the midPointTimes is removed');
-    midPointTimesData{session} = midPointTimes(2:end);
-
+    midPointTimesData{session} = midPointTimes;
 end
 
 %% Compare Error btw shuffled and predicted
 result1 = table(zeros(40,1), zeros(40,1), 'VariableNames',["Shuffled", "Predicted"]);
 for session = 1 : 40
-    result1.Shuffled(session) = mean(abs(data{session}(:,3) - data{session}(:,4))) * px2cm;
-    result1.Predicted(session) = mean(abs(data{session}(:,3) - data{session}(:,5))) * px2cm;
+    if contains(basePath, 'degree')
+        % if degree regressor, first get abs difference, and check if
+        % 360-diff is smaller than diff.
+        result1.Shuffled(session) = mean(min([...
+            abs(data{session}(:,3) - data{session}(:,4)),...
+            360 - (abs(data{session}(:,3) - data{session}(:,4)))...
+            ], [], 2));
+        result1.Predicted(session) = mean(min([...
+            abs(data{session}(:,3) - data{session}(:,5)),...
+            360 - (abs(data{session}(:,3) - data{session}(:,5)))...
+            ], [], 2));
+    else
+        result1.Shuffled(session) = mean(abs(data{session}(:,3) - data{session}(:,4))) * px2cm;
+        resut1.Predicted(session) = mean(abs(data{session}(:,3) - data{session}(:,5))) * px2cm;
+    end
 end
 
 %% Compare Error btw N, F, and E
