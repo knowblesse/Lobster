@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from Switching.SwitchingHelper import parseAllData, getZoneLDA
-from Switching.LDAScripts import *
 
 FolderPath = Path(r'D:/Data/Lobster/FineDistanceDataset')
 outputData = []
@@ -76,18 +75,10 @@ for tank in pbar:
     centroids['wanderInNest'] = np.mean(neural_data_transformed[isWanderingInNest, :], 0)
     centroids['readyInNest'] = np.mean(neural_data_transformed[isReadyInNest, :], 0)
 
-    wander_nest = np.sum((np.array(centroids['nest']) - centroids['wanderInNest']) ** 2) ** 0.5
-    wander_foraging = np.sum((np.array(centroids['foraging']) - centroids['wanderInNest']) ** 2) ** 0.5
+    distance_between_wander_c_foraging = np.mean(np.sum((centroids['foraging'] - neural_data_transformed[isWanderingInNest, :]) ** 2, axis=1) ** 0.5)
+    distance_between_ready_c_foraging = np.mean(np.sum((centroids['foraging'] - neural_data_transformed[isReadyInNest, :]) ** 2, axis=1) ** 0.5)
 
-    ready_nest = np.sum((np.array(centroids['nest']) - centroids['readyInNest']) ** 2) ** 0.5
-    ready_foraging = np.sum((np.array(centroids['foraging']) - centroids['readyInNest']) ** 2) ** 0.5
-
-    array2append.extend([
-                       wander_nest/(wander_nest+wander_foraging),
-                       wander_foraging / (wander_nest + wander_foraging),
-                       ready_nest / (ready_nest + ready_foraging),
-                       ready_foraging / (ready_nest + ready_foraging)
-                       ])
+    array2append.extend([distance_between_wander_c_foraging, distance_between_ready_c_foraging])
 
     # Hypothesis : if, neural vector during the nesting area is closer to the "state of encounter zone",
     # then the higher chance of avoidance failure on the following trial

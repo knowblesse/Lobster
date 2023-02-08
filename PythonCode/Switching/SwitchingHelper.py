@@ -9,7 +9,7 @@ warn('Set to 225')
 
 def parseAllData(tankName):
     locationDataPath = Path(r"D:/Data/Lobster/FineDistanceDataset") / Path(tankName)
-    locationResultPath = Path(r"D:/Data/Lobster/FineDistanceResult") / (tankName + 'result_distance.mat')
+    locationResultPath = Path(r"D:/Data/Lobster/FineDistanceResult_syncFixed") / (tankName + 'result_distance.mat')
     behaviorDataPath = Path(r"D:/Data/Lobster/BehaviorData") / Path(tankName).with_suffix('.mat')
     neural_data, y_r, y_c, midPointTimes = loadData(locationDataPath, neural_data_rate=20, truncatedTime_s=10, removeNestingData=False)
     neural_data = np.clip(neural_data, -5, 5)
