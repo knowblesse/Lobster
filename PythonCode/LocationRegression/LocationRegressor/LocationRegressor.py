@@ -1,43 +1,71 @@
 import re
-import numpy as np
-from pathlib import Path
-from scipy.interpolate import interp1d
 from scipy.io import savemat
 from sklearn.model_selection import KFold
 from tqdm import tqdm
-import platform
-import csv
 from LocationRegressionHelper import *
 import time
 from numpy.random import default_rng
 import argparse
-from torch.utils.data import TensorDataset, DataLoader
+import platform
+import numpy as np
+from pathlib import Path
+
+import requests
+
 
 print("Code is running on : " + ("cuda" if torch.cuda.is_available else "cpu"))
 time.sleep(1)
 
 parser = argparse.ArgumentParser(prog='LocationRegressor_PFI')
 parser.add_argument('regressor')
-parser.add_argument('--removeNestingData', default=False, required=False)
+parser.add_argument('--removeNestingData', default='False', required=False)
+parser.add_argument('--removeWanderData', default='False', required=False)
+parser.add_argument('--stratifyData', default='False', required=False)
 args = parser.parse_args()
 
-def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, truncatedTime_s, train_epoch, init_lr, PFI_numRepeat, numBin, removeNestingData=False):
+def strinput2bool(str_input):
+    if str_input in ('True', 'true', 'y', 'yes'):
+        return True
+    elif str_input in ('False', 'false', 'n', 'no'):
+        return False
+    else:
+        raise BaseException('Wrong argument input')
+
+# Convert to bool
+args.removeNestingData = strinput2bool(args.removeNestingData)
+args.removeWanderData = strinput2bool(args.removeWanderData)
+args.stratifyData = strinput2bool(args.stratifyData)
+
+def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, truncatedTime_s, train_epoch, init_lr, PFI_numRepeat, numBin, removeNestingData=False, removeWanderData=False, stratifyData=False):
     rng = default_rng()
     # Load Tank
     tank_name = re.search('#.*', str(tankPath))[0]
     print(tank_name)
 
     # Load Data
-    neural_data, y_r, y_c = loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData)
+    neural_data, y_r, y_c, y_deg, midPointTimes = loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData, removeWanderData, stratifyData)
+    print(neural_data.shape)
 
     # Dataset Prepared
     X = np.clip(neural_data, -5, 5)
     if dataset == 'distance':
+        print('Distance Regressor')
         y = ( (y_r - 280) ** 2 + (y_c - 640) ** 2 ) ** 0.5
     elif dataset == 'row':
+        print('Row Regressor')
         y = y_r
     elif dataset == 'column':
+        print('Column Regressor')
         y = y_c
+    elif dataset == 'speed':
+        print('Speed Regressor')
+        X = X[1:, :]
+        y = ( np.diff(y_r,1,0) ** 2 + np.diff(y_c,1,0) ** 2 ) ** 0.5
+        y_r = y_r[1:]
+        y_c = y_c[1:]
+    elif dataset == 'degree':
+        print('Degree Regressor')
+        y = y_deg
     else:
         raise(BaseException('Wrong dataset. use distance, row, or column'))
 
@@ -47,6 +75,7 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
 
     # Prepare array to store test dataset from the unit shuffled test dataset
     numUnit = int(X.shape[1] / numBin)
+    print(f'numUnit : {numUnit}')
     PFITestResult = np.zeros([X.shape[0], numUnit, PFI_numRepeat])
    
     # Setup KFold
@@ -70,20 +99,17 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
         net_fake = dANN(params).to(device)
         net_real.init_weights()
         net_fake.init_weights()
-        optimizer_real = torch.optim.SGD(net_real.parameters(), lr=init_lr, momentum=0.3, nesterov=False)
-        optimizer_fake = torch.optim.SGD(net_fake.parameters(), lr=init_lr, momentum=0.3, nesterov=False)
-        scheduler_real = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_real, patience=200, cooldown=100)
-        scheduler_fake = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_fake, patience=200, cooldown=100)
-        earlyStopping = EarlyStopping(model=net_real, model_control=net_fake, tolerance=500, save_best=True)
+        optimizer_real = torch.optim.SGD(net_real.parameters(), lr=init_lr, momentum=0.3, weight_decay=0.0)
+        optimizer_fake = torch.optim.SGD(net_fake.parameters(), lr=init_lr, momentum=0.3, weight_decay=0.0)
+        scheduler_real = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_real, patience=300, cooldown=100)
+        scheduler_fake = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_fake, patience=300, cooldown=100)
+        earlyStopping = EarlyStopping(model=net_real, model_control=net_fake, tolerance=1000, save_best=True)
 
 
         # Train
         pbar = tqdm(np.arange(train_epoch))
 
         for e in pbar:
-            # Get learning rate
-            lr = [group['lr'] for group in optimizer_real.param_groups]
-
             # Update net_real
             net_real.train()
             loss_real = F.mse_loss(net_real.forward(X_train), y_train)
@@ -100,10 +126,15 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
             torch.nn.utils.clip_grad_norm_(net_fake.parameters(), 5)
             optimizer_fake.step()
 
+            # Get learning rate
+            lr = [group['lr'] for group in optimizer_real.param_groups]
+
             # Update tqdm part
             net_real.eval()
             net_fake.eval()
             with torch.no_grad():
+                loss_train_real = F.mse_loss(net_real.forward(X_train), y_train)
+                loss_train_fake = F.mse_loss(net_fake.forward(X_train_shuffled), y_train)
                 loss_test_real = F.mse_loss(net_real.forward(X_test), y_test)
                 loss_test_fake = F.mse_loss(net_fake.forward(X_test), y_test)
 
@@ -151,12 +182,16 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
                 PFITestResult[test_index, unit, rep] = np.squeeze(y_corrupted.to('cpu').numpy())
 
     savemat(outputPath/f'{tank_name}result_{dataset}.mat', 
-            {'WholeTestResult': WholeTestResult, 'PFITestResult': PFITestResult})
+            {'WholeTestResult': WholeTestResult, 'PFITestResult': PFITestResult, 'midPointTimes': midPointTimes})
     
 device = torch.device("cuda" if torch.cuda.is_available else "cpu")
 
-InputFolder = Path('/home/ubuntu/Data/LocationRegressionData')
-OutputFolder = Path('/home/ubuntu/Data/LocationRegressionResult')
+if platform.system() == 'Windows':
+    InputFolder = Path('D:\Data\Lobster\FineDistanceDataset')
+    OutputFolder = Path('D:\Data\Lobster\FineDistanceResult_stratify')
+else:
+    InputFolder = Path.home() / 'Data/FineDistanceDataset'
+    OutputFolder = Path.home() / 'Data/FineDistanceResult_degree'
 for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
     print(f'{i:02} {tank}')
     NeuralRegressor(
@@ -164,11 +199,14 @@ for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
             outputPath=OutputFolder,
             dataset=args.regressor,
             device=device,
-            neural_data_rate=2,
+            neural_data_rate=20,
             truncatedTime_s=10,
             train_epoch=20000,
-            init_lr=0.0005,
-            PFI_numRepeat=50,
-            numBin=10,
-            removeNestingData=args.removeNestingData
+            init_lr=0.005,
+            PFI_numRepeat=50, # used 50 in the original code. changed for remove Engaged Data
+            numBin=1,
+            removeNestingData=args.removeNestingData,
+            removeWanderData=args.removeWanderData,
+            stratifyData=args.stratifyData
             )
+

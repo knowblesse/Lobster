@@ -9,9 +9,9 @@ warn('Set to 225')
 
 def parseAllData(tankName):
     locationDataPath = Path(r"D:/Data/Lobster/FineDistanceDataset") / Path(tankName)
-    locationResultPath = Path(r"D:/Data/Lobster/FineDistanceResult") / (tankName + 'result_distance.mat')
+    locationResultPath = Path(r"D:/Data/Lobster/FineDistanceResult_syncFixed") / (tankName + 'result_distance.mat')
     behaviorDataPath = Path(r"D:/Data/Lobster/BehaviorData") / Path(tankName).with_suffix('.mat')
-    neural_data, y_r, y_c, midPointTimes = loadData(locationDataPath, neural_data_rate=20, truncatedTime_s=10, removeNestingData=False)
+    neural_data, y_r, y_c, y_degree, midPointTimes = loadData(locationDataPath, neural_data_rate=20, truncatedTime_s=10, removeNestingData=False)
     neural_data = np.clip(neural_data, -5, 5)
     behavior_data = loadmat(behaviorDataPath) #'ParsedData'
     locationResult = loadmat(locationResultPath)
@@ -79,3 +79,17 @@ def getZoneLDA(neural_data, zoneClass):
     centroids = {'nest': c_nesting, 'foraging': c_foraging, 'encounter': c_encounter}
 
     return (neural_data_transformed, centroids)
+
+def mahal(points, dataset):
+    # return mahalanobis distance
+    # row => new points to query
+    # col => dimension
+    inv_cov = np.linalg.inv(np.cov(dataset, rowvar=False))
+    dataset_mean = np.mean(dataset, axis=0)
+
+    output = np.zeros(points.shape[0])
+
+    for i, point in enumerate(points):
+        output[i] = np.dot(np.dot(point- dataset_mean, inv_cov), (point-dataset_mean).T) ** 0.5
+
+    return output

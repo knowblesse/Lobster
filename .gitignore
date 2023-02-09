@@ -8,7 +8,6 @@ Apparatus/OldVersions/
 *.swp
 __pycache__/
 
-*.mat
 
 Apparatus/Visual/OldVersions/
 

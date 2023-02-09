@@ -4,13 +4,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from Switching.SwitchingHelper import parseAllData, getZoneLDA
-from Switching.LDAScripts import *
 
 FolderPath = Path(r'D:/Data/Lobster/FineDistanceDataset')
 outputData = []
 pbar = tqdm([p for p in FolderPath.glob('#*')])
 for tank in pbar:
+    array2append = []
     tankName = re.search('#.*', str(tank))[0]
+    array2append.append(tankName)
 
     data = parseAllData(tankName)
     zoneClass = data['zoneClass']
@@ -22,15 +23,47 @@ for tank in pbar:
 
     neural_data_transformed, centroids = getZoneLDA(data['neural_data'], zoneClass)
 
+    # Compare within-zone distance vs between-zone distance
+    NN = np.mean(np.sum((centroids['nest'] - neural_data_transformed[zoneClass == 0, :])**2, axis=1)**0.5)
+    NO = np.mean(
+        [np.mean(np.sum((centroids['foraging'] - neural_data_transformed[zoneClass == 0, :]) ** 2, axis=1) ** 0.5),
+        np.mean(np.sum((centroids['encounter'] - neural_data_transformed[zoneClass == 0, :]) ** 2, axis=1) ** 0.5)]
+    )
+
+    FF = np.mean(np.sum((centroids['foraging'] - neural_data_transformed[zoneClass == 1, :]) ** 2, axis=1) ** 0.5)
+    FO = np.mean(
+        [np.mean(np.sum((centroids['nest'] - neural_data_transformed[zoneClass == 1, :]) ** 2, axis=1) ** 0.5),
+        np.mean(np.sum((centroids['encounter'] - neural_data_transformed[zoneClass == 1, :]) ** 2, axis=1) ** 0.5)]
+    )
+    F_std = np.mean(np.std(neural_data_transformed[zoneClass == 1, :], axis=0))
+
+    EE = np.mean(np.sum((centroids['encounter'] - neural_data_transformed[zoneClass == 2, :]) ** 2, axis=1) ** 0.5)
+    EO = np.mean(
+        [np.mean(np.sum((centroids['nest'] - neural_data_transformed[zoneClass == 2, :]) ** 2, axis=1) ** 0.5),
+        np.mean(np.sum((centroids['foraging'] - neural_data_transformed[zoneClass == 2, :]) ** 2, axis=1) ** 0.5)]
+    )
+    array2append.extend([
+        NN, NO,
+        FF, FO,
+        EE, EO
+    ])
+
+    # Compare centroid distances
+    D_nest_foraging = np.sum((np.array(centroids['nest']) - np.array(centroids['foraging'])) ** 2) ** 0.5
+    D_nest_encounter = np.sum((np.array(centroids['nest']) - np.array(centroids['encounter'])) ** 2) ** 0.5
+    D_encounter_foraging = np.sum((np.array(centroids['encounter']) - np.array(centroids['foraging'])) ** 2) ** 0.5
+    array2append.extend([D_nest_foraging, D_nest_encounter, D_encounter_foraging])
+
+    # Compare Wander vs Engaged
     isWanderingInNest = np.zeros(neural_data_transformed.shape[0], dtype=bool)
     isReadyInNest = np.zeros(neural_data_transformed.shape[0], dtype=bool)
 
-    for trial in np.arange(2, numTrial + 1):
-        latency2HeadEntry = ParsedData[trial - 1, 1][0, 0]
+    for trial in np.arange(1, numTrial):
+        latency2HeadEntry = ParsedData[trial, 1][0, 0] # first IRON from TRON
 
         betweenTRON_firstIRON = np.logical_and(
-            ParsedData[trial - 1, 0][0, 0] <= midPointTimes,
-            midPointTimes < (ParsedData[trial - 1, 1][0, 0] + ParsedData[trial - 1, 0][0, 0])
+            ParsedData[trial, 0][0, 0] <= midPointTimes,
+            midPointTimes < (ParsedData[trial, 1][0, 0] + ParsedData[trial, 0][0, 0])
         )
 
         # get behavior types
@@ -42,25 +75,10 @@ for tank in pbar:
     centroids['wanderInNest'] = np.mean(neural_data_transformed[isWanderingInNest, :], 0)
     centroids['readyInNest'] = np.mean(neural_data_transformed[isReadyInNest, :], 0)
 
-    wander_nest = np.sum((np.array(centroids['nest']) - centroids['wanderInNest']) ** 2) ** 0.5
-    wander_foraging = np.sum((np.array(centroids['foraging']) - centroids['wanderInNest']) ** 2) ** 0.5
+    distance_between_wander_c_foraging = np.mean(np.sum((centroids['foraging'] - neural_data_transformed[isWanderingInNest, :]) ** 2, axis=1) ** 0.5)
+    distance_between_ready_c_foraging = np.mean(np.sum((centroids['foraging'] - neural_data_transformed[isReadyInNest, :]) ** 2, axis=1) ** 0.5)
 
-    ready_nest = np.sum((np.array(centroids['nest']) - centroids['readyInNest']) ** 2) ** 0.5
-    ready_foraging = np.sum((np.array(centroids['foraging']) - centroids['readyInNest']) ** 2) ** 0.5
-
-    outputData.append([tankName,
-                       wander_nest/(wander_nest+wander_foraging),
-                       wander_foraging / (wander_nest + wander_foraging),
-                       ready_nest / (ready_nest + ready_foraging),
-                       ready_nest / (ready_nest + ready_foraging)
-                       ])
-
-    # Fact : Neural state of encounter is not similar compared to other states
-    # D_nest_foraging = np.sum((np.array(centroids['nest']) - np.array(centroids['foraging'])) ** 2) ** 0.5
-    # D_nest_encounter = np.sum((np.array(centroids['nest']) - np.array(centroids['encounter'])) ** 2) ** 0.5
-    # D_encounter_foraging = np.sum((np.array(centroids['encounter']) - np.array(centroids['foraging'])) ** 2) ** 0.5
-    # D_all = D_nest_foraging + D_nest_encounter + D_encounter_foraging
-    # outputData.append([tankName, D_nest_foraging/D_all, D_nest_encounter/D_all, D_encounter_foraging/D_all])
+    array2append.extend([distance_between_wander_c_foraging, distance_between_ready_c_foraging])
 
     # Hypothesis : if, neural vector during the nesting area is closer to the "state of encounter zone",
     # then the higher chance of avoidance failure on the following trial
@@ -107,4 +125,6 @@ for tank in pbar:
     #         EscapeData.append(vec)
     # if (len(AvoidData) > 5) and (len(EscapeData) > 5):
     #     outputData.append([tankName, np.mean(AvoidData), np.mean(EscapeData)])
-np.savetxt('C:/Users/Knowblesse/Desktop/stds.csv', np.array(outputData), delimiter=',', fmt='%s')
+
+    outputData.append(array2append)
+np.savetxt('C:/Users/Knowblesse/Desktop/distances.csv', np.array(outputData), delimiter=',', fmt='%s')
