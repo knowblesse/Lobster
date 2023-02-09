@@ -78,9 +78,10 @@ def drawConnectingArrows(ax, points):
             )
 
 #tankName =  '#20JUN1-200916-111545_PL' # Good
-tankName = '#21JAN5-210622-180202_PL' # wandering
+#tankName = '#21JAN5-210622-180202_PL' # wandering
 #tankName = '#21JAN2-210406-190737_IL'
 #tankName = '#21JAN2-210419-175714_IL'
+tankName = '#21JAN5-210803-182450_IL' # distracted
 
 data = parseAllData(tankName)
 neural_data = data['neural_data']
@@ -128,10 +129,15 @@ isEncounterEscape = np.zeros(neural_data_transformed.shape[0], dtype=bool)
 for trial in np.arange(1, numTrial): # data from the first trial (trial=0) is ignored
     betweenTRON_TROF = np.logical_and(ParsedData[trial, 0][0,0] <= midPointTimes, midPointTimes <  ParsedData[trial, 0][0,1])
     betweenTROF_TRON = np.logical_and(ParsedData[trial-1, 0][0,1] <= midPointTimes, midPointTimes <  ParsedData[trial, 0][0,0])
+    betweenTROF_firstIRON = np.logical_and(
+        ParsedData[trial - 1, 0][0, 1] <= midPointTimes,
+        midPointTimes < (ParsedData[trial, 1][0, 0] + ParsedData[trial, 0][0, 0])
+    )
     betweenTRON_firstIRON = np.logical_and(
         ParsedData[trial, 0][0,0] <= midPointTimes,
         midPointTimes <  (ParsedData[trial, 1][0,0] + ParsedData[trial, 0][0,0])
     )
+    timeBetweenTROF_firstIRON = (ParsedData[trial, 1][0,0] + ParsedData[trial, 0][0,0]) - ParsedData[trial-1, 0][0,1]
     latency2HeadEntry = ParsedData[trial, 1][0, 0]
 
     # get behavior types
@@ -139,17 +145,22 @@ for trial in np.arange(1, numTrial): # data from the first trial (trial=0) is ig
     isRunning2Robot = np.logical_or(isRunning2Robot, np.logical_and(betweenTRON_firstIRON, zoneClass==1))
     isReturning2Nest = np.logical_or(isReturning2Nest, np.logical_and(betweenTROF_TRON, zoneClass==1))
 
-    if latency2HeadEntry >= 5:
-        isWanderingInNest = np.logical_or(isWanderingInNest, np.logical_and(betweenTRON_firstIRON, zoneClass==0))
+    #Old Method
+    # if latency2HeadEntry >= 5:
+    #     isWanderingInNest = np.logical_or(isWanderingInNest, np.logical_and(betweenTRON_firstIRON, zoneClass==0))
+    # else:
+    #     isReadyInNest = np.logical_or(isReadyInNest, np.logical_and(betweenTRON_firstIRON, zoneClass == 0))
+    # New Method
+    if timeBetweenTROF_firstIRON >= 12:
+        isWanderingInNest = np.logical_or(isWanderingInNest, np.logical_and(betweenTROF_firstIRON, zoneClass==0))
     else:
-        isReadyInNest = np.logical_or(isReadyInNest, np.logical_and(betweenTRON_firstIRON, zoneClass == 0))
+        isReadyInNest = np.logical_or(isReadyInNest, np.logical_and(betweenTROF_firstIRON, zoneClass == 0))
 
+    # Avoid / Escape
     if AEResult[trial] == 0:
         isEncounterAvoid = np.logical_or(isEncounterAvoid, np.logical_and(betweenTRON_TROF, zoneClass == 2))
     else:
         isEncounterEscape = np.logical_or(isEncounterEscape, np.logical_and(betweenTRON_TROF, zoneClass == 2))
-
-
 
 centroids['wanderInNest'] = np.mean(neural_data_transformed[isWanderingInNest,:],0)
 centroids['readyInNest'] = np.mean(neural_data_transformed[isReadyInNest,:],0)
@@ -182,13 +193,81 @@ ax2.legend(legendItems, legendText)
 #####################################################################
 #                 Draw Wander and Ready difference                  #
 #####################################################################
-fig3, ax3, legendText, legendItems = drawLDAResult(neural_data_transformed, zoneClass, centroids, tankName, 200, useOldFigure=False, drawOnlyCloserObjects=True, points2draw=['n','f'])
 
-sc1 = ax3.scatter(centroids['wanderInNest'][0], centroids['wanderInNest'][1], s=50, marker='^', color='k')
-sc2 = ax3.scatter(centroids['readyInNest'][0], centroids['readyInNest'][1], s=50, marker='v', color='k')
-legendItems.extend([sc1, sc2])
-legendText.extend(['Wander', 'Engaged'])
-ax3.legend(legendItems, legendText, fontsize=6.6, markerscale=0.4)
+################ Load Distracted data
+from pathlib import Path
+bool_distracted_path = Path("D:\Data\Lobster\FineDistanceDataset\#21JAN5-210803-182450_IL") / "bool_distracted.csv"
+frame_info_path = Path("D:\Data\Lobster\FineDistanceDataset\#21JAN5-210803-182450_IL\#21JAN5-210803-182450_IL_frameInfo.mat")
+
+bool_distracted = np.loadtxt(bool_distracted_path)
+from scipy.io import loadmat
+frameData = loadmat(frame_info_path)
+from scipy.interpolate import interp1d
+
+intp1_frameTime2frameNumber = interp1d(np.squeeze(frameData['frameTime']), np.squeeze(frameData['frameNumber']))
+
+bool_distracted[np.round(intp1_frameTime2frameNumber(midPointTimes)).astype(int)].astype(bool)
+
+
+
+#################
+
+fig = plt.figure(figsize=(3., 2.7))
+ax = fig.subplots(1, 1)
+
+# Select only partial data
+# get the closest object
+dotNumber = 200
+zC0 = np.where(zoneClass == 1)[0][
+    np.argsort(
+        np.sum((np.array(centroids['foraging']) - neural_data_transformed[zoneClass == 1, :]) ** 2, 1) ** 0.5)[
+    :dotNumber * 10]]
+dotNumber = 100
+zC1 = np.where(isWanderingInNest)[0][
+    np.argsort(
+        np.sum((np.array(centroids['wanderInNest']) - neural_data_transformed[isWanderingInNest]) ** 2, 1) ** 0.5)[
+    :dotNumber * 5]]
+zC2 = np.where(isReadyInNest)[0][
+    np.argsort(
+        np.sum((np.array(centroids['readyInNest']) - neural_data_transformed[isReadyInNest]) ** 2, 1) ** 0.5)[
+    :dotNumber * 5]]
+# select random from it
+
+zC0 = np.random.choice(zC0, dotNumber)
+dotNumber = 100
+zC1 = np.random.choice(zC1, dotNumber)
+zC2 = np.random.choice(zC2, dotNumber)
+
+legendText = []
+legendItems = []
+# Foraging
+ax.scatter(neural_data_transformed[zC0, 0], neural_data_transformed[zC0, 1],
+           color=np.array([84, 193, 223, 90]) / 255, s=7)
+sc = ax.scatter(centroids['foraging'][0], centroids['foraging'][1], color=np.array([84, 193, 223]) / 255,
+                edgecolor='black', marker='D', s=80)
+legendText.append('Foraging')
+legendItems.append(sc)
+
+# Wander
+ax.scatter(neural_data_transformed[zC1, 0], neural_data_transformed[zC1, 1],
+       color=np.array([207, 63, 66, 90]) / 255, s=7)
+sc = ax.scatter(centroids['wanderInNest'][0], centroids['wanderInNest'][1], color=np.array([207, 63, 66]) / 255,
+            edgecolor='black', marker='D', s=40)
+legendText.append('Wander')
+legendItems.append(sc)
+
+# Ready
+ax.scatter(neural_data_transformed[zC2, 0], neural_data_transformed[zC2, 1],
+       color=np.array([238, 188, 189, 90]) / 255, s=7)
+sc = ax.scatter(centroids['readyInNest'][0], centroids['readyInNest'][1], color=np.array([238, 188, 189]) / 255,
+            edgecolor='black', marker='D', s=40)
+legendText.append('Ready')
+legendItems.append(sc)
+
+# ax.legend(legendText)
+ax.legend(legendItems, legendText, fontsize=6.6, markerscale=0.4)
+ax.set_xlabel("Dim 1")
+ax.set_ylabel("Dim 2")
 
 
 #####################################################################
@@ -199,3 +278,86 @@ ax4.scatter(centroids['encounterAvoid'][0], centroids['encounterAvoid'][1], s=10
 ax4.scatter(centroids['encounterEscape'][0], centroids['encounterEscape'][1], s=100, marker='x', color='r')
 legendText.extend(['center_Avoid', 'center_escape'])
 ax4.legend(legendText)
+
+
+
+
+
+
+
+
+################ Load Distracted data
+from pathlib import Path
+bool_distracted_path = Path("D:\Data\Lobster\FineDistanceDataset\#21JAN5-210803-182450_IL") / "bool_distracted.csv"
+frame_info_path = Path("D:\Data\Lobster\FineDistanceDataset\#21JAN5-210803-182450_IL\#21JAN5-210803-182450_IL_frameInfo.mat")
+
+bool_distracted = np.loadtxt(bool_distracted_path)
+from scipy.io import loadmat
+frameData = loadmat(frame_info_path)
+from scipy.interpolate import interp1d
+
+intp1_frameTime2frameNumber = interp1d(np.squeeze(frameData['frameTime']), np.squeeze(frameData['frameNumber']))
+
+isDistracted = bool_distracted[np.round(intp1_frameTime2frameNumber(midPointTimes)).astype(int)].astype(bool)
+
+centroids['Distracted'] = np.mean(neural_data_transformed[np.logical_and(isDistracted, zoneClass==0),:],0)
+centroids['Not Distracted'] = np.mean(neural_data_transformed[np.logical_and(~isDistracted, zoneClass==0),:],0)
+
+#################
+
+fig = plt.figure(figsize=(3., 2.7))
+ax = fig.subplots(1, 1)
+
+# Select only partial data
+# get the closest object
+dotNumber = 200
+zC0 = np.where(zoneClass == 1)[0][
+    np.argsort(
+        np.sum((np.array(centroids['foraging']) - neural_data_transformed[zoneClass == 1, :]) ** 2, 1) ** 0.5)[
+    :dotNumber * 10]]
+dotNumber = 100
+zC1 = np.where(np.logical_and(isDistracted, zoneClass==0))[0][
+    np.argsort(
+        np.sum((np.array(centroids['Distracted']) - neural_data_transformed[np.logical_and(isDistracted, zoneClass==0),:]) ** 2, 1) ** 0.5)[
+    :dotNumber * 5]]
+zC2 = np.where(np.logical_and(~isDistracted, zoneClass==0))[0][
+    np.argsort(
+        np.sum((np.array(centroids['Not Distracted']) - neural_data_transformed[np.logical_and(~isDistracted, zoneClass==0),:]) ** 2, 1) ** 0.5)[
+    :dotNumber * 5]]
+# select random from it
+
+zC0 = np.random.choice(zC0, dotNumber)
+dotNumber = 100
+zC1 = np.random.choice(zC1, dotNumber)
+zC2 = np.random.choice(zC2, dotNumber)
+
+legendText = []
+legendItems = []
+# Foraging
+ax.scatter(neural_data_transformed[zC0, 0], neural_data_transformed[zC0, 1],
+           color=np.array([84, 193, 223, 90]) / 255, s=7)
+sc = ax.scatter(centroids['foraging'][0], centroids['foraging'][1], color=np.array([84, 193, 223]) / 255,
+                edgecolor='black', marker='D', s=80)
+legendText.append('Foraging')
+legendItems.append(sc)
+
+# Wander
+ax.scatter(neural_data_transformed[zC1, 0], neural_data_transformed[zC1, 1],
+       color=np.array([207, 63, 66, 90]) / 255, s=7)
+sc = ax.scatter(centroids['Distracted'][0], centroids['Distracted'][1], color=np.array([207, 63, 66]) / 255,
+            edgecolor='black', marker='D', s=40)
+legendText.append('Distracted')
+legendItems.append(sc)
+
+# Ready
+ax.scatter(neural_data_transformed[zC2, 0], neural_data_transformed[zC2, 1],
+       color=np.array([238, 188, 189, 90]) / 255, s=7)
+sc = ax.scatter(centroids['Not Distracted'][0], centroids['Not Distracted'][1], color=np.array([238, 188, 189]) / 255,
+            edgecolor='black', marker='D', s=40)
+legendText.append('Not Distracted')
+legendItems.append(sc)
+
+# ax.legend(legendText)
+ax.legend(legendItems, legendText, fontsize=6.6, markerscale=0.4)
+ax.set_xlabel("Dim 1")
+ax.set_ylabel("Dim 2")
