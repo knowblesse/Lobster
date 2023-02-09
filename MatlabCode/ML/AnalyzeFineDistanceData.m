@@ -30,7 +30,11 @@ for session = 1 : 40
     TANK_location = char(strcat(basePath, filesep, TANK_name));
     load(TANK_location); % PFITestResult, WholeTestResult(row, col, true d , shuffled d, pred d)
     data{session} = WholeTestResult;
-    midPointTimesData{session} = midPointTimes;
+    if exist("midPointTimes") == 0
+            midPointTimesData{session} = truncatedTimes_s + (1/neural_data_rate)*(0:size(WholeTestResult,1)-1) + 0.5 * (1/neural_data_rate);
+    else
+        midPointTimesData{session} = midPointTimes;
+    end
 end
 
 %% Compare Error btw shuffled and predicted
