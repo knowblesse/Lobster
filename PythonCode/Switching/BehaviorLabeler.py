@@ -3,8 +3,7 @@ from pathlib import Path
 import cv2 as cv
 from tkinter.filedialog import askdirectory
 import numpy as np
-
-# TODO : Only Mark Nestzone Data
+from scipy.interpolate import interp1d
 # Constants
 TANK_PATH = Path(askdirectory())
 
@@ -15,16 +14,23 @@ vidlist.extend([i for i in TANK_PATH.glob('*.avi')])
 vidlist.extend([i for i in TANK_PATH.glob('*.mp4')])
 vidlist.extend([i for i in TANK_PATH.glob('*.mpg')])
 if len(vidlist) == 0:
-    raise(BaseException(f'ReLabeler : Can not find video in {TANK_PATH}'))
+    raise(BaseException(f'BehaviorLabeler : Can not find video in {TANK_PATH}'))
 elif len(vidlist) > 1:
-    raise(BaseException(f'ReLabeler : Multiple video files found in {TANK_PATH}'))
+    raise(BaseException(f'BehaviorLabeler : Multiple video files found in {TANK_PATH}'))
 else:
     path_video = vidlist[0]
 
-# Load the video and the label data
+# Load the video 
 vid = cv.VideoCapture(str(path_video))
 num_frame = vid.get(cv.CAP_PROP_FRAME_COUNT)
-fps = vid.get(cv.CAP_PROP_FPS)
+
+# Find and load the butter data
+butter_data_path = [i for i in TANK_PATH.glob('*buttered.csv')]
+if len(butter_data_path) != 1:
+    raise(BaseException('BehaviorLabeler : Can not find butter data'))
+butter_data = np.loadtxt(butter_data_path[0], delimiter='\t')
+intp_c = interp1d(butter_data[:,0], butter_data[:,2], bounds_error=False, fill_value=255)
+idx_nestzone = np.where(intp_c(np.arange(num_frame)) < 225)[0]
 
 # Find prev dataset if exist
 if [path for path in TANK_PATH.glob('data_distracted.csv')]:
@@ -45,10 +51,13 @@ def getFrame(current_frame):
 
 def convertToggle2Bool():
     outputBool = np.zeros(int(num_frame), dtype=bool)
-    for i in range(np.sum(data_distracted == 2)):
-        outputBool[np.where(data_distracted == 1)[0][i] : np.where(data_distracted == 2)[0][i]] = True
-    if np.sum(data_distracted == 1) > np.sum(data_distracted == 2):
-        outputBool[np.where(data_distracted == 1)[0][-1]:] = True
+    try:
+        for i in range(np.sum(data_distracted == 2)):
+            outputBool[np.where(data_distracted == 1)[0][i] : np.where(data_distracted == 2)[0][i]] = True
+        if np.sum(data_distracted == 1) > np.sum(data_distracted == 2):
+            outputBool[np.where(data_distracted == 1)[0][-1]:] = True
+    except BaseException:
+        print('Error occured')
     return outputBool
 
 # Start Main UI
@@ -66,6 +75,13 @@ while key!=ord('q'):
         current_frame = int(np.max([0, current_frame - 1]))
     elif key == ord('d'): # forward 1 label
         current_frame = int(np.min([num_frame-1, current_frame + 1]))
+    elif key == ord('q'): # back to nearest Nestzone
+        current_frame = np.max(idx_nestzone[idx_nestzone < current_frame])
+    elif key == ord('r'): # next nearest Nestzone
+        try:
+            current_frame = np.min(idx_nestzone[idx_nestzone > current_frame])
+        except ValueError:
+            print('no nest data')
     elif key == ord('j'): # mark start behav
         if data_distracted[current_frame] != 1:
             data_distracted[current_frame] = 1

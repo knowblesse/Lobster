@@ -7,9 +7,9 @@ from Switching.SwitchingHelper import parseAllData, getZoneLDA
 
 FolderPath = Path(r'D:/Data/Lobster/FineDistanceDataset')
 outputData = []
+OutputPath = Path.home() / 'WanderTrialRatio.csv'
 
 for tank in [p for p in FolderPath.glob('#*')]:
-    array2append = []
     tankName = re.search('#.*', str(tank))[0]
 
     data = parseAllData(tankName)
@@ -30,3 +30,5 @@ for tank in [p for p in FolderPath.glob('#*')]:
         else:
             ratioWanderReady[1] += 1
     print(f'{tankName} : {ratioWanderReady[0] / sum(ratioWanderReady)}')
+    outputData.append([tankName, ratioWanderReady[0] / sum(ratioWanderReady)])
+np.savetxt(OutputPath, np.array(outputData), fmt='%s', delimiter=',')
