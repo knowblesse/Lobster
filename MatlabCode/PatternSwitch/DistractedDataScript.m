@@ -6,7 +6,7 @@ px2cm = 0.169;
 truncatedTimes_s = 10;
 neural_data_rate = 20;
 
-numTank = 22;
+numTank = 21;
 load('tankList.mat');
 output_table = table(strings(numTank, 1), zeros(numTank, 1), zeros(numTank, 1), zeros(numTank, 2), zeros(numTank, 1), ...
     'VariableNames', {'Tank', 'Error_Distracted', 'Error_Engaged', 'NumData', 'DataRatio'});
