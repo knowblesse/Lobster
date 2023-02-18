@@ -17,7 +17,7 @@ videoPath = next( TANK_PATH.glob('*.avi') )
 videoOutputPath = Path.home() / ('Desktop/' +  TANK_NAME + '_labeled_.avi')
 
 # Find distracted label data
-if [path for path in Path(TANK_PATH).glob('data_distracted.csv')]:
+if [path for path in Path(TANK_PATH).glob('bool_distracted.csv')]:
     data_distracted = np.loadtxt(next(TANK_PATH.glob('bool_distracted.csv')), delimiter=',')
 else:
     raise(BaseException("Can not find distracted label data"))
@@ -27,10 +27,10 @@ REGR_PATH = Path("D:\Data\Lobster\FineDistanceResult_syncFixed")
 if [path for path in REGR_PATH.glob(TANK_NAME + '*')]:
     data_regr = loadmat(next(REGR_PATH.glob(TANK_NAME + '*')))
     data_regr = data_regr['WholeTestResult']
-L1Errors = np.abs(data_regr[:,2] - data_regr[:,4]) * 0.169
+L1Errors = (data_regr[:,2] - data_regr[:,4]) * 0.169
 
 # moving average
-L1Errors = np.convolve(L1Errors, np.ones(10), 'same') / 10
+L1Errors = np.convolve(L1Errors, np.ones(20), 'same') / 20
 
 # Get midPointTimes
 data = parseAllData(TANK_NAME)
@@ -74,15 +74,21 @@ for i in tqdm(range(int(_fcount))):
             cv.circle(image, (50,100), 25, [0,0,255], -1) # BGR (Red)
             cv.putText(image, f'Distracted', [240, 250],
                        fontFace=cv.FONT_HERSHEY_SIMPLEX, fontScale=1.2, color=[255, 255, 255], thickness=2)
-        else:
-            cv.circle(image, (50,100), 25, [255, 0, 0], -1)  # BGR (Blue)
+
+        # Find midpointtime index
+        idx_mpt = np.where(midPointTimes < intp_frame(frameCount))[0][-1]
 
         # Draw Graph
-        L1Error = L1Errors[np.where(midPointTimes < intp_frame(frameCount))[0][-1]]
+        L1Error = L1Errors[idx_mpt]
         errorMultiplier = 3
-        cv.rectangle(image, [0,380], [20, 380 - int(errorMultiplier * L1Error)], [255, 255, 255], -1)
-        cv.putText(image, f'{L1Error:5.2f}cm', [0, 460],
+        cv.rectangle(image, [0,380], [20, 380 - int(errorMultiplier * np.abs(L1Error))], [255, 255, 255], -1)
+        cv.putText(image, f'{np.abs(L1Error):5.2f}cm', [0, 460],
                    fontFace=cv.FONT_HERSHEY_SIMPLEX, fontScale=0.8, color=[255, 255, 255], thickness=2)
+
+        # Draw Error circle around the rat
+        cv.circle(image, (int(data_regr[idx_mpt, 1]), int(data_regr[idx_mpt,0])), int(np.abs(L1Error)/0.169/2), [255, 255, 255], 2)
+        cv.arrowedLine(image, (int(data_regr[idx_mpt, 1]), int(data_regr[idx_mpt,0])), (int(data_regr[idx_mpt, 1] + L1Error/0.169/2) , int(data_regr[idx_mpt,0])), [255, 255, 255], 2)
+
     vw.write(image)
 
     frameCount += 1
