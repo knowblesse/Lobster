@@ -1,6 +1,6 @@
 %% AnalyzeFineDistanceData
 
-basePath = 'D:\Data\Lobster\FineDistanceResult_degree';
+basePath = 'D:\Data\Lobster\FineDistanceResult_stratify';
 behavDataPath = 'D:\Data\Lobster\BehaviorData';
 datasetDataPath = 'D:\Data\Lobster\FineDistanceDataset';
 
@@ -53,7 +53,7 @@ for session = 1 : 40
             ], [], 2));
     else
         result1.Shuffled(session) = mean(abs(data{session}(:,3) - data{session}(:,4))) * px2cm;
-        resut1.Predicted(session) = mean(abs(data{session}(:,3) - data{session}(:,5))) * px2cm;
+        result1.Predicted(session) = mean(abs(data{session}(:,3) - data{session}(:,5))) * px2cm;
     end
 end
 
