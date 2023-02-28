@@ -1,7 +1,5 @@
 %% Constants
-TIMEWINDOW = [-1200, -200]; 
-
-startTime = -3000 : 500 : 1000;
+startTime = -3000 : 200 : -1000;
 endTime = startTime + 2000;
 
 timewindows = [startTime', endTime'];
@@ -12,10 +10,14 @@ filelist = dir(basepath);
 workingfile = regexp({filelist.name},'#\S*','match'); % read only #ed folders
 workingfile = workingfile(~cellfun('isempty',workingfile));
 
-outputBasepath = 'D:\Data\Lobster';
+outputBasepath = 'D:\Data\Lobster\EventClassificationData_4C_Predictive';
 for dataset = 1 : numDataset
     TIMEWINDOW = timewindows(dataset,:);
-    outputpath = fullfile(outputBasepath, strcat('EventClassificationData_4C_', num2str(dataset)));
+    outputpath = fullfile(outputBasepath, strcat(...
+        'HEC_Predictive_',...
+        num2str(timewindows(dataset,1)),...
+        '_',...
+        num2str(timewindows(dataset,2))));
     mkdir(outputpath);
 
     TIMEWINDOW_BIN = 50;
