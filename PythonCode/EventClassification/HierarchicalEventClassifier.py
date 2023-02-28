@@ -23,6 +23,7 @@ from scipy.io import loadmat, savemat
 from tqdm import tqdm
 import re
 import platform
+import argparse
 
 # Check package version
 if (sklearn.__version__ < '0.23.2'):
@@ -182,7 +183,24 @@ def Batch_EventClassifier(baseFolderPath):
     print(np.mean(balancedAccuracy, 0))
     return {'tankNames' : tankNames, 'sessionNames': sessionNames, 'result' : result}
 
+def Batch_Batch_EventClassifier(basebaseFolderPath):
+    # batch of the "Batch_EventClassifier" function.
+    # for predictiveness testing using multiple neural datasets from different timewindow
 
-output = Batch_EventClassifier(Path(r'D:\Data\Lobster\EventClassificationData_4C'))
-savemat(r'D:/Data/Lobster/BNB_Result_unitshffle.mat', output)
+    for basePath in basebaseFolderPath.glob('*'):
+        print(f'running {basePath.stem}')
+        output = Batch_EventClassifier(basePath)
+        savemat(str((Path(r'/home/ainav/Data/') / (basePath.stem + '.mat')).absolute()), output)
+
+parser = argparse.ArgumentParser(prog='HierarchicalEventClassifier')
+parser.add_argument('predictive')
+args = parser.parse_args()
+
+if args.predictive == 'true':
+    print('running predictive')
+    Batch_Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData_4C_Predictive'))
+elif args.predictive == 'false':
+    print('running on single dataset')
+    output = Batch_EventClassifier(Path(r'D:\Data\Lobster\EventClassificationData_4C'))
+    savemat(r'D:/Data/Lobster/BNB_Result_unitshffle.mat', output)
 
