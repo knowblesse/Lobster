@@ -1,52 +1,33 @@
-%% Script to check correlation between event classifier score of LOO and 5-fold CV
-pfi_cv5 = [];
+%% TestingScripts
 
-accuracy_all = zeros(40,2);
-accuracy_cv5 = zeros(40,2);
+%% Load Unit Class Data
+ClassifyUnits;
+clearvars -except Unit
 
-for i = 1 : 40
-    %pfi_cv5 = [pfi_cv5; permutation_feature_importance(result_CV5{i}.WholeTestResult_HWAE, result_CV5{i}.PFITestResult_HWAE)];
-    accuracy_all(i, :) = result_All{i}.balanced_accuracy_HW(1:2);
-    accuracy_cv5(i, :) = result_CV5{i}.balanced_accuracy_HWAE;
+%% Load Two Data
+targetTank = '#21JAN2-210406-190737_IL';
+result_distance = load(fullfile('D:\Data\Lobster\FineDistanceResult_syncFixed', ...
+    strcat(targetTank, 'result_distance.mat')));
+result_event = load('D:\Data\Lobster\BNB_Result_fullshuffle.mat');
+result_event = result_event.result{find(string(result_event.sessionNames) == targetTank)};
+
+%% Calculate Unit Importance for distance data
+numUnit = size(result_distance.PFITestResult,2);
+original_data_error = mean(abs(result_distance.WholeTestResult(:,3) - result_distance.WholeTestResult(:,5))) * 0.169;
+
+one_unit_shuffled_data_errors = zeros(numUnit,1);
+for unit = 1 : numUnit
+    one_unit_shuffled_data_errors(unit) = mean(abs(result_distance.WholeTestResult(:,3) - result_distance.PFITestResult(:,unit))) * 0.169;
 end
 
-%% Calculate feature importance score of the Event Classifier
+UI_distance = one_unit_shuffled_data_errors - original_data_error;
 
-% HEHW = zeros(40, 2);
-% HEAE = zeros(40, 2);
-% HWAE = zeros(40, 2);
+clearvars unit original_data_error one_unit_shuffled_data_errors
 
-HEHW = [];
-HEAE = [];
-HWAE = [];
+%% Calculate Unit Importance for event data
+UI_event = permutation_feature_importance(result_event.WholeTestResult_HWAE > 0.5, result_event.PFITestResult_HWAE > 0.5, 'method', 'difference');
 
-FI_HEHW = [];
-FI_HEAE = [];
-FI_HWAE = [];
-
-for session = 1 : 40
-%     HEHW(session, :) = result{session}.balanced_accuracy_HEHW;
-%     HEAE(session, :) = result{session}.balanced_accuracy_HEAE;
-%     HWAE(session, :) = result{session}.balanced_accuracy_HWAE;
+%%
+UnitData = Unit(Unit.Session == targetTank, :);
+UI = [UI_distance, UI_event, UnitData.Group_HE, UnitData.Group_HW, UnitData.Group_HW_A, UnitData.Group_HW_E];
     
-    FI_HEHW = [FI_HEHW; permutation_feature_importance(result{session}.WholeTestResult_HEHW, result{session}.PFITestResult_HEHW)];
-    FI_HEAE = [FI_HEAE; permutation_feature_importance(result{session}.WholeTestResult_HEAE, result{session}.PFITestResult_HEAE)];
-    FI_HWAE = [FI_HWAE; permutation_feature_importance(result{session}.WholeTestResult_HWAE, result{session}.PFITestResult_HWAE)];
-
-    numCell = size(result{session}.PFITestResult_HEHW, 2);
-
-    HEHW = [HEHW; repmat(result{session}.balanced_accuracy_HEHW, numCell, 1)];
-    HEAE = [HEAE; repmat(result{session}.balanced_accuracy_HEAE, numCell, 1)];
-    HWAE = [HWAE; repmat(result{session}.balanced_accuracy_HWAE, numCell, 1)];
-
-end
-
-% Method 1 : SVM이 잘 먹히는 session만 따로 빼서 분석한다.
-% 
-
-crt = mean(unique(HWAE(:,1))) + std(unique(HWAE(:,1)))
-
-
-[h, p] = ttest2(...
-    FI_HEAE(Unit.FI_Event_Score > 0 & Unit.Session ~= "#21JAN5-210803-182450_IL" & HWAE(:,2) > crt & Unit.HEClass == 0),... 
-    FI_HEAE(Unit.FI_Event_Score > 0 & Unit.Session ~= "#21JAN5-210803-182450_IL" & HWAE(:,2) > crt & Unit.HEClass == 1))

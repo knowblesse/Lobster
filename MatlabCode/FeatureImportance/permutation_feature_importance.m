@@ -1,4 +1,5 @@
 function pfi = permutation_feature_importance(WholeTestResult, PFITestResult, options)
+% Larger the more important
 arguments
     WholeTestResult;
     PFITestResult;
