@@ -1,6 +1,6 @@
 %% AnalyzeFineDistanceData
 
-basePath = 'D:\Data\Lobster\FineDistanceResult_degree';
+basePath = 'D:\Data\Lobster\FineDistanceResult_syncFixed_May';
 behavDataPath = 'D:\Data\Lobster\BehaviorData';
 datasetDataPath = 'D:\Data\Lobster\FineDistanceDataset';
 
@@ -28,7 +28,7 @@ midPointTimesData = cell(1,40);
 for session = 1 : 40
     TANK_name = cell2mat(sessionPaths{session});
     TANK_location = char(strcat(basePath, filesep, TANK_name));
-    load(TANK_location); % PFITestResult, WholeTestResult(row, col, true d , shuffled d, pred d)
+    load(TANK_location, "WholeTestResult", "midPointTimes"); % PFITestResult, WholeTestResult(row, col, true d , shuffled d, pred d)
     data{session} = WholeTestResult;
     if exist("midPointTimes") == 0
             midPointTimesData{session} = truncatedTimes_s + (1/neural_data_rate)*(0:size(WholeTestResult,1)-1) + 0.5 * (1/neural_data_rate);
@@ -53,7 +53,7 @@ for session = 1 : 40
             ], [], 2));
     else
         result1.Shuffled(session) = mean(abs(data{session}(:,3) - data{session}(:,4))) * px2cm;
-        resut1.Predicted(session) = mean(abs(data{session}(:,3) - data{session}(:,5))) * px2cm;
+        result1.Predicted(session) = mean(abs(data{session}(:,3) - data{session}(:,5))) * px2cm;
     end
 end
 
@@ -446,7 +446,7 @@ result_rmEngaged = table(zeros(40,1), zeros(40,1), 'VariableNames',["Shuffled", 
 for session = 1 : 40
     TANK_name = cell2mat(sessionPaths{session});
     TANK_location = char(strcat(basePath, filesep, TANK_name));
-    load(TANK_location); % PFITestResult, WholeTestResult(row, col, true d , shuffled d, pred d)
+    load(TANK_location, "WholeTestResult"); % PFITestResult, WholeTestResult(row, col, true d , shuffled d, pred d)
     data{session} = WholeTestResult;
     result_rmEngaged.Shuffled(session) = mean(abs(WholeTestResult(:,3) - WholeTestResult(:,4))) * px2cm;
     result_rmEngaged.Predicted(session) = mean(abs(WholeTestResult(:,3) - WholeTestResult(:,5))) * px2cm;
