@@ -1,6 +1,6 @@
 %% SortedPETH_Scripts
 % Scripts for drawing and refining Peak Sorted PETH
-load('C:\Users\Knowblesse\SynologyDrive\AllUnitData.mat')
+load('..\AllUnitData.mat')
 %output = loadAllUnitData();
 output_PL = output(output.Area == "PL", :);
 output_IL = output(output.Area == "IL", :);
@@ -47,89 +47,25 @@ fprintf('EHW Responsive : %.2f %%\n', sum(responsive(:,6)) / size(unitData, 1) *
 
 clearvars resp_*
 
-%% Gather units into 3 groups and label them
-bin_size = 80; % 2 sec with 50ms bin size
-bin_center_size = 2; % 2 bins around the onset of the event (= 50ms * 2 = 100ms around the event = 200ms)
-% this makes a unit with peak at 39, 40, 41, 42 bin classified into the second group
-% 1 : Pre Event 0.4875
-% 2 : Near Event 0.025
-% 3 : Post Event 0.4875
-
-data = first_LICK_zscores(logical(responsive(:,1)), :);
-[~, peak_index_LICK] = max(data, [], 2); 
-[first_LICK_type_count, ~, first_LICK_type] = histcounts(peak_index_LICK, [1, bin_size/2-bin_center_size+1, bin_size/2+bin_center_size+1, 80]); 
-first_LICK_type_range = cumsum(first_LICK_type_count); 
-array2append = zeros(size(responsive,1),1);
-array2append(logical(responsive(:,1))) = first_LICK_type; 
-output = [output, table(array2append, 'VariableNames', "first_LICK_type")]; 
-
-data = first_LICK_A_zscores(logical(responsive(:,2)), :);
-[~, peak_index_LICK_A] = max(data, [], 2); 
-[first_LICK_A_type_count, ~, first_LICK_A_type] = histcounts(peak_index_LICK_A, [1, bin_size/2-bin_center_size+1, bin_size/2+bin_center_size+1, 80]); 
-first_LICK_A_type_range = cumsum(first_LICK_A_type_count); 
-array2append = zeros(size(responsive,1),1);
-array2append(logical(responsive(:,2))) = first_LICK_A_type; 
-output = [output, table(array2append, 'VariableNames', "first_LICK_A_type")]; 
-
-data = first_LICK_E_zscores(logical(responsive(:,3)), :);
-[~, peak_index_LICK_E] = max(data, [], 2);
-[first_LICK_E_type_count, ~, first_LICK_E_type] = histcounts(peak_index_LICK_E, [1, bin_size/2-bin_center_size+1, bin_size/2+bin_center_size+1, 80]);
-first_LICK_E_type_range = cumsum(first_LICK_E_type_count);
-array2append = zeros(size(responsive,1),1);
-array2append(logical(responsive(:,3))) = first_LICK_E_type;
-output = [output, table(array2append, 'VariableNames', "first_LICK_E_type")];
-
-data = valid_IROF_zscores(logical(responsive(:,4)), :);
-[~, peak_index_IROF] = max(data, [], 2);
-[valid_IROF_type_count, ~, valid_IROF_type] = histcounts(peak_index_IROF, [1, bin_size/2-bin_center_size+1, bin_size/2+bin_center_size+1, 80]);
-valid_IROF_type_range = cumsum(valid_IROF_type_count);
-array2append = zeros(size(responsive,1),1);
-array2append(logical(responsive(:,4))) = valid_IROF_type;
-output = [output, table(array2append, 'VariableNames', "valid_IROF_type")];
-
-data = valid_IROF_A_zscores(logical(responsive(:,5)), :);
-[~, peak_index_IROF_A] = max(data, [], 2);
-[valid_IROF_A_type_count, ~, valid_IROF_A_type] = histcounts(peak_index_IROF_A, [1, bin_size/2-bin_center_size+1, bin_size/2+bin_center_size+1, 80]);
-valid_IROF_A_type_range = cumsum(valid_IROF_A_type_count);
-array2append = zeros(size(responsive,1),1);
-array2append(logical(responsive(:,5))) = valid_IROF_A_type;
-output = [output, table(array2append, 'VariableNames', "valid_IROF_A_type")];
-
-data = valid_IROF_E_zscores(logical(responsive(:,6)), :);
-[~, peak_index_IROF_E] = max(data, [], 2);
-[valid_IROF_E_type_count, ~, valid_IROF_E_type] = histcounts(peak_index_IROF_E, [1, bin_size/2-bin_center_size+1, bin_size/2+bin_center_size+1, 80]);
-valid_IROF_E_type_range = cumsum(valid_IROF_E_type_count);
-array2append = zeros(size(responsive,1),1);
-array2append(logical(responsive(:,6))) = valid_IROF_E_type;
-output = [output, table(array2append, 'VariableNames', "valid_IROF_E_type")];
-
-%% Draw Peak Sorted PETH - A/E Lick, A/E Head Withdrawal
+%% Draw Peak Sorted PETH - Lick (Head Entry), Head Withdrawal
 figureSize = [89, 248, 288, 689];
 
-figure('Name', 'SortedPETH_ALick', 'Position', figureSize);
+figure('Name', 'SortedPETH_HE', 'Position', figureSize);
 ax_hm1 = subplot(4,1,1:3);
 ax_hist1 = subplot(4,1,4);
-drawPeakSortedPETH(first_LICK_A_zscores(logical(responsive(:,1)), :), [-2000, 2000], 50, ax_hm1, ax_hist1, 'Name', 'First Lick');
+drawPeakSortedPETH(first_LICK_zscores(logical(responsive(:,1)),:), [-2000, 2000], 50, ax_hm1, ax_hist1, 'Name', 'Head Entry');
 ax_hm1.Clipping = 'off';
-hold(ax_hm1, 'on');
-fill(ax_hm1, [82, 82, 85, 85], [1, first_LICK_A_type_range(1), first_LICK_A_type_range(1), 1], xkcd.red, 'LineStyle', 'None');
-fill(ax_hm1, [82, 82, 85, 85], [first_LICK_A_type_range(1), first_LICK_A_type_range(2), first_LICK_A_type_range(2), first_LICK_A_type_range(1)], xkcd.goldenrod, 'LineStyle', 'None');
-fill(ax_hm1, [82, 82, 85, 85], [first_LICK_A_type_range(2), first_LICK_A_type_range(3), first_LICK_A_type_range(3), first_LICK_A_type_range(2)], xkcd.blue, 'LineStyle', 'None');
-ylim(ax_hist1, [-.3, 2]);
+ylim(ax_hist1, [-.3, 3]);
 p = ylabel('Z');
 p.Position(1) = -4;
 saveas(gcf, 'C:\Users\Knowblesse\Desktop\1.svg', 'svg');
 
-figure('Name', 'SortedPETH_ELick', 'Position', figureSize);
+figure('Name', 'SortedPETH_HW', 'Position', figureSize);
 ax_hm1 = subplot(4,1,1:3);
 ax_hist1 = subplot(4,1,4);
-drawPeakSortedPETH(first_LICK_E_zscores(logical(responsive(:,1)), :), [-2000, 2000], 50, ax_hm1, ax_hist1, 'Name', 'First Lick');
+sortOrder_HW = drawPeakSortedPETH(valid_IROF_zscores(logical(responsive(:,4)),:), [-2000, 2000], 50, ax_hm1, ax_hist1, 'Name', 'Head Withdrawal');
 ax_hm1.Clipping = 'off';
-hold(ax_hm1, 'on');
-fill(ax_hm1, [82, 82, 85, 85], [1, first_LICK_E_type_range(1), first_LICK_E_type_range(1), 1], xkcd.red, 'LineStyle', 'None');
-fill(ax_hm1, [82, 82, 85, 85], [first_LICK_E_type_range(1), first_LICK_E_type_range(2), first_LICK_E_type_range(2), first_LICK_E_type_range(1)], xkcd.goldenrod, 'LineStyle', 'None');
-fill(ax_hm1, [82, 82, 85, 85], [first_LICK_E_type_range(2), first_LICK_E_type_range(3), first_LICK_E_type_range(3), first_LICK_E_type_range(2)], xkcd.blue, 'LineStyle', 'None');
-ylim(ax_hist1, [-.3, 2]);
+ylim(ax_hist1, [-.3, 3]);
 p = ylabel('Z');
 p.Position(1) = -4;
 saveas(gcf, 'C:\Users\Knowblesse\Desktop\2.svg', 'svg');
@@ -137,13 +73,12 @@ saveas(gcf, 'C:\Users\Knowblesse\Desktop\2.svg', 'svg');
 figure('Name', 'SortedPETH_AHW', 'Position', figureSize);
 ax_hm1 = subplot(4,1,1:3);
 ax_hist1 = subplot(4,1,4);
-drawPeakSortedPETH(valid_IROF_A_zscores(logical(responsive(:,2)), :), [-2000, 2000], 50, ax_hm1, ax_hist1, 'Name', 'AHW');
+drawPeakSortedPETH(...
+    valid_IROF_A_zscores(logical(responsive(:,4)),:), [-2000, 2000], 50, ax_hm1, ax_hist1, ...
+    'Name', 'AHW',...
+    'ManualIndex',sortOrder_HW);
 ax_hm1.Clipping = 'off';
-hold(ax_hm1, 'on');
-fill(ax_hm1, [82, 82, 85, 85], [1, valid_IROF_A_type_range(1), valid_IROF_A_type_range(1), 1], xkcd.red, 'LineStyle', 'None');
-fill(ax_hm1, [82, 82, 85, 85], [valid_IROF_A_type_range(1), valid_IROF_A_type_range(2), valid_IROF_A_type_range(2), valid_IROF_A_type_range(1)], xkcd.goldenrod, 'LineStyle', 'None');
-fill(ax_hm1, [82, 82, 85, 85], [valid_IROF_A_type_range(2), valid_IROF_A_type_range(3), valid_IROF_A_type_range(3), valid_IROF_A_type_range(2)], xkcd.blue, 'LineStyle', 'None');
-ylim(ax_hist1, [-.5, .5]);
+ylim(ax_hist1, [-.3, 3]);
 p = ylabel('Z');
 p.Position(1) = -4;
 saveas(gcf, 'C:\Users\Knowblesse\Desktop\3.svg', 'svg');
@@ -151,13 +86,11 @@ saveas(gcf, 'C:\Users\Knowblesse\Desktop\3.svg', 'svg');
 figure('Name', 'SortedPETH_EHW', 'Position', figureSize);
 ax_hm1 = subplot(4,1,1:3);
 ax_hist1 = subplot(4,1,4);
-drawPeakSortedPETH(valid_IROF_E_zscores(logical(responsive(:,3)), :), [-2000, 2000], 50, ax_hm1, ax_hist1, 'Name', 'EHW');
+drawPeakSortedPETH(valid_IROF_E_zscores(logical(responsive(:,4)),:), [-2000, 2000], 50, ax_hm1, ax_hist1,...
+    'Name', 'EHW',...
+    'ManualIndex',sortOrder_HW);
 ax_hm1.Clipping = 'off';
-hold(ax_hm1, 'on');
-fill(ax_hm1, [82, 82, 85, 85], [1, valid_IROF_E_type_range(1), valid_IROF_E_type_range(1), 1], xkcd.red,'LineStyle', 'None');
-fill(ax_hm1, [82, 82, 85, 85], [valid_IROF_E_type_range(1), valid_IROF_E_type_range(2), valid_IROF_E_type_range(2), valid_IROF_E_type_range(1)], xkcd.goldenrod, 'LineStyle', 'None');
-fill(ax_hm1, [82, 82, 85, 85], [valid_IROF_E_type_range(2), valid_IROF_E_type_range(3), valid_IROF_E_type_range(3), valid_IROF_E_type_range(2)], xkcd.blue, 'LineStyle', 'None');
-ylim(ax_hist1, [-.5, 2]);
+ylim(ax_hist1, [-.3, 3]);
 p = ylabel('Z');
 p.Position(1) = -4;
 saveas(gcf, 'C:\Users\Knowblesse\Desktop\4.svg', 'svg');

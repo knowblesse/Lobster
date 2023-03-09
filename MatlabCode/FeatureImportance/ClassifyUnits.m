@@ -21,10 +21,10 @@ end
 
 %% Sort units       
 
-[groupingResult_HE, ~] = groupUnits(zscoreMatrixHE, 'numCluster', 8, 'cutoffLimit', 50, 'showGraph', false);
-[groupingResult_HW, numGroup] = groupUnits(zscoreMatrixHW, 'numCluster', 8, 'cutoffLimit', 50, 'showGraph', false);
-[groupingResult_HW_A, numGroup] = groupUnits(zscoreMatrixHW_A, 'numCluster', 8, 'cutoffLimit', 50, 'showGraph', false);
-[groupingResult_HW_E, numGroup] = groupUnits(zscoreMatrixHW_E, 'numCluster', 8, 'cutoffLimit', 50, 'showGraph', false);
+[groupingResult_HE, ~] = groupUnits(zscoreMatrixHE, 'numCluster', 8, 'cutoffLimit', 50, 'showGraph', true);
+[groupingResult_HW, numGroup] = groupUnits(zscoreMatrixHW, 'numCluster', 8, 'cutoffLimit', 50, 'showGraph', true);
+[groupingResult_HW_A, numGroup] = groupUnits(zscoreMatrixHW_A, 'numCluster', 8, 'cutoffLimit', 50, 'showGraph', true);
+[groupingResult_HW_E, numGroup] = groupUnits(zscoreMatrixHW_E, 'numCluster', 8, 'cutoffLimit', 50, 'showGraph', true);
 
 
 %% Add to the Unit Data

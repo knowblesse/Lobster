@@ -1,4 +1,4 @@
-function drawPeakSortedPETH(zscores, TIMEWINDOW, TIMEWINDOW_BIN, ax_hm, ax_hist, options)
+function sortOrder = drawPeakSortedPETH(zscores, TIMEWINDOW, TIMEWINDOW_BIN, ax_hm, ax_hist, options)
 %% drawPeakSortedPETH
 arguments
     zscores (:,:) double % vertical vector is one data. sorted horizontally.
@@ -16,10 +16,10 @@ numBin = diff(TIMEWINDOW)/TIMEWINDOW_BIN; % number of bins
 if options.Sort
     if isempty(options.ManualIndex)
         [~, peak_index] = max(zscores, [], 2);
-        [~, ix] = sort(peak_index);
-        sorted_zscores = zscores(ix, :);
+        [~, sortOrder] = sort(peak_index);
+        sorted_zscores = zscores(sortOrder, :);
     else
-        sorted_zscores = zscores(options.ManualIndex)
+        sorted_zscores = zscores(options.ManualIndex, :);
     end
 else
     sorted_zscores = zscores;
@@ -30,7 +30,7 @@ imagesc(ax_hm, sorted_zscores);
 hold on;
 line(ax_hm, [numBin, numBin]/2+0.5,[1,size(sorted_zscores,1)], 'Color', 'w', 'LineWidth', 0.8); 
 xticks(ax_hm, 0.5 : 20 : numBin + 0.5);
-xticklabels(ax_hm, arrayfun(@num2str, TIMEWINDOW(1):1000:TIMEWINDOW(2), 'UniformOutput', false))
+xticklabels(ax_hm, arrayfun(@num2str, (TIMEWINDOW(1):1000:TIMEWINDOW(2))/1000, 'UniformOutput', false))
 xlim(ax_hm, [0.5, numBin + 0.5]);
 %ylabel(ax_hm, 'Unit');
 if ~isempty(options.Name)
@@ -63,10 +63,10 @@ plot(mean(clip(sorted_zscores, -5, 5), 1), 'Color','k', 'LineWidth',1);
 hold on;
 ylim_ = ylim;
 line(ax_hist, ones(1,2) * size(sorted_zscores,2) / 2, [-5, 5], 'Color', 'r', 'LineWidth', 0.8); 
-line(ax_hist, [0.5, numBin - 0.5], [0,0], 'Color', 'k', 'LineWidth', 0.8, 'LineStyle', '--'); 
-xlim(ax_hist, [0.5, numBin - 0.5]);
-xticks(ax_hist, [0.5, 10 : 10 : numBin-10, numBin - 0.5]);
-xticklabels(ax_hist, arrayfun(@num2str, TIMEWINDOW(1):500:TIMEWINDOW(2), 'UniformOutput', false))
+line(ax_hist, [0.5, numBin + 0.5], [0,0], 'Color', 'k', 'LineWidth', 0.8, 'LineStyle', '--'); 
+xlim(ax_hist, [0.5, numBin + 0.5]);
+xticks(ax_hist, 0.5 : 20 : numBin + 0.5);
+xticklabels(ax_hist, arrayfun(@num2str, (TIMEWINDOW(1):1000:TIMEWINDOW(2))/1000, 'UniformOutput', false))
 ylabel(ax_hist, 'Z');
 xlabel(ax_hist, 'Time (ms)');
 ax_hist.Position(3) = ax_hm.Position(3);

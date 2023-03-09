@@ -42,7 +42,7 @@ if options.showGraph
             'FaceAlpha', 0.3,...
             'Color', colors_bw(group,:));
         lines = [lines, obj_line];
-        legends = [legends, strcat("Group " , num2str(group), " #", num2str(sum(groupingResult == group)))];
+        legends = [legends, strcat("Group " , num2str(group))];
     end
     line(xlim, [0,0], 'LineStyle', ':', 'Color', [0.3, 0.3, 0.3]);
     ylabel('Z score');
@@ -52,6 +52,6 @@ if options.showGraph
     legend(lines, legends, 'FontSize', 6.6);
     set(gca, 'FontName', 'Noto Sans');
     pos = get(gcf, 'Position');
-    set(gcf, 'Position', [pos(1), pos(2), 357, 236]);
+    set(gcf, 'Position', [pos(1), pos(2), 288, 236]);
 end
 end
