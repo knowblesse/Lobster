@@ -53,5 +53,40 @@ if options.showGraph
     set(gca, 'FontName', 'Noto Sans');
     pos = get(gcf, 'Position');
     set(gcf, 'Position', [pos(1), pos(2), 288, 236]);
+
+    %% Create Dendrogram
+    figure();
+    
+    H = dendrogram(Z_, 632, 'ColorThreshold', Z_(end-8, 3));
+    lineColors = zeros(632,3);
+    for i = 1 : 631
+        lineColors(i,:) = H(i).Color;
+    end
+
+    for i = 1 : 631
+        if sum(all(H(i).Color == lineColors, 2)) < 50
+            H(i).Color = [1, 1, 1];
+        elseif numGroup == 2 % stupid hard coding
+            if sum(all(H(i).Color == lineColors, 2)) > 300
+                H(i).Color = [0, 0, 0];
+            else
+                H(i).Color = [0.5, 0.5, 0.5];
+            end
+        elseif numGroup == 3
+            if sum(all(H(i).Color == lineColors, 2)) > 300
+                H(i).Color = [0, 0, 0];
+            elseif sum(all(H(i).Color == lineColors, 2)) > 100
+                H(i).Color = [0.4, 0.4, 0.4];
+            else
+                H(i).Color = [0.8, 0.8, 0.8]; 
+            end
+        end
+    end
+    xticks([]);
+    xlabel('Cells');
+    ylabel('Distance (1-r)');
+    set(gca, 'FontName', 'Noto Sans');
+    pos = get(gcf, 'Position');
+    set(gcf, 'Position', [pos(1), pos(2), 288, 236]);
 end
 end
