@@ -5,7 +5,7 @@ clearvars -except Unit
 px2cm = 0.169;
 
 %% Feature Importance - Fine Distance Regressor
-resultPath = 'D:\Data\Lobster\FineDistanceResult_syncFixed';
+resultPath = 'D:\Data\Lobster\FineDistanceResult_syncFixed_May';
 
 filelist = dir(resultPath);
 sessionPaths = regexp({filelist.name},'^#\S*.mat','match');

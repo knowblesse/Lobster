@@ -37,3 +37,6 @@ groupData = table(...
     'VariableNames',["Group_HE", "Group_HW", "Group_HW_A", "Group_HW_E"]);
 
 Unit = [Unit, groupData];
+
+%% Generate Table
+drawConfusionMatrix(groupingResult_HE, groupingResult_HW, 'ShowSum', true)
