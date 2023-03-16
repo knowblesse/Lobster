@@ -191,7 +191,7 @@ if platform.system() == 'Windows':
     OutputFolder = Path('D:\Data\Lobster\FineDistanceResult_stratify')
 else:
     InputFolder = Path.home() / 'Data/FineDistanceDataset'
-    OutputFolder = Path.home() / 'Data/FineDistanceResult_degree'
+    OutputFolder = Path.home() / 'Data/FineDistanceResult_syncFixed_May'
 for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
     print(f'{i:02} {tank}')
     NeuralRegressor(
