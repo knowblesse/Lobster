@@ -10,7 +10,7 @@ filelist = dir(basepath);
 workingfile = regexp({filelist.name},'#\S*','match'); % read only #ed folders
 workingfile = workingfile(~cellfun('isempty',workingfile));
 
-outputBasepath = 'D:\Data\Lobster\EventClassificationData_4C_Predictive';
+outputBasepath = 'D:\Data\Lobster\EventClassificationData_4C_Predictive_NonOverlap';
 for dataset = 1 : numDataset
     TIMEWINDOW = timewindows(dataset,:);
     outputpath = fullfile(outputBasepath, strcat(...

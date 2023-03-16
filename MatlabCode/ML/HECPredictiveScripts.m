@@ -1,5 +1,5 @@
 %% HECPredictiveScripts
-resultPath = 'D:\Data\Lobster\HEC_Predictive';
+resultPath = 'D:\Data\Lobster\EventClassificationResult_4C_Predictive_NonOverlap';
 
 filelist = dir(resultPath);
 sessionPaths = regexp({filelist.name},'^HEC_Predictive.*.mat','match');
@@ -17,7 +17,7 @@ getHWAE = @(X) X.balanced_accuracy_HWAE(2);
 
 for session = 1 : numel(sessionPaths)
     regResult = ...
-        regexp(cell2mat(sessionPaths{session}), 'HEC_Predictive_(?<w1>.*?)_(?<w2>.*?).mat', 'names');
+        regexp(cell2mat(sessionPaths{session}), 'HEC_Predictive_(?<w1>.*?)_(?<w2>.*?)_NonOverlap.mat', 'names');
     load(fullfile(resultPath, cell2mat(sessionPaths{session})));
     MidPoint(session) = mean([str2double(regResult.w1), str2double(regResult.w2)]);
     HEHW(:, session) = cellfun(getHEHW, result)';
