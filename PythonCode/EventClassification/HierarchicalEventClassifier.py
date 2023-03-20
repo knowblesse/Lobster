@@ -190,17 +190,22 @@ def Batch_Batch_EventClassifier(basebaseFolderPath):
     for basePath in basebaseFolderPath.glob('*'):
         print(f'running {basePath.stem}')
         output = Batch_EventClassifier(basePath)
-        savemat(str((Path(r'/home/ainav/Data/') / (basePath.stem + '_NonOverlap.mat')).absolute()), output)
+        savemat(str((basebaseFolderPath.absolute().parent / (basePath.stem + '_NonOverlap.mat')).absolute()), output)
 
 parser = argparse.ArgumentParser(prog='HierarchicalEventClassifier')
 parser.add_argument('predictive')
 args = parser.parse_args()
 
+if platform.system() == 'Windows':
+    baseFolder = Path(r'D:\Data\Lobster')
+else:
+    baseFolder = Path(r'/home/ainav/Data')
+
 if args.predictive == 'true':
     print('running predictive')
-    Batch_Batch_EventClassifier(Path(r'/home/ainav/Data/EventClassificationData_4C_Predictive_NonOverlap'))
+    Batch_Batch_EventClassifier(baseFolder / 'EventClassificationData_4C_Predictive_NonOverlap')
 elif args.predictive == 'false':
     print('running on single dataset')
-    output = Batch_EventClassifier(Path(r'D:\Data\Lobster\EventClassificationData_4C'))
-    savemat(r'D:/Data/Lobster/BNB_Result_unitshffle.mat', output)
+    output = Batch_EventClassifier(baseFolder / 'EventClassificationData_4C')
+    savemat(str((baseFolder / 'BNB_Result_unitshffle.mat').absolute()), output)
 
