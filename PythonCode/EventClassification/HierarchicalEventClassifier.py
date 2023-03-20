@@ -18,6 +18,7 @@ import sklearn
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import balanced_accuracy_score, log_loss
 from sklearn.naive_bayes import BernoulliNB
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import LabelBinarizer
 from scipy.io import loadmat, savemat
 from tqdm import tqdm
@@ -32,7 +33,7 @@ if (sklearn.__version__ < '0.23.2'):
 rng = default_rng()
 
 # SVC Event Classifier Function
-def EventClassifier(matFilePath, numBin, numRepeat=10):
+def EventClassifier(matFilePath, numBin, numRepeat):
     # Input : matFilePath : Path object
 
     # Define classification function 
@@ -64,10 +65,12 @@ def EventClassifier(matFilePath, numBin, numRepeat=10):
             X_test = X[test_index, :]
             y_test = y[test_index]
             
-            clf_real = BernoulliNB(fit_prior=False)
+            #clf_real = BernoulliNB(fit_prior=False)
+            clf_real = KNeighborsClassifier(n_neighbors=10, metric='cosine', n_jobs=-1) # param from Matlab
             clf_real.fit(X_train, y_train)
 
-            clf_fake = BernoulliNB(fit_prior=False)
+            #clf_fake = BernoulliNB(fit_prior=False)
+            clf_fake = KNeighborsClassifier(n_neighbors=10, metric='cosine', n_jobs=-1) # param from Matlab
             clf_fake.fit(X_train, y_train_shuffle)
 
             WholeTestResult[test_index,0] = y_test
@@ -88,7 +91,7 @@ def EventClassifier(matFilePath, numBin, numRepeat=10):
                     PFITestResult[test_index, unit, rep] = clf_real.predict_proba(X_corrupted[test_index, :])[:,1]
 
             # Feature Probability
-            FeatureProb[cv_index, :, :] = clf_real.feature_log_prob_
+            #FeatureProb[cv_index, :, :] = clf_real.feature_log_prob_
             clf_real.predict_proba(X_test[1:2, :])
 
         # Calculate Cross Entropy
@@ -161,7 +164,7 @@ def EventClassifier(matFilePath, numBin, numRepeat=10):
         'feature_prob_HWAE': FeatureProb_HWAE,
         }
 
-def Batch_EventClassifier(baseFolderPath):
+def Batch_EventClassifier(baseFolderPath, numRepeat):
     # run through all dataset and generate result summary
     result = []
     tankNames = []
@@ -174,8 +177,8 @@ def Batch_EventClassifier(baseFolderPath):
         pbar.set_postfix({'path':dataPath})
         
         sessionName = re.search('(#.*_\wL)', str(dataPath)).groups()[0]
-
-        data_ = EventClassifier(dataPath, 40)
+        numBin = 40
+        data_ = EventClassifier(dataPath, numBin, numRepeat)
         tankNames.append(str(dataPath))
         sessionNames.append(sessionName)
         result.append(data_)
@@ -183,18 +186,20 @@ def Batch_EventClassifier(baseFolderPath):
     print(np.mean(balancedAccuracy, 0))
     return {'tankNames' : tankNames, 'sessionNames': sessionNames, 'result' : result}
 
-def Batch_Batch_EventClassifier(basebaseFolderPath):
+def Batch_Batch_EventClassifier(basebaseFolderPath, numRepeat):
     # batch of the "Batch_EventClassifier" function.
     # for predictiveness testing using multiple neural datasets from different timewindow
 
     for basePath in basebaseFolderPath.glob('*'):
         print(f'running {basePath.stem}')
-        output = Batch_EventClassifier(basePath)
+        output = Batch_EventClassifier(basePath, numRepeat)
         savemat(str((basebaseFolderPath.absolute().parent / (basePath.stem + '_NonOverlap.mat')).absolute()), output)
 
 parser = argparse.ArgumentParser(prog='HierarchicalEventClassifier')
 parser.add_argument('predictive')
+parser.add_argument('--numRepeat', default='10', required=True)
 args = parser.parse_args()
+numRepeat = int(args.numRepeat)
 
 if platform.system() == 'Windows':
     baseFolder = Path(r'D:\Data\Lobster')
@@ -203,9 +208,9 @@ else:
 
 if args.predictive == 'true':
     print('running predictive')
-    Batch_Batch_EventClassifier(baseFolder / 'EventClassificationData_4C_Predictive_NonOverlap')
+    Batch_Batch_EventClassifier(baseFolder / 'EventClassificationData_4C_Predictive_NonOverlap', numRepeat)
 elif args.predictive == 'false':
     print('running on single dataset')
-    output = Batch_EventClassifier(baseFolder / 'EventClassificationData_4C')
+    output = Batch_EventClassifier(baseFolder / 'EventClassificationData_4C', numRepeat)
     savemat(str((baseFolder / 'BNB_Result_unitshffle.mat').absolute()), output)
 
