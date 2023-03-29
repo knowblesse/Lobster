@@ -1,5 +1,5 @@
 %% Constants
-startTime = -3000 : 200 : -1000;
+startTime = [-31000, -21000, -11000, -7000 : 1000 : -1000];
 endTime = startTime + 2000;
 
 timewindows = [startTime', endTime'];

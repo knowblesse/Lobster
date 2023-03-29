@@ -6,21 +6,25 @@ sessionPaths = regexp({filelist.name},'^HEC_Predictive.*.mat','match');
 sessionPaths = sessionPaths(~cellfun('isempty',sessionPaths));
 sessionPaths = fliplr(sessionPaths);
 
-MidPoint = zeros(11,1);
-HEHW = zeros(40, 11);
-HEAE = zeros(40, 11);
-HWAE = zeros(40, 11);
+midpoints = zeros(numel(sessionPaths),1);
 
-getHEHW = @(X) X.balanced_accuracy_HEHW(2); 
-getHEAE = @(X) X.balanced_accuracy_HEAE(2); 
-getHWAE = @(X) X.balanced_accuracy_HWAE(2); 
+HWAE_shuffle = zeros(40, numel(sessionPaths));
+HWAE_original = zeros(40, numel(sessionPaths));
+
+getHWAE_shuffle = @(X) X.balanced_accuracy_HWAE(1); 
+getHWAE_original = @(X) X.balanced_accuracy_HWAE(2); 
 
 for session = 1 : numel(sessionPaths)
     regResult = ...
         regexp(cell2mat(sessionPaths{session}), 'HEC_Predictive_(?<w1>.*?)_(?<w2>.*?)_NonOverlap.mat', 'names');
     load(fullfile(resultPath, cell2mat(sessionPaths{session})));
-    MidPoint(session) = mean([str2double(regResult.w1), str2double(regResult.w2)]);
-    HEHW(:, session) = cellfun(getHEHW, result)';
-    HEAE(:, session) = cellfun(getHEAE, result)';
-    HWAE(:, session) = cellfun(getHWAE, result)';
+    midpoints(session) = mean([str2double(regResult.w1), str2double(regResult.w2)]);
+    HWAE_shuffle(:, session) = cellfun(getHWAE_shuffle, result)';
+    HWAE_original(:, session) = cellfun(getHWAE_original, result)';
 end
+
+%% Sort by midpoint times
+[v, i] = sort(midpoints);
+midpoints = midpoints(i);
+HWAE_shuffle = HWAE_shuffle(:, i);
+HWAE_original = HWAE_original(:,i);

@@ -5,7 +5,7 @@ clearvars -except Unit
 px2cm = 0.169;
 
 %% Feature Importance - Fine Distance Regressor
-resultPath = 'D:\Data\Lobster\FineDistanceResult_syncFixed_May';
+resultPath = 'D:\Data\Lobster\FineDistanceResult_syncFixed_rmEncounter';
 
 filelist = dir(resultPath);
 sessionPaths = regexp({filelist.name},'^#\S*.mat','match');
@@ -91,6 +91,20 @@ end
 
 Unit = [Unit, table(EC_Score, FI_EC_ACC, FI_EC_CE, FI_EC_FP, 'VariableNames', {'EC_Score', 'FI_EC_ACC','FI_EC_CE','FI_EC_FP'})];
 clearvars -except Unit
+
+%% 
+Unit.FI_EC_FP(Unit.Group_HE == 1)
+Unit.FI_EC_FP(Unit.Group_HE == 2)
+Unit.FI_EC_FP(Unit.Group_HW == 1)
+Unit.FI_EC_FP(Unit.Group_HW == 2)
+Unit.FI_EC_FP(Unit.Group_HW == 3)
+
+Unit.FI_Distance_Difference(Unit.Group_HE == 1)
+Unit.FI_Distance_Difference(Unit.Group_HE == 2)
+Unit.FI_Distance_Difference(Unit.Group_HW == 1)
+Unit.FI_Distance_Difference(Unit.Group_HW == 2)
+Unit.FI_Distance_Difference(Unit.Group_HW == 3)
+
 
 %% 
 [h, p] = ttest2(...
