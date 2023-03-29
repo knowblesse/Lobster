@@ -116,12 +116,12 @@ def correctRotationOffset(rotationData):
         prev_head_direction = rotationData[i]
     return rotationData + degree_offset_value
 
-def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=False, removeWanderData=False, stratifyData=False):
+def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=False, removeEncounterData=False, removeWanderData=False, stratifyData=False):
 
     default_rng = np.random.default_rng()
 
     # Load Behavior Data if necessary
-    if removeWanderData | stratifyData:
+    if removeWanderData | stratifyData | removeEncounterData:
         if platform.system() == 'Windows':
             behaviorDataBasePath = Path(r"D:\Data\Lobster\BehaviorData")
         else:
@@ -198,6 +198,25 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
         y_c = y_c[y_c >= 225]
         y_deg = y_deg[y_c >= 255]
         midPointTimes = midPointTimes[y_c >= 225]
+
+    # If removeEnagedData is set True, remove all points which is in IRON-IROF
+    if removeEncounterData:
+        print('removing encounter data')
+
+        # get delete indice
+        deleteIndex = np.zeros(midPointTimes.shape, dtype=bool)
+        for trial in range(1, numTrial): # skip first trial
+            for i_IR in range(ParsedData[trial, 1].shape[0]): # check all IR bouts
+                deleteIndex[np.logical_and(
+                    ParsedData[trial,1][i_IR, 0] + ParsedData[trial,0][0,0] <= midPointTimes, # IRON(relative) + TRON
+                    midPointTimes < ParsedData[trial,1][i_IR, 1] + ParsedData[trial,0][0,0]  # IROF(relative) + TRON
+                    )] = True
+
+        neural_data = neural_data[np.logical_not(deleteIndex), :]
+        y_r = y_r[np.logical_not(deleteIndex)]
+        y_c = y_c[np.logical_not(deleteIndex)]
+        y_deg = y_deg[np.logical_not(deleteIndex)]
+        midPointTimes = midPointTimes[np.logical_not(deleteIndex)]
 
     # If removeWanderData is set True, load behavior data and remove all points of following condition
     #   1. the animal is in the nest zone
