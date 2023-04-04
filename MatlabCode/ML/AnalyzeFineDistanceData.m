@@ -69,19 +69,17 @@ for session = 1 : 40
     isNesting = data{session}(:,2) < 225;
     
     % check isEncounter by IRsensor
-    isEncounter = false(size(data{session},1),1);
+    IRs = [];
     for trial = 1 : size(data_behav{session},1)
-        TRON_time = data_behav{session}{trial,1}(1);
-        for idxIR = 1 : size(data_behav{session}{trial,2}, 1)
-            isEncounter = or(isEncounter,...
-                and(...
-                    midPointTimesData{session} >= data_behav{session}{trial,2}(1) + TRON_time,...
-                    midPointTimesData{session} < data_behav{session}{trial,2}(2) + TRON_time...
-                )');
-        end
+       IRs = [IRs; data_behav{session}{trial,2} + data_behav{session}{trial,1}(1)];
     end
-   % check isEncounter by location
-   %  isEncounter = data{session}(:,2) > 530;
+    
+    isEncounter = false(size(midPointTimesData{session}, 2),1);
+    for i = 1 : size(isEncounter,1)
+       isEncounter(i) = any(IRs(:,1) < midPointTimesData{session}(i) & midPointTimesData{session}(i) < IRs(:,2));
+    end
+
+    fprintf("%2d session : N-%d, F-%d, E-%d\n", session, sum(isNesting), sum(and(~isNesting, ~isEncounter)), sum(isEncounter));
 
     result2.NestError(session) = mean(locError(isNesting)) * px2cm;
     result2.ForagingError(session) = mean(locError(and(~isNesting, ~isEncounter))) * px2cm;
