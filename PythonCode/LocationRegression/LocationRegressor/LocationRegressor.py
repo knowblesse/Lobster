@@ -1,6 +1,6 @@
 import re
 from scipy.io import savemat
-from sklearn.model_selection import KFold
+from sklearn.model_selection import StratifiedKFold
 from tqdm import tqdm
 from LocationRegressionHelper import *
 import time
@@ -45,7 +45,7 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
     print(tank_name)
 
     # Load Data
-    neural_data, y_r, y_c, y_deg, midPointTimes = loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData, removeEncounterData, removeWanderData, stratifyData)
+    neural_data, y_r, y_c, y_deg, midPointTimes, zoneClass = loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData, removeEncounterData, removeWanderData, stratifyData)
     print(neural_data.shape)
 
     # Dataset Prepared
@@ -68,6 +68,9 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
     elif dataset == 'degree':
         print('Degree Regressor')
         y = y_deg
+    elif dataset == 'time':
+        print('Time Regressor')
+        y = np.expand_dims(midPointTimes, 1)
     else:
         raise(BaseException('Wrong dataset. use distance, row, or column'))
 
@@ -81,10 +84,11 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
     PFITestResult = np.zeros([X.shape[0], numUnit, PFI_numRepeat])
    
     # Setup KFold
-    kf = KFold(n_splits=5, shuffle=True)
+    CV_split = 5
+    kf = StratifiedKFold(n_splits=CV_split, shuffle=True, random_state=622)
 
     # Start training
-    for train_index, test_index in kf.split(X):
+    for train_index, test_index in kf.split(X, zoneClass):
 
         X_train = torch.tensor(X[train_index, :], dtype=torch.float32, device=device, requires_grad=True)
         X_test = torch.tensor(X[test_index, :], dtype=torch.float32, device=device, requires_grad=False)
@@ -193,7 +197,7 @@ if platform.system() == 'Windows':
     OutputFolder = Path('D:\Data\Lobster\FineDistanceResult_stratify')
 else:
     InputFolder = Path.home() / 'Data/FineDistanceDataset'
-    OutputFolder = Path.home() / 'Data/FineDistanceResult_syncFixed_rmEncounter'
+    OutputFolder = Path.home() / 'Data/FineDistanceResult_syncFixed_May_splitwell'
 for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
     print(f'{i:02} {tank}')
     NeuralRegressor(
@@ -205,7 +209,7 @@ for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
             truncatedTime_s=10,
             train_epoch=20000,
             init_lr=0.005,
-            PFI_numRepeat=50, # used 50 in the original code. changed for remove Engaged Data
+            PFI_numRepeat=1, # used 50 in the original code. changed for remove Engaged Data
             numBin=1,
             removeNestingData=args.removeNestingData,
             removeEncounterData=args.removeEncounterData,

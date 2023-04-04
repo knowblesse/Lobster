@@ -120,16 +120,15 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
 
     default_rng = np.random.default_rng()
 
-    # Load Behavior Data if necessary
-    if removeWanderData | stratifyData | removeEncounterData:
-        if platform.system() == 'Windows':
-            behaviorDataBasePath = Path(r"D:\Data\Lobster\BehaviorData")
-        else:
-            behaviorDataBasePath = Path.home() / 'Data/BehaviorData'
-        behaviorDataPath = behaviorDataBasePath / str(tankPath.name + ".mat")
-        behavior_data = loadmat(behaviorDataPath)
-        ParsedData = behavior_data['ParsedData']
-        numTrial = len(ParsedData)
+    # Load Behavior Data
+    if platform.system() == 'Windows':
+        behaviorDataBasePath = Path(r"D:\Data\Lobster\BehaviorData")
+    else:
+        behaviorDataBasePath = Path.home() / 'Data/BehaviorData'
+    behaviorDataPath = behaviorDataBasePath / str(tankPath.name + ".mat")
+    behavior_data = loadmat(behaviorDataPath)
+    ParsedData = behavior_data['ParsedData']
+    numTrial = len(ParsedData)
 
 
     # Check if the video file is buttered
@@ -190,6 +189,20 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
     y_c = intp_c(intp_frame(midPointTimes))
     y_deg = intp_deg(intp_frame(midPointTimes)) % 360
 
+    # Output zone info
+    IRs = np.empty((0, 2))
+    for trialIdx in range(numTrial):
+        IRs = np.vstack((IRs, ParsedData[trialIdx, 1] + ParsedData[trialIdx, 0][0, 0]))
+
+    # Get Zone Info
+    isEncounterZone = np.zeros(midPointTimes.shape, dtype=bool)
+    isNestingZone = np.zeros(midPointTimes.shape, dtype=bool)
+    for i in range(len(midPointTimes)):
+        isEncounterZone[i] = np.any((IRs[:, 0] < midPointTimes[i]) & (midPointTimes[i] < IRs[:, 1]))
+        isNestingZone[i] = y_c[i] < 225
+
+    zoneClass = (~isNestingZone).astype(int) + isEncounterZone.astype(int)
+
     # If removeNestingData is set True, remove all points which has the column value smaller than 225
     if removeNestingData:
         print('removing nesting')
@@ -198,6 +211,7 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
         y_c = y_c[y_c >= 225]
         y_deg = y_deg[y_c >= 255]
         midPointTimes = midPointTimes[y_c >= 225]
+        zoneClass = zoneClass[y_c >= 225]
 
     # If removeEnagedData is set True, remove all points which is in IRON-IROF
     if removeEncounterData:
@@ -217,6 +231,7 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
         y_c = y_c[np.logical_not(deleteIndex)]
         y_deg = y_deg[np.logical_not(deleteIndex)]
         midPointTimes = midPointTimes[np.logical_not(deleteIndex)]
+        zoneClass = zoneClass[selectedIndex]
 
     # If removeWanderData is set True, load behavior data and remove all points of following condition
     #   1. the animal is in the nest zone
@@ -251,23 +266,10 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
         y_c = y_c[np.logical_not(deleteIndex)]
         y_deg = y_deg[np.logical_not(deleteIndex)]
         midPointTimes = midPointTimes[np.logical_not(deleteIndex)]
+        zoneClass = zoneClass[selectedIndex]
 
     if stratifyData:
         print('stratifying Data')
-
-        # Collect IR Info
-        IRs = np.empty((0, 2))
-        for trialIdx in range(numTrial):
-            IRs = np.vstack((IRs, ParsedData[trialIdx, 1] + ParsedData[trialIdx, 0][0, 0]))
-
-        # Get Zone Info
-        isEncounterZone = np.zeros(midPointTimes.shape, dtype=bool)
-        isNestingZone = np.zeros(midPointTimes.shape, dtype=bool)
-        for i in range(len(midPointTimes)):
-            isEncounterZone[i] = np.any((IRs[:, 0] < midPointTimes[i]) & (midPointTimes[i] < IRs[:, 1]))
-            isNestingZone[i] = y_c[i] < 225
-
-        zoneClass = (~isNestingZone).astype(int) + isEncounterZone.astype(int)
         datacount = np.bincount(((~isNestingZone).astype(int) + isEncounterZone.astype(int)))
         print(f'N-zone {datacount[0]}, F-zone {datacount[1]}, E-zone {datacount[2]} detected. using {np.min(datacount)} dataset')
 
@@ -280,9 +282,11 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
         y_c = y_c[selectedIndex]
         y_deg = y_deg[selectedIndex]
         midPointTimes = midPointTimes[selectedIndex]
+        zoneClass = zoneClass[selectedIndex]
+    
 
 
-    return(neural_data, np.expand_dims(y_r, 1), np.expand_dims(y_c, 1), np.expand_dims(y_deg, 1), midPointTimes)
+    return(neural_data, np.expand_dims(y_r, 1), np.expand_dims(y_c, 1), np.expand_dims(y_deg, 1), midPointTimes, zoneClass)
 
 # tankPath = Path('D:\Data\Lobster\FineDistanceDataset\#20JUN1-200831-110125_PL')
 # neural_data, y_r, y_c, midPointTimes = loadData(tankPath, neural_data_rate=20, truncatedTime_s=10, removeEnagedData=False, removeNestingData=False)
