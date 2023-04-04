@@ -51,6 +51,9 @@ for session = 1 : 40
             abs(data{session}(:,3) - data{session}(:,5)),...
             360 - (abs(data{session}(:,3) - data{session}(:,5)))...
             ], [], 2));
+    elseif contains(basePath, 'time')
+        result1.Shuffled(session) = mean(abs(data{session}(:,3) - data{session}(:,4))) / 60;
+        result1.Predicted(session) = mean(abs(data{session}(:,3) - data{session}(:,5))) / 60;
     else
         result1.Shuffled(session) = mean(abs(data{session}(:,3) - data{session}(:,4))) * px2cm;
         result1.Predicted(session) = mean(abs(data{session}(:,3) - data{session}(:,5))) * px2cm;
