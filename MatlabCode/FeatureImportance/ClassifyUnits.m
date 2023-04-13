@@ -39,4 +39,4 @@ groupData = table(...
 Unit = [Unit, groupData];
 
 %% Generate Table
-drawConfusionMatrix(groupingResult_HE, groupingResult_HW, 'ShowSum', true)
+drawConfusionMatrix(groupingResult_HE, groupingResult_HW, 'ShowSum', true, 'ColName', "HW Group", "RowName", "HE Group", "Color", [0, 0, 0]);
