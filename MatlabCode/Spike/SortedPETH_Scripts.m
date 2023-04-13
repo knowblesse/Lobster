@@ -4,6 +4,8 @@ load('..\AllUnitData.mat')
 %output = loadAllUnitData();
 output_PL = output(output.Area == "PL", :);
 output_IL = output(output.Area == "IL", :);
+addpath('..\FeatureImportance\');
+ClassifyUnits;
 
 %% Responsiveness calculation
 
@@ -53,11 +55,25 @@ figureSize = [89, 248, 288, 689];
 figure('Name', 'SortedPETH_HE', 'Position', figureSize);
 ax_hm1 = subplot(4,1,1:3);
 ax_hist1 = subplot(4,1,4);
-drawPeakSortedPETH(first_LICK_zscores(logical(responsive(:,1)),:), [-2000, 2000], 50, ax_hm1, ax_hist1, 'Name', 'Head Entry');
+sortOrder_HE = drawPeakSortedPETH(first_LICK_zscores(logical(responsive(:,1)),:), [-2000, 2000], 50, ax_hm1, ax_hist1, 'Name', 'Head Entry');
 ax_hm1.Clipping = 'off';
 ylim(ax_hist1, [-.3, 3]);
 p = ylabel('Z');
 p.Position(1) = -4;
+
+hold(ax_hm1, 'on');
+responsiveUnits = Unit.Group_HE(logical(responsive(:,1)));
+PETH_units = responsiveUnits(sortOrder_HE);
+
+colors = [xkcd.algae; xkcd.orange];
+
+for i = 1 : numel(responsiveUnits)
+    if PETH_units(i) == 0
+        continue;
+    end
+    line(ax_hm1, [82, 85], [i, i], 'Color', colors(PETH_units(i), :), 'LineWidth',1.8);
+end
+
 saveas(gcf, 'C:\Users\Knowblesse\Desktop\1.svg', 'svg');
 
 figure('Name', 'SortedPETH_HW', 'Position', figureSize);
@@ -68,6 +84,20 @@ ax_hm1.Clipping = 'off';
 ylim(ax_hist1, [-.3, 3]);
 p = ylabel('Z');
 p.Position(1) = -4;
+
+hold(ax_hm1, 'on');
+responsiveUnits = Unit.Group_HW(logical(responsive(:,4)));
+PETH_units = responsiveUnits(sortOrder_HW);
+
+colors = [xkcd.red; xkcd.golden_rod; xkcd.blue];
+
+for i = 1 : numel(responsiveUnits)
+    if PETH_units(i) == 0
+        continue;
+    end
+    line(ax_hm1, [82, 85], [i, i], 'Color', colors(PETH_units(i), :), 'LineWidth',1.8);
+end
+
 saveas(gcf, 'C:\Users\Knowblesse\Desktop\2.svg', 'svg');
 
 figure('Name', 'SortedPETH_AHW', 'Position', figureSize);
