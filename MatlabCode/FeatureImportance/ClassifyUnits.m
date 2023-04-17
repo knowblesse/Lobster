@@ -4,7 +4,6 @@
 %% Load All Unit Data
 dataset = load('..\AllUnitData.mat');
 Unit = dataset.output;
-clearvars -except Unit;
 
 %% Extract zscores
 zscoreMatrixHE = zeros(632, 80);
