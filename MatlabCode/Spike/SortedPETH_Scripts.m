@@ -125,3 +125,52 @@ ylim(ax_hist1, [-.3, 3]);
 p = ylabel('Z');
 p.Position(1) = -4;
 saveas(gcf, 'C:\Users\Knowblesse\Desktop\4.svg', 'svg');
+
+%% Draw HE1-HW1 & HE2-HW2
+
+for event = ["first_LICK", "valid_IROF"]
+
+    fig = figure();
+    axes();
+    hold on;
+    lines = [];
+    legends = {};
+    
+    % Draw HE1-HW1
+    indices = find(Unit.Group_HE==1 & Unit.Group_HW==1);
+    zscoreMatrix = zeros(numel(indices), 80);
+    for i = 1 : numel(indices)
+        zscoreMatrix(i, :) = Unit.Zscore{indices(i)}.(event);
+    end
+    
+    [~, obj_line, ~] = shadeplot(...
+        zscoreMatrix,...
+        'SD', 'sem',... %'LineWidth', sum(groupingResult == group)/100,...
+        'LineWidth', 1.3,...
+        'FaceAlpha', 0.3);
+    lines = [lines, obj_line];
+    
+    % Draw HE2-HW2
+    indices = find(Unit.Group_HE==2 & Unit.Group_HW==2);
+    zscoreMatrix = zeros(numel(indices), 80);
+    for i = 1 : numel(indices)
+        zscoreMatrix(i, :) = Unit.Zscore{indices(i)}.(event);
+    end
+    
+    [~, obj_line, ~] = shadeplot(...
+        zscoreMatrix,...
+        'SD', 'sem',... %'LineWidth', sum(groupingResult == group)/100,...
+        'LineWidth', 1.3,...
+        'FaceAlpha', 0.3);
+    lines = [lines, obj_line];
+    
+    line(xlim, [0,0], 'LineStyle', ':', 'Color', [0.3, 0.3, 0.3]);
+    ylabel('Z score');
+    xlabel('Time (sec)');
+    xticks(0:20:80);
+    xticklabels(-1:0.5:1);
+    legend(lines, {"HE1-HW1", "HE2-HW2"});
+    set(gca, 'FontName', 'Noto Sans');
+    pos = get(gcf, 'Position');
+    set(gcf, 'Position', [pos(1), pos(2), 288, 236]);
+end
