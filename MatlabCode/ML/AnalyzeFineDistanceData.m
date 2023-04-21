@@ -1,6 +1,6 @@
 %% AnalyzeFineDistanceData
 
-basePath = 'D:\Data\Lobster\FineDistanceResult_syncFixed_May';
+basePath = 'D:\Data\Lobster\FineDistanceResult_syncFixed_equal5bin';
 behavDataPath = 'D:\Data\Lobster\BehaviorData';
 datasetDataPath = 'D:\Data\Lobster\FineDistanceDataset';
 
@@ -14,8 +14,9 @@ truncatedTimes_s = 10;
 neural_data_rate = 20;
 
 %% Load Behavior Data
-data_behav = cell(1,40);
-for session = 1 : 40
+numSession = numel(sessionPaths);
+data_behav = cell(1,numSession);
+for session = 1 : numSession
     TANK_name = cell2mat(sessionPaths{session});
     TANK_location = char(strcat(basePath, filesep, TANK_name));
     load(fullfile(behavDataPath, strcat(cell2mat(regexp(TANK_name, '#.*?[PI]L', 'match')), '.mat')));
@@ -23,9 +24,9 @@ for session = 1 : 40
 end
 
 %% Load Data by session
-data = cell(1,40);
-midPointTimesData = cell(1,40);
-for session = 1 : 40
+data = cell(1,numSession);
+midPointTimesData = cell(1,numSession);
+for session = 1 : numSession
     TANK_name = cell2mat(sessionPaths{session});
     TANK_location = char(strcat(basePath, filesep, TANK_name));
     load(TANK_location, "WholeTestResult", "midPointTimes"); % PFITestResult, WholeTestResult(row, col, true d , shuffled d, pred d)
@@ -38,8 +39,8 @@ for session = 1 : 40
 end
 
 %% Compare Error btw shuffled and predicted
-result1 = table(zeros(40,1), zeros(40,1), 'VariableNames',["Shuffled", "Predicted"]);
-for session = 1 : 40
+result1 = table(zeros(numSession,1), zeros(numSession,1), 'VariableNames',["Shuffled", "Predicted"]);
+for session = 1 : numSession
     if contains(basePath, 'degree')
         % if degree regressor, first get abs difference, and check if
         % 360-diff is smaller than diff.
@@ -61,9 +62,9 @@ for session = 1 : 40
 end
 
 %% Compare Error btw N, F, and E
-result2 = table(zeros(40,1), zeros(40,1), zeros(40,1), 'VariableNames', ["NestError", "ForagingError", "EncounterError"]);
-datapointNumber = table(zeros(40,1), zeros(40,1), zeros(40,1), 'VariableNames', ["Nest", "Foraging", "Encounter"]);
-for session = 1 : 40
+result2 = table(zeros(numSession,1), zeros(numSession,1), zeros(numSession,1), 'VariableNames', ["NestError", "ForagingError", "EncounterError"]);
+datapointNumber = table(zeros(numSession,1), zeros(numSession,1), zeros(numSession,1), 'VariableNames', ["Nest", "Foraging", "Encounter"]);
+for session = 1 : numSession
     locError = abs(data{session}(:,3) - data{session}(:,5));
     
     isNesting = data{session}(:,2) < 225;
@@ -97,7 +98,7 @@ accumErrorMatrix = zeros(apparatus.height, apparatus.width);
 accumLocationMatrix = zeros(apparatus.height, apparatus.width);
 
 % Run through all sessions
-for session = 1 : 40
+for session = 1 : numSession
     locError = abs(data{session}(:,3) - data{session}(:,5)) * px2cm;
     for i = 1 : numel(locError)
         accumErrorMatrix(round(data{session}(i,1)), round(data{session}(i,2))) = ...
