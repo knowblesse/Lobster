@@ -5,9 +5,9 @@ KERNEL_SIZE = 1000;
 KERNEL_STD = 100;
 REMOVE_START_SEC = 10; % remove the first 10 sec of the data
 REMOVE_END_SEC = 10;
-locPsec = 2; % location parsing sampling rate 1 : 1 loc per sec, 2 : 2 loc per sec, ...
+locPsec = 20; % location parsing sampling rate 1 : 1 loc per sec, 2 : 2 loc per sec, ...
 
-basepath = 'D:\Data\Lobster\Lobster_Recording-200319-161008\21JAN5';
+basepath = 'D:\Data\Lobster\Lobster_Recording-200319-161008\Data';
 filelist = dir(basepath);
 workingfile = regexp({filelist.name},'#\S*','match'); % read only #ed folders
 workingfile = workingfile(~cellfun('isempty',workingfile));
