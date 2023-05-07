@@ -68,7 +68,7 @@ xlim(ax_hist, [0.5, numBin + 0.5]);
 xticks(ax_hist, 0.5 : 20 : numBin + 0.5);
 xticklabels(ax_hist, arrayfun(@num2str, (TIMEWINDOW(1):1000:TIMEWINDOW(2))/1000, 'UniformOutput', false))
 ylabel(ax_hist, 'Z');
-xlabel(ax_hist, 'Time (ms)');
+xlabel(ax_hist, 'Time (s)');
 ax_hist.Position(3) = ax_hm.Position(3);
 
 
