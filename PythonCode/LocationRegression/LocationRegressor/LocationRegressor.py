@@ -74,6 +74,34 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
     else:
         raise(BaseException('Wrong dataset. use distance, row, or column'))
 
+    # use well-distributed y values
+    # bin y into 5 bins, label each datapoint with the bin, and use the bin label to equally distribute dataset during train/test split.
+    useEqualyBin = False
+    if useEqualyBin:
+        zoneClass = np.floor(np.argsort(np.squeeze(y)) / y.shape[0] * 5).astype(int)
+
+        datacount = np.bincount(zoneClass)
+
+        zoneClass = np.digitize(y, (np.max(y) - np.min(y)) * np.array([0.2, 0.4, 0.6, 0.8]) + np.min(y))
+
+        print(f'zoneCount 0 : {np.sum(zoneClass == 0)} 1 : {np.sum(zoneClass == 1)} 2 : {np.sum(zoneClass == 2)} 3 : {np.sum(zoneClass == 3)} 4 : {np.sum(zoneClass == 4)}')
+
+        datacount = np.bincount(np.squeeze(zoneClass))
+        selectedIndex = np.concatenate((rng.choice(np.where(zoneClass == 0)[0], np.min(datacount)),
+                        rng.choice(np.where(zoneClass == 1)[0], np.min(datacount)),
+                        rng.choice(np.where(zoneClass == 2)[0], np.min(datacount)),
+                        rng.choice(np.where(zoneClass == 3)[0], np.min(datacount)),
+                        rng.choice(np.where(zoneClass == 4)[0], np.min(datacount))))
+
+        X = X[selectedIndex,:]
+        y_r = y_r[selectedIndex]
+        y_c = y_c[selectedIndex]
+        y = y[selectedIndex]
+        midPointTimes = midPointTimes[selectedIndex]
+        zoneClass = np.squeeze(zoneClass[selectedIndex])
+
+        print(f'zoneCount(after) 0 : {np.sum(zoneClass == 0)} 1 : {np.sum(zoneClass == 1)} 2 : {np.sum(zoneClass == 2)} 3 : {np.sum(zoneClass == 3)} 4 : {np.sum(zoneClass == 4)}')
+
     # Prepare array to store regression result from the test dataset
     WholeTestResult = np.zeros([X.shape[0], 5])  # num data x [row, col, true, fake, predicted]
     WholeTestResult[:, :3] = np.hstack((y_r, y_c, y))
@@ -89,7 +117,6 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
 
     # Start training
     for train_index, test_index in kf.split(X, zoneClass):
-
         X_train = torch.tensor(X[train_index, :], dtype=torch.float32, device=device, requires_grad=True)
         X_test = torch.tensor(X[test_index, :], dtype=torch.float32, device=device, requires_grad=False)
 
@@ -193,13 +220,21 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
 device = torch.device("cuda" if torch.cuda.is_available else "cpu")
 
 if platform.system() == 'Windows':
-    InputFolder = Path('D:\Data\Lobster\FineDistanceDataset')
-    OutputFolder = Path('D:\Data\Lobster\FineDistanceResult_stratify')
+    BasePath = Path('D:\Data\Lobster')
 else:
-    InputFolder = Path.home() / 'Data/FineDistanceDataset'
-    OutputFolder = Path.home() / 'Data/FineDistanceResult_syncFixed_May_splitwell'
+    BasePath = Path.home() / 'Data'
+
+
+InputFolder = BasePath / 'FineDistanceDataset'
+OutputFolder = BasePath / 'FineDistanceResult_syncFixed_rmNNB'
+
 for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
     print(f'{i:02} {tank}')
+    if args.removeWanderData:
+        # check if the session has the nnb data
+        NNBFolder = BasePath / 'NonNavigationalBehaviorData' 
+        if not ((NNBFolder / (tank.name + '_nnb.csv')).is_file()):
+            continue
     NeuralRegressor(
             tankPath=tank,
             outputPath=OutputFolder,

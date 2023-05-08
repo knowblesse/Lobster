@@ -203,6 +203,27 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
 
     zoneClass = (~isNestingZone).astype(int) + isEncounterZone.astype(int)
 
+    # If removeWanderData is set True, load nnb.csv and delete data during non-navigational behaviors
+    if removeWanderData:
+        print('removing wander (non-navigational behavior)')
+
+        # Load NNB Data
+        if platform.system() == 'Windows':
+            nnbDataBasePath = Path(r"D:\Data\Lobster\NonNavigationalBehaviorData")
+        else:
+            nnbDataBasePath = Path.home() / 'Data/NonNavigationalBehaviorData'
+
+        data_distracted = np.loadtxt(nnbDataBasePath / (str(tankPath.name) + "_nnb.csv"), delimiter=',')
+
+        deleteIndex = data_distracted[np.round(intp_frame(midPointTimes)).astype(int)] # conver time to frame and check if NNB
+
+        neural_data = neural_data[np.logical_not(deleteIndex), :]
+        y_r = y_r[np.logical_not(deleteIndex)]
+        y_c = y_c[np.logical_not(deleteIndex)]
+        y_deg = y_deg[np.logical_not(deleteIndex)]
+        midPointTimes = midPointTimes[np.logical_not(deleteIndex)]
+        zoneClass = zoneClass[np.logical_not(deleteIndex)]
+
     # If removeNestingData is set True, remove all points which has the column value smaller than 225
     if removeNestingData:
         print('removing nesting')
@@ -231,43 +252,9 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
         y_c = y_c[np.logical_not(deleteIndex)]
         y_deg = y_deg[np.logical_not(deleteIndex)]
         midPointTimes = midPointTimes[np.logical_not(deleteIndex)]
-        zoneClass = zoneClass[selectedIndex]
+        zoneClass = zoneClass[np.logical_not(deleteIndex)]
 
-    # If removeWanderData is set True, load behavior data and remove all points of following condition
-    #   1. the animal is in the nest zone
-    #   2. TROF to IRON interval is longer than 12 sec
-    if removeWanderData:
-        print('removing wander')
-
-        # get delete indice
-        deleteIndex = np.zeros(midPointTimes.shape, dtype=bool)
-        for trial in range(1, numTrial): # skip first trial
-            betweenTRON_firstIRON = np.logical_and(
-                ParsedData[trial, 0][0,0] <= midPointTimes,
-                midPointTimes <  (ParsedData[trial, 1][0,0] + ParsedData[trial, 0][0,0])
-            )
-            betweenTROF_firstIRON = np.logical_and(
-                ParsedData[trial-1, 0][0,1] <= midPointTimes,
-                midPointTimes <  (ParsedData[trial, 1][0,0] + ParsedData[trial, 0][0,0])
-            )
-            latency2HeadEntry = ParsedData[trial, 1][0, 0]
-            TROF2IRONInterval = ParsedData[trial, 0][0, 0] - ParsedData[trial-1, 0][0,1] + latency2HeadEntry
-            warnings.warn('Currently Engaged Trials are removed')
-            if TROF2IRONInterval >= 12: # Engaged
-                continue
-
-            deleteIndex[np.logical_and(
-                y_c <= 225, 
-                betweenTROF_firstIRON
-                )] = True
-
-        neural_data = neural_data[np.logical_not(deleteIndex), :]
-        y_r = y_r[np.logical_not(deleteIndex)]
-        y_c = y_c[np.logical_not(deleteIndex)]
-        y_deg = y_deg[np.logical_not(deleteIndex)]
-        midPointTimes = midPointTimes[np.logical_not(deleteIndex)]
-        zoneClass = zoneClass[selectedIndex]
-
+    # this is not strafiying. it's equalizing number of data extracted from different zone
     if stratifyData:
         print('stratifying Data')
         datacount = np.bincount(((~isNestingZone).astype(int) + isEncounterZone.astype(int)))
