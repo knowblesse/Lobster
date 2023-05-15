@@ -106,3 +106,41 @@ for ic = 1:4
     title(num2str(cells(ic)));
 end
 
+%% Compare correlation of x-axis symmetry and y-axis symmetry
+% row : 131:439 ==> 131:284, 286:439  (154)
+% col : 251:570 ==> 251:410, 411:570  (160)
+% nest col : 51:204 ==> 51:127, 128:204 (77)
+% all col : 51:204 + 251:570 => 51:204 + 251:333, 334:570(237)
+
+corrData = zeros(632, 2); % all. N-zone and center (F-zone + E-zone)
+corrDataCenter = zeros(632, 2);
+corrDataNest = zeros(632, 2);
+
+for c = 1:632
+    top_center = reshape(squeeze(spatialMaps_z(c, 131:284, 251:570)), [], 1);
+    bot_center = reshape(flipud(squeeze(spatialMaps_z(c, 286:439, 251:570))), [], 1);
+    left_center = reshape(squeeze(spatialMaps_z(c, 131:439, 251:410)), [], 1);
+    right_center = reshape(fliplr(squeeze(spatialMaps_z(c, 131:439, 411:570))), [], 1);
+
+    top_nest = reshape(squeeze(spatialMaps_z(c, 131:284, 51:204)), [], 1);
+    bot_nest = reshape(flipud(squeeze(spatialMaps_z(c, 286:439, 51:204))), [], 1);
+    left_nest = reshape(squeeze(spatialMaps_z(c, 131:439, 51:127)), [], 1);
+    right_nest = reshape(fliplr(squeeze(spatialMaps_z(c, 131:439, 128:204))), [], 1);
+    
+    top = [top_center; top_nest];
+    bot = [bot_center; bot_nest];
+    left = reshape(squeeze(spatialMaps_z(c, 131:439, [51:204, 251:333])), [], 1);
+    right = reshape(fliplr(squeeze(spatialMaps_z(c, 131:439, 334:570))), [], 1);
+
+    corr_tb = corrcoef(top, bot);
+    corr_lr = corrcoef(left, right);
+    corrData(c, :) = [corr_tb(1,2), corr_lr(1,2)];
+
+    corr_tb_center = corrcoef(top_center, bot_center);
+    corr_lr_center = corrcoef(left_center, right_center);
+    corrDataNest(c, :) = [corr_tb_center(1,2), corr_lr_center(1,2)];
+
+    corr_tb_nest = corrcoef(top_nest, bot_nest);
+    corr_lr_nest = corrcoef(left_nest, right_nest);
+    corrDataNest(c, :) = [corr_tb_nest(1,2), corr_lr_nest(1,2)];
+end
