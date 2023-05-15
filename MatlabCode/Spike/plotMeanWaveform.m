@@ -33,3 +33,17 @@ for i = 3 : max(floor(size(spikeform,1)/100),1) : size(spikeform,1)
         ],'k','LineWidth',0.5);
 end
 axis off;
+
+%% Another version with shade plot
+figure(3);
+spikeData = reshape(spikeform, [], 30,4);
+
+for electrode = 1 : 4
+    subplot(1,4,electrode);
+    shadeplot(spikeData(:, :, electrode), 'Color', 'w', 'LineWidth', 1);
+    ylim([-8000, 4000]);
+    axis off;
+end
+    
+
+
