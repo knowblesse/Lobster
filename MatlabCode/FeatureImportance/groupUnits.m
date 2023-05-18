@@ -48,7 +48,7 @@ if options.showGraph
     ylabel('Z score');
     xlabel('Time (sec)');
     xticks(0:20:80);
-    xticklabels(-1:0.5:1);
+    xticklabels(-2:2);
     legend(lines, legends, 'FontSize', 6.6);
     set(gca, 'FontName', 'Noto Sans');
     pos = get(gcf, 'Position');
