@@ -19,7 +19,11 @@ data_behav = cell(1,numSession);
 for session = 1 : numSession
     TANK_name = cell2mat(sessionPaths{session});
     TANK_location = char(strcat(basePath, filesep, TANK_name));
-    load(fullfile(behavDataPath, strcat(cell2mat(regexp(TANK_name, '#.*?[PI]L', 'match')), '.mat')));
+    if contains(TANK_name, 'L')
+        load(fullfile(behavDataPath, strcat(cell2mat(regexp(TANK_name, '#.*?[PI]L', 'match')), '.mat')));
+    else
+        load(fullfile(behavDataPath, glob(behavDataPath, strcat(regexp(TANK_name, '#.*?-\d{6}-\d{6}', 'match'), '.*'), false)));
+    end
     data_behav{session} = ParsedData;
 end
 
@@ -91,6 +95,50 @@ for session = 1 : numSession
     datapointNumber.Encounter(session) = sum(isEncounter);
 end
 
+%% Separate Forgaging zone error by outbound and inbound path
+result3 = table(zeros(numSession,1), zeros(numSession,1), 'VariableNames', ["OutboundError", "InboundError"]);
+
+for session = 1 : numSession
+    locError = abs(data{session}(:,3) - data{session}(:,5));
+    
+    isNesting = data{session}(:,2) < 225;
+    
+    % check isEncounter by IRsensor
+    IRs = [];
+    for trial = 1 : size(data_behav{session},1)
+       IRs = [IRs; data_behav{session}{trial,2} + data_behav{session}{trial,1}(1)];
+    end
+    
+    isEncounter = false(size(midPointTimesData{session}, 2),1);
+    for i = 1 : size(isEncounter,1)
+       isEncounter(i) = any(IRs(:,1) < midPointTimesData{session}(i) & midPointTimesData{session}(i) < IRs(:,2));
+    end
+    
+    isForaging = and(~isNesting, ~isEncounter);
+
+    % get outbound index : (from door open to first enterance to E-zone) & isForaging
+    isOutbound = false(size(midPointTimesData{session}, 2),1);
+    for trial = 2 : size(data_behav{session},1) % ignore the first trial, because rat start from weird location
+        tron = data_behav{session}{trial, 1}(1);
+        isOutbound = isOutbound | (...
+            midPointTimesData{session}' >= tron & ...
+            midPointTimesData{session}' < (tron + data_behav{session}{trial, 3}(1)));
+    end
+
+    % get inbound index : (from last ir to next trial's door open) & isForaging
+    isInbound = false(size(midPointTimesData{session}, 2),1);
+    for trial = 1 : size(data_behav{session},1)-1 % ignore the last trial, because we use the next trial's TRON
+        tron = data_behav{session}{trial, 1}(1);
+        isInbound = isInbound | (...
+            midPointTimesData{session}' >= (tron + data_behav{session}{trial, 2}(end)) & ...
+            midPointTimesData{session}' < data_behav{session}{trial+1, 1}(1));
+    end
+    
+    result3.OutboundError(session) = mean(locError(isForaging & isOutbound)) * px2cm;
+    result3.InboundError(session) = mean(locError(isForaging & isInbound)) * px2cm;
+    
+    fprintf("%2d session\n", session);
+end
 
 %% Draw Error Heatmap
 % Apparatus Image Size
@@ -453,4 +501,17 @@ for session = 1 : 40
     result_rmEngaged.Shuffled(session) = mean(abs(WholeTestResult(:,3) - WholeTestResult(:,4))) * px2cm;
     result_rmEngaged.Predicted(session) = mean(abs(WholeTestResult(:,3) - WholeTestResult(:,5))) * px2cm;
     midPointTimesData{session} = truncatedTimes_s + (1/neural_data_rate)*(0:size(WholeTestResult,1)-1) + 0.5 * (1/neural_data_rate);
+end
+
+%% Get Moving Distance
+px2cm = 0.169;
+output = zeros(numel(sessionPaths),1);
+for session = 1 : numel(sessionPaths)
+    % Load Position Data
+    positionData = data{session}(:, 1:2);
+    
+    movingDistanceM = sum((diff(positionData(:,1)).^2 + diff(positionData(:,2)).^2).^0.5 .* px2cm)/100;
+    output(session) = movingDistanceM;
+    
+    fprintf("[%d] / %d Complete\n", session, size(sessionPaths,2));
 end
