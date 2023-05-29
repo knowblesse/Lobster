@@ -1,8 +1,7 @@
 %% AnalyzeFineDistanceData
 
-basePath = 'D:\Data\Lobster\FineDistanceResult_syncFixed_equal5bin';
+basePath = 'D:\Data\Lobster\FineDistanceResult_syncFixed_rmNNB';
 behavDataPath = 'D:\Data\Lobster\BehaviorData';
-datasetDataPath = 'D:\Data\Lobster\FineDistanceDataset';
 
 filelist = dir(basePath);
 sessionPaths = regexp({filelist.name},'^#\S*.mat','match');
@@ -19,17 +18,17 @@ data_behav = cell(1,numSession);
 for session = 1 : numSession
     TANK_name = cell2mat(sessionPaths{session});
     TANK_location = char(strcat(basePath, filesep, TANK_name));
-    if contains(TANK_name, 'L')
-        load(fullfile(behavDataPath, strcat(cell2mat(regexp(TANK_name, '#.*?[PI]L', 'match')), '.mat')));
-    else
-        load(fullfile(behavDataPath, glob(behavDataPath, strcat(regexp(TANK_name, '#.*?-\d{6}-\d{6}', 'match'), '.*'), false)));
-    end
+    
+    temp = regexp(TANK_name, '(?<tname>#.*?)result.*', 'names');
+
+    load(fullfile(behavDataPath, strcat(temp.tname, '.mat')));
     data_behav{session} = ParsedData;
 end
 
 %% Load Data by session
 data = cell(1,numSession);
 midPointTimesData = cell(1,numSession);
+numCell = zeros(numSession, 1);
 for session = 1 : numSession
     TANK_name = cell2mat(sessionPaths{session});
     TANK_location = char(strcat(basePath, filesep, TANK_name));
