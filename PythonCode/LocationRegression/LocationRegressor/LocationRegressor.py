@@ -71,6 +71,11 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
     elif dataset == 'time':
         print('Time Regressor')
         y = np.expand_dims(midPointTimes, 1)
+    elif dataset == 'weber':
+        print("Distance in Weber's law")
+        distance  = ( (y_r - 280) ** 2 + (y_c - 640) ** 2 ) ** 0.5 
+        y = 1 / distance * 100
+        print(y)
     else:
         raise(BaseException('Wrong dataset. use distance, row, or column'))
 
@@ -114,6 +119,8 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
     # Setup KFold
     CV_split = 5
     kf = StratifiedKFold(n_splits=CV_split, shuffle=True, random_state=622)
+    train_log = np.zeros((CV_split, train_epoch, 4)) # loss train_fake train_real test_fake test_real
+    current_cv = 0
 
     # Start training
     for train_index, test_index in kf.split(X, zoneClass):
@@ -170,6 +177,12 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
                 loss_train_fake = F.mse_loss(net_fake.forward(X_train_shuffled), y_train)
                 loss_test_real = F.mse_loss(net_real.forward(X_test), y_test)
                 loss_test_fake = F.mse_loss(net_fake.forward(X_test), y_test)
+                train_log[current_cv, e, :] = np.array([
+                    loss_train_fake.to('cpu'),
+                    loss_train_real.to('cpu'),
+                    loss_test_fake.to('cpu'),
+                    loss_test_real.to('cpu')])
+
 
             pbar.set_postfix_str(\
                     f'lr:{lr[0]:.0e} ' +
@@ -213,9 +226,15 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
                     X_test_corrupted = torch.tensor(X_corrupted[test_index, :], dtype=torch.float32, device=device, requires_grad=False)
                     y_corrupted = net_real.forward(X_test_corrupted)
                 PFITestResult[test_index, unit, rep] = np.squeeze(y_corrupted.to('cpu').numpy())
+        
+        # start new CV
+        current_cv += 1
 
-    savemat(outputPath/f'{tank_name}result_{dataset}.mat', 
-            {'WholeTestResult': WholeTestResult, 'PFITestResult': PFITestResult, 'midPointTimes': midPointTimes})
+    savemat(outputPath/f'{tank_name}result_{dataset}.mat', {
+            'WholeTestResult': WholeTestResult, 
+            'PFITestResult': PFITestResult, 
+            'midPointTimes': midPointTimes,
+            'train_log': train_log})
     
 device = torch.device("cuda" if torch.cuda.is_available else "cpu")
 
@@ -226,7 +245,7 @@ else:
 
 
 InputFolder = BasePath / 'FineDistanceDataset'
-OutputFolder = BasePath / 'FineDistanceResult_syncFixed_rmNNB'
+OutputFolder = BasePath / 'FineDistanceResult_syncFixed_June'
 
 for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
     print(f'{i:02} {tank}')
