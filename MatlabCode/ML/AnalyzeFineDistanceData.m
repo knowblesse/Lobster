@@ -514,3 +514,16 @@ for session = 1 : numel(sessionPaths)
     
     fprintf("[%d] / %d Complete\n", session, size(sessionPaths,2));
 end
+
+%% Draw loss curve
+clf;
+plot(squeeze(train_log(1,1:(find(squeeze(train_log(1,:,1)) ==0,1)-1),2)), 'k', 'LineWidth',1);
+hold on;
+plot(squeeze(train_log(1,1:(find(squeeze(train_log(1,:,1)) ==0,1)-1),4)), 'k', 'LineWidth',1, 'LineStyle', ':');
+legend({'train', 'test'});
+xlabel('epoch');
+ylabel('loss (MSE)');
+xlim([1,10000]);
+set(gca, 'YScale', 'log');
+ylim([1000, 100000]);
+set(gca,'FontName','Noto Sans');
