@@ -16,7 +16,6 @@ print("Code is running on : " + ("cuda" if torch.cuda.is_available else "cpu"))
 time.sleep(1)
 
 parser = argparse.ArgumentParser(prog='AutoEncoder')
-parser.add_argument('regressor')
 parser.add_argument('--removeNestingData', default='False', required=False)
 parser.add_argument('--removeEncounterData', default='False', required=False)
 parser.add_argument('--removeWanderData', default='False', required=False)
@@ -55,7 +54,7 @@ def AutoEncoder(tankPath, outputPath, device, numReducedDimension, neural_data_r
 
     # Prepare array to store regression result from the test dataset
     WholeTestResult = np.zeros([X.shape[0], numReducedDimension + 2])  # num data x [row, col, numReducedDimension]
-    WholeTestResult[:, :3] = np.hstack((y_r, y_c))
+    WholeTestResult[:, :2] = np.hstack((y_r, y_c))
 
     # Prepare array to store test dataset from the unit shuffled test dataset
     numUnit = int(X.shape[1] / numBin)
@@ -92,7 +91,7 @@ def AutoEncoder(tankPath, outputPath, device, numReducedDimension, neural_data_r
     for e in pbar:
         # Update net_real
         net_real.train()
-        loss_real = F.mse_loss(net_real.forward(X_train), y_train)
+        loss_real = F.mse_loss(net_real.forward(X_train), X_train)
         optimizer_real.zero_grad()
         loss_real.backward()
         torch.nn.utils.clip_grad_norm_(net_real.parameters(), 5)
@@ -104,17 +103,17 @@ def AutoEncoder(tankPath, outputPath, device, numReducedDimension, neural_data_r
         # Update tqdm part
         net_real.eval()
         with torch.no_grad():
-            loss_train_real = F.mse_loss(net_real.forward(X_train), y_train)
-            loss_test_real = F.mse_loss(net_real.forward(X_test), y_test)
+            loss_train_real = F.mse_loss(net_real.forward(X_train), X_train)
+            loss_test_real = F.mse_loss(net_real.forward(X_test), X_test)
             train_log[ e, :] = np.array([
-                lr,
+                lr[0],
                 loss_train_real.to('cpu'),
                 loss_test_real.to('cpu')])
 
         pbar.set_postfix_str( \
             f'lr:{lr[0]:.0e} ' +
-            f'pr:{torch.mean(loss_real).item():.2f} ' +
-            f'pr(Test):{torch.mean(loss_test_real).item():.2f} ')
+            f'pr:{torch.mean(loss_real).item():.4f} ' +
+            f'pr(Test):{torch.mean(loss_test_real).item():.4f} ')
         scheduler_real.step(loss_real)
 
         # EarlyStopping
@@ -123,18 +122,15 @@ def AutoEncoder(tankPath, outputPath, device, numReducedDimension, neural_data_r
 
     earlyStopping.loadBest()
 
-    with torch.no_grad():
-        loss_test_real = F.mse_loss(net_real.forward(X_test), y_test)
-    print(f'Loss : {torch.mean(loss_test_real).item():.2f}')
-
     # Generate Regression result for test data
     net_real.eval()
     with torch.no_grad():
-        reducedData = net_real.encode(X)
+        X_whole = torch.tensor(X, dtype=torch.float32, device=device, requires_grad=False)
+        reducedData = net_real.encode(X_whole)
 
-    WholeTestResult[:, 2:numReducedDimension+3] = realFit.to('cpu').numpy()
+    WholeTestResult[:, 2:numReducedDimension+3] = reducedData.to('cpu').numpy()
 
-    savemat(outputPath / f'{tank_name}result_{dataset}.mat', {
+    savemat(outputPath / f'{tank_name}result.mat', {
         'WholeTestResult': WholeTestResult,
         'midPointTimes': midPointTimes,
         'train_log': train_log})
@@ -164,8 +160,8 @@ for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
         numReducedDimension=4,
         neural_data_rate=20,
         truncatedTime_s=10,
-        train_epoch=20000,
-        init_lr=0.005,
+        train_epoch=30000,
+        init_lr=0.01,
         numBin=1,
         removeNestingData=args.removeNestingData,
         removeEncounterData=args.removeEncounterData,

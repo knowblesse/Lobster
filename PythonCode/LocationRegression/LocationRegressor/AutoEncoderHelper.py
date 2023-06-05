@@ -16,7 +16,7 @@ if 'torch' in sys.modules:
     class dANN_AutoEncoder(nn.Module):
         def __init__(self, params):
             # params : device , input_size
-            super(dANN, self).__init__()
+            super(dANN_AutoEncoder, self).__init__()
             self.device = params['device']
 
             # Encoder
