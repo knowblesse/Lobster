@@ -1,6 +1,6 @@
 %% AnalyzeFineDistanceData
 
-basePath = 'D:\Data\Lobster\FineDistanceResult_syncFixed_rmNNB';
+basePath = 'D:\Data\Lobster\FineDistanceResult_syncFixed_May';
 behavDataPath = 'D:\Data\Lobster\BehaviorData';
 
 filelist = dir(basePath);
@@ -66,6 +66,7 @@ end
 
 %% Compare Error btw N, F, and E
 result2 = table(zeros(numSession,1), zeros(numSession,1), zeros(numSession,1), 'VariableNames', ["NestError", "ForagingError", "EncounterError"]);
+result2_normalized = table(zeros(numSession,1), zeros(numSession,1), zeros(numSession,1), 'VariableNames', ["NestError", "ForagingError", "EncounterError"]);
 datapointNumber = table(zeros(numSession,1), zeros(numSession,1), zeros(numSession,1), 'VariableNames', ["Nest", "Foraging", "Encounter"]);
 for session = 1 : numSession
     locError = abs(data{session}(:,3) - data{session}(:,5));
@@ -82,13 +83,26 @@ for session = 1 : numSession
     for i = 1 : size(isEncounter,1)
        isEncounter(i) = any(IRs(:,1) < midPointTimesData{session}(i) & midPointTimesData{session}(i) < IRs(:,2));
     end
+    
+    isForaging = and(~isNesting, ~isEncounter);
 
-    fprintf("%2d session : N-%d, F-%d, E-%d\n", session, sum(isNesting), sum(and(~isNesting, ~isEncounter)), sum(isEncounter));
+    fprintf("%2d session : N-%d, F-%d, E-%d\n", session, sum(isNesting), sum(isForaging), sum(isEncounter));
 
     result2.NestError(session) = mean(locError(isNesting)) * px2cm;
-    result2.ForagingError(session) = mean(locError(and(~isNesting, ~isEncounter))) * px2cm;
+    result2.ForagingError(session) = mean(locError(isForaging)) * px2cm;
     result2.EncounterError(session) = mean(locError(isEncounter)) * px2cm;
     
+    
+    % Normalized error
+    std_nest = std(data{session}(isNesting,3));
+    std_foraging = std(data{session}(isForaging,3));
+    std_encounter = std(data{session}(isEncounter,3));
+    
+    result2_normalized.NestError(session) = mean(locError(isNesting)/std_nest) * px2cm;
+    result2_normalized.ForagingError(session) = mean(locError(isForaging)/std_foraging) * px2cm;
+    result2_normalized.EncounterError(session) = mean(locError(isEncounter)/std_encounter) * px2cm;
+    
+    % Datapoint
     datapointNumber.Nest(session) = sum(isNesting);
     datapointNumber.Foraging(session) = sum(and(~isNesting, ~isEncounter));
     datapointNumber.Encounter(session) = sum(isEncounter);
@@ -138,6 +152,32 @@ for session = 1 : numSession
     
     fprintf("%2d session\n", session);
 end
+
+%% Error vs Time in session
+result4 = zeros(numSession,10000);
+
+for session = 1 : numSession
+    locError = abs(data{session}(:,3) - data{session}(:,5));
+    
+    numDataPoint = size(locError,1);
+    
+    result4(session,:) = interp1(1:numDataPoint, locError .* px2cm, linspace(1, numDataPoint, 10000));
+    
+    fprintf("%2d session\n", session);
+end
+
+% figure();
+% clf;
+% shadeplot(result4, 'SD', 'sd', 'Color', 'k', 'LineWidth', 1);
+% hold on;
+% 
+% X = [ones(10000,1), (1:10000)'];
+% Y = mean(result4,1)';
+% b1 = X\Y;
+% 
+% plot(X * b1, 'Color', 'r', 'LineWidth', 2);
+% mdl = fitlm(x, Y);
+
 
 %% Draw Error Heatmap
 % Apparatus Image Size
