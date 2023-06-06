@@ -262,4 +262,9 @@ if strcmp(dataname, '#21AUG3-211118-153136_PL')
     ParsedData{63,4}(1,:) = [];
 end
 
+if strcmp(dataname, '#20JUN1-200917-113440_PL')
+    ParsedData{66,2}(2:end,:) = [];
+    ParsedData{66,3}(50:end,:) = [];
+end
+
 fprintf('BehavDataParser : %s behavior data parsing complete\n',dataname);
