@@ -166,17 +166,81 @@ for session = 1 : numSession
     fprintf("%2d session\n", session);
 end
 
-% figure();
-% clf;
-% shadeplot(result4, 'SD', 'sd', 'Color', 'k', 'LineWidth', 1);
-% hold on;
-% 
-% X = [ones(10000,1), (1:10000)'];
-% Y = mean(result4,1)';
-% b1 = X\Y;
-% 
-% plot(X * b1, 'Color', 'r', 'LineWidth', 2);
-% mdl = fitlm(x, Y);
+%% Draw time vs error plot
+figure('Position', [0,300, 400, 300]);
+clf;
+shadeplot(result4, 'SD', 'sd', 'Color', 'k', 'LineWidth', 1);
+hold on;
+X = [ones(10000,1), (1:10000)'];
+Y = mean(result4,1)';
+b1 = X\Y;
+
+plot(X * b1, 'Color', 'r', 'LineWidth', 2);
+xlabel('Session progression (%)');
+xticks(0:2000:10000);
+xticklabels(0:20:100);
+ylabel('Mean absolute error (cm)');
+set(gca, 'FontName', 'Noto Sans', 'FontSize', 8)
+mdl = fitlm(x, Y);
+
+%%  Draw offset plot
+session = 20;
+figure('Position', [0,300, 400, 300]);
+[val, x] = xcorr(data{session}(:,3), data{session}(:,5), 10 / 0.050);
+plot(x * 0.050, val, 'Color', 'k', 'LineWidth', 1);
+hold on;
+yrange = ylim;
+line([0, 0], [yrange(1), yrange(2)], 'Color', 'r', 'LineStyle', '--');
+ylim(yrange);
+xlabel('Offset (sec)');
+ylabel('cross-correlation (a.u.)');
+set(gca, 'FontName', 'Noto Sans', 'FontSize', 8);
+
+%% Draw TRON and HE's true and predicted distance
+session = 7;
+
+numTrial = size(data_behav{session},1);
+TRON_time_data = zeros(80, numTrial-2, 2); % 2sec before, 2sec after => 50ms x 80;
+LICK_time_data = zeros(80, numTrial-2, 2); % 2sec before, 2sec after => 50ms x 80;
+for trial = 2 : numTrial-1
+    TRON_time = data_behav{session}{trial,1}(1);
+    TRON_index = find(midPointTimesData{session}>TRON_time,1);
+    TRON_time_data(:, trial-1, 1) = data{session}(TRON_index-40:TRON_index+39, 3);
+    TRON_time_data(:, trial-1, 2) = data{session}(TRON_index-40:TRON_index+39, 5);
+
+    LICK_time = TRON_time + data_behav{session}{trial,3}(1);
+    LICK_index = find(midPointTimesData{session}>LICK_time,1);
+    LICK_time_data(:, trial-1, 1) = data{session}(LICK_index-40:LICK_index+39, 3);
+    LICK_time_data(:, trial-1, 2) = data{session}(LICK_index-40:LICK_index+39, 5);
+end
+
+figure('Name', 'TRON plot', 'Position', [0, 300, 400, 300]);
+clf;
+[~,ax1]=shadeplot(TRON_time_data(:,:,1)'*px2cm, 'SD', 'sem', 'Color', 'k', 'LineStyle', '-', 'LineWidth', 1);
+hold on;
+[~,ax2]=shadeplot(TRON_time_data(:,:,2)'*px2cm, 'SD', 'sem', 'Color', 'k', 'LineStyle', '--', 'LineWidth', 1);
+yrange = ylim;
+line([40,40], [yrange(1), yrange(2)], 'Color', 'r', 'LineStyle', '--')
+xticks(0:20:80)
+xticklabels(-2:2)
+xlabel('Time from trial start (sec)');
+ylabel('Distance (cm)');
+legend([ax1, ax2], {'True', 'Predicted'});
+set(gca, 'FontName', 'Noto Sans', 'FontSize', 8);
+
+figure('Name', 'LICK plot', 'Position', [0, 300, 400, 300]);
+clf;
+[~,ax1]=shadeplot(LICK_time_data(:,:,1)'*px2cm, 'SD', 'sem', 'Color', 'k', 'LineStyle', '-', 'LineWidth', 1);
+hold on;
+[~,ax2]=shadeplot(LICK_time_data(:,:,2)'*px2cm, 'SD', 'sem', 'Color', 'k', 'LineStyle', '--', 'LineWidth', 1);
+yrange = ylim;
+line([40,40], [yrange(1), yrange(2)], 'Color', 'r', 'LineStyle', '--')
+xticks(0:20:80)
+xticklabels(-2:2)
+xlabel('Time from first lick (sec)');
+ylabel('Distance (cm)');
+legend([ax1, ax2], {'True', 'Predicted'});
+set(gca, 'FontName', 'Noto Sans', 'FontSize', 8);
 
 
 %% Draw Error Heatmap
