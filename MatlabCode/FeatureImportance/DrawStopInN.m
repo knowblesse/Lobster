@@ -102,11 +102,11 @@ for session = 1 : numel(sessionPaths)
     fprintf('[%02d]\n', session);
 end
 
-
-% clf;
-% plot(WholeTestResult(:,3));
-% hold on;
-% for i = 1 : numel(stopped)
-%     p = stopped(i);
-%     line([p, p+timeLength], [WholeTestResult(p,3), WholeTestResult(p,3)], 'LineWidth', 2, 'Color', 'r');
-% end
+%% Draw graph
+% ClassifyUnits;
+% load('run_and_stop.mat');
+hold on;
+[~, l1] = shadeplot(run_and_stop(Unit.Group_HE == 1, :), 'SD', 'sem', 'Color', [0.9922    0.3490    0.3373]);
+[~, l2] = shadeplot(run_and_stop(Unit.Group_HE == 2, :), 'SD', 'sem', 'Color', [0.2588    0.7020    0.5843]);
+graphs = get(gca,'Children');
+legend(fliplr([graphs(1), graphs(3), graphs(6), graphs(8)]), {'HE1-HE', 'HE2-HE', 'HE1-r&s', 'HE2-r&s'})
