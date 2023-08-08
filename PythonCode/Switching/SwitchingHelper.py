@@ -5,11 +5,12 @@ from  LocationRegression.LocationRegressor.LocationRegressionHelper import loadD
 from pathlib import Path
 from warnings import warn
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.decomposition import PCA
 warn('Set to 225')
 
 def parseAllData(tankName):
     locationDataPath = Path(r"D:/Data/Lobster/FineDistanceDataset") / Path(tankName)
-    locationResultPath = Path(r"D:/Data/Lobster/FineDistanceResult_syncFixed") / (tankName + 'result_distance.mat')
+    locationResultPath = Path(r"D:/Data/Lobster/FineDistanceResult_syncFixed_June") / (tankName + 'result_distance.mat')
     behaviorDataPath = Path(r"D:/Data/Lobster/BehaviorData") / Path(tankName).with_suffix('.mat')
     neural_data, y_r, y_c, y_degree, midPointTimes, zoneClass = loadData(locationDataPath, neural_data_rate=20, truncatedTime_s=10, removeNestingData=False)
     neural_data = np.clip(neural_data, -5, 5)
@@ -70,6 +71,21 @@ def getZoneLDA(neural_data, zoneClass):
     lda = LinearDiscriminantAnalysis()
     lda.fit(neural_data, zoneClass)
     neural_data_transformed = lda.transform(neural_data)
+
+    # Calculate Centroids
+    c_nesting = (np.mean(neural_data_transformed[zoneClass==0, 0]), np.mean(neural_data_transformed[zoneClass==0, 1]))
+    c_foraging = (np.mean(neural_data_transformed[zoneClass==1, 0]), np.mean(neural_data_transformed[zoneClass==1, 1]))
+    c_encounter = (np.mean(neural_data_transformed[zoneClass==2, 0]), np.mean(neural_data_transformed[zoneClass==2, 1]))
+
+    centroids = {'nest': c_nesting, 'foraging': c_foraging, 'encounter': c_encounter}
+
+    return (neural_data_transformed, centroids)
+
+def getZonePCA(neural_data, zoneClass):
+    pca = PCA()
+    pca.fit(neural_data)
+    neural_data_transformed = pca.transform(neural_data)[:,:2]
+
 
     # Calculate Centroids
     c_nesting = (np.mean(neural_data_transformed[zoneClass==0, 0]), np.mean(neural_data_transformed[zoneClass==0, 1]))

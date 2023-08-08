@@ -8,7 +8,7 @@ All the code used in this script is replicated in the `LDABatchTesting.py` for w
 
 import numpy as np
 import matplotlib.pyplot as plt
-from Switching.SwitchingHelper import parseAllData, getZoneLDA
+from Switching.SwitchingHelper import parseAllData, getZoneLDA, getZonePCA
 plt.rcParams["font.family"] = "Noto Sans"
 plt.rcParams["font.size"] = 6.6
 def drawLDAResult(neural_data_transformed, zoneClass, centroids, tankName, dotNumber=200, drawOnlyCloserObjects=False, useOldFigure=False, points2draw=['n', 'f', 'e']):
@@ -100,6 +100,11 @@ AEResult = data['AEResult']
 neural_data_transformed, centroids = getZoneLDA(neural_data, zoneClass)
 fig, ax, legendText, legendItems = drawLDAResult(neural_data_transformed, zoneClass, centroids, tankName, 200, useOldFigure=False, drawOnlyCloserObjects=True)
 
+#####################################################################
+#              Draw Example PCA result with scatter                 #
+#####################################################################
+neural_data_transformed, centroids = getZonePCA(neural_data, zoneClass)
+fig, ax, legendText, legendItems = drawLDAResult(neural_data_transformed, zoneClass, centroids, tankName, 200, useOldFigure=False, drawOnlyCloserObjects=True)
 
 #####################################################################
 #                 Get Index for specific behavior                   #
