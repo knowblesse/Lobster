@@ -1,6 +1,6 @@
 %% AnalyzeFineDistanceData
 
-basePath = 'D:\Data\Lobster\FineDistanceResult_syncFixed_May';
+basePath = 'D:\Data\Lobster\FineDistanceResult_syncFixed_June';
 behavDataPath = 'D:\Data\Lobster\BehaviorData';
 
 filelist = dir(basePath);
