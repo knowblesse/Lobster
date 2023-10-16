@@ -65,9 +65,9 @@ for f = 1 : numel(Paths)
     %% Calculate Zscore
     % For the Z score calculation, meaning bins across whole trial must come first
     % before applying the z transformation. (mean of z scores are not z score)
-    % I used the +- 1 seconds around TRON as the baseline. 
+    % I used the +- 2 seconds around TRON as the baseline. 
     % To make the mean and the std as representative as possible, I did not use
-    % one single timepoint as a baseline, rather used "every +- 1 seconds around TRON".
+    % one single timepoint as a baseline, rather used "every +- 2 seconds around TRON".
     % After meaning the binned spikes from the baseline period across trials, mean and std of bin 
     % is calculated. And then, this value is used for z transformation to "binned_spike"s aligned to
     % all behavior event. We might lose all TRON responsive neurons, but since TRON is not my 
