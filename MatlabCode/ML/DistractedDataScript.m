@@ -7,7 +7,7 @@ truncatedTimes_s = 10;
 neural_data_rate = 20;
 
 numTank = 21;
-load('tankList.mat');
+load('NNBtankList.mat');
 output_table = table(strings(numTank, 1), zeros(numTank, 1), zeros(numTank, 1), zeros(numTank, 2), zeros(numTank, 1), ...
     'VariableNames', {'Tank', 'Error_Distracted', 'Error_Engaged', 'NumData', 'DataRatio'});
 
@@ -15,8 +15,8 @@ output_table = table(strings(numTank, 1), zeros(numTank, 1), zeros(numTank, 1), 
 for i = 1 : numTank
     tank_name = tank_list(i);
     load("D:\Data\Lobster\FineDistanceDataset\" + tank_name + "\" + tank_name + "_frameInfo.mat");
-    load("D:\Data\Lobster\FineDistanceResult_syncFixed\" + tank_name + "result_distance.mat");
-    distracted = readmatrix("E:\Data\" + tank_name + "\bool_distracted.csv");
+    load("D:\Data\Lobster\FineDistanceResult_syncFixed_June\" + tank_name + "result_distance.mat");
+    distracted = readmatrix("D:\Data\Lobster\NonNavigationalBehaviorData\" + tank_name + "_nnb.csv");
     
     % Cure weird frame number
     wrong_frame_num_index = find(diff(frameNumber) < 0);

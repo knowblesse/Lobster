@@ -547,65 +547,6 @@ ylabel('Error_{actual distance - predicted distance}(cm)')
 legend('Avoid Trials', 'Escape Trials');
 title('Decoding Error');
 
-%% Divide Decoding Error in Nest zone, during engaged vs not engaged trial
-L1Error_Engaged_Non_Engaged = zeros(40,2);
-for session = 1 : 40
-    Nest_engaged = [];
-    Nest_not_engaged = [];
-    numTrial = size(data_behav{session}, 1);
-    for trial = 2 : numTrial 
-        % Get time variables
-        TRON_time = data_behav{session}{trial,1}(1); % in sec, absolute
-        last_TROF_time = data_behav{session}{trial-1,1}(2); % in sec, absolute
-        latencyToHeadEntry = data_behav{session}{trial,2}(1); % first IR ON Time, in sec, relative
-        TROF2IRONInterval = ...
-            (data_behav{session}{trial,1}(1) - data_behav{session}{trial-1,1}(2))...
-            + data_behav{session}{trial,2}(1); % from Door Close to the first IR, relative under 12 include 50.2% of the trials
-
-        % Get Target WholeTestResult
-        %   data during last TROF to current first IRON
-        targetResult = data{session}(last_TROF_time <= midPointTimesData{session} & midPointTimesData{session} < TRON_time + latencyToHeadEntry,:);
-
-        %   only select data where animal is in the next zone (col < 225)
-        if TROF2IRONInterval >= 12 
-            % not engaged trial
-            Nest_not_engaged = [Nest_not_engaged; targetResult(targetResult(:,2) < 225, :)];
-        else
-            % engaged trial
-            Nest_engaged = [Nest_engaged; targetResult(targetResult(:,2) < 225, :)];
-        end
-    end
-    if isempty(Nest_engaged) | isempty(Nest_not_engaged)
-        continue;
-    end
-    fprintf("Session : %d - Enaged %d Wander %d\n", session, size(Nest_engaged,1), size(Nest_not_engaged,1));
-    L1Error_Engaged_Non_Engaged(session, :) = [...
-        mean(abs(Nest_engaged(:,3) - Nest_engaged(:,4))) * px2cm,...
-        mean(abs(Nest_not_engaged(:,3) - Nest_not_engaged(:,4))) * px2cm];
-end
-
-%% Check Accuracy of the Engaged removed FD Result
-basePath = 'D:\Data\Lobster\FineDistanceResult_NestingVariation\FineDistanceResult_rmWander';
-px2cm = 0.169;
-truncatedTimes_s = 10;
-neural_data_rate = 20;
-
-filelist = dir(basePath);
-sessionPaths = regexp({filelist.name},'^#\S*.mat','match');
-sessionPaths = sessionPaths(~cellfun('isempty',sessionPaths));
-data = cell(40,1);
-result_rmEngaged = table(zeros(40,1), zeros(40,1), 'VariableNames',["Shuffled", "Predicted"]);
-
-for session = 1 : 40
-    TANK_name = cell2mat(sessionPaths{session});
-    TANK_location = char(strcat(basePath, filesep, TANK_name));
-    load(TANK_location, "WholeTestResult"); % PFITestResult, WholeTestResult(row, col, true d , shuffled d, pred d)
-    data{session} = WholeTestResult;
-    result_rmEngaged.Shuffled(session) = mean(abs(WholeTestResult(:,3) - WholeTestResult(:,4))) * px2cm;
-    result_rmEngaged.Predicted(session) = mean(abs(WholeTestResult(:,3) - WholeTestResult(:,5))) * px2cm;
-    midPointTimesData{session} = truncatedTimes_s + (1/neural_data_rate)*(0:size(WholeTestResult,1)-1) + 0.5 * (1/neural_data_rate);
-end
-
 %% Get Moving Distance
 px2cm = 0.169;
 output = zeros(numel(sessionPaths),1);
