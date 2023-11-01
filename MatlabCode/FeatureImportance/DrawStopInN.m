@@ -4,7 +4,7 @@
 %% Constants
 px2cm = 0.169;
 BasePath_Behavior = 'D:\Data\Lobster\BehaviorData';
-BasePath_FDR = 'D:\Data\Lobster\FineDistanceResult_syncFixed_May';
+BasePath_FDR = 'D:\Data\Lobster\FineDistanceResult_syncFixed_June';
 BasePath_Original = 'D:\Data\Lobster\Lobster_Recording-200319-161008\Data';
 
 TIMEWINDOW_LEFT = -2000;
@@ -110,3 +110,27 @@ hold on;
 [~, l2] = shadeplot(run_and_stop(Unit.Group_HE == 2, :), 'SD', 'sem', 'Color', [0.2588    0.7020    0.5843]);
 graphs = get(gca,'Children');
 legend(fliplr([graphs(1), graphs(3), graphs(6), graphs(8)]), {'HE1-HE', 'HE2-HE', 'HE1-r&s', 'HE2-r&s'})
+
+
+figure();
+axis();
+hold on;
+[~, l1] = shadeplot(run_and_stop(Unit.Group_HE == 1, :), 'SD', 'sem', 'Color', "#54A566");
+[~, l2] = shadeplot(run_and_stop(Unit.Group_HE == 2, :), 'SD', 'sem', 'Color', "#EE7219");
+graphs = get(gca,'Children');
+legend(fliplr([graphs(1), graphs(3), graphs(6), graphs(8)]), {'HE1-HE', 'HE2-HE', 'HE1-r&s', 'HE2-r&s'})
+
+
+hold on;
+[~, l1] = shadeplot(run_and_stop(Unit.Group_HW == 1, :), 'SD', 'sem', 'Color', "#D61918");
+[~, l2] = shadeplot(run_and_stop(Unit.Group_HW == 2, :), 'SD', 'sem', 'Color', "#EEB61D");
+[~, l3] = shadeplot(run_and_stop(Unit.Group_HW == 3, :), 'SD', 'sem', 'Color', "#244FA1");
+graphs = get(gca,'Children');
+legend(fliplr([graphs(1), graphs(3), graphs(5), graphs(8), graphs(10), graphs(12)]), {'HW1-HW', 'HW2-HW', 'HW3-HW', 'HW1-r&s', 'HW2-r&s', 'HW3-r&s'})
+
+
+
+
+
+
+
