@@ -108,7 +108,7 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
         print(f'zoneCount(after) 0 : {np.sum(zoneClass == 0)} 1 : {np.sum(zoneClass == 1)} 2 : {np.sum(zoneClass == 2)} 3 : {np.sum(zoneClass == 3)} 4 : {np.sum(zoneClass == 4)}')
 
     # Prepare array to store regression result from the test dataset
-    WholeTestResult = np.zeros([X.shape[0], 5])  # num data x [row, col, true, fake, predicted]
+    WholeTestResult = np.zeros([X.shape[0], 6])  # num data x [row, col, true, fake, no_ace, control]
     WholeTestResult[:, :3] = np.hstack((y_r, y_c, y))
 
     # Prepare array to store test dataset from the unit shuffled test dataset
@@ -118,7 +118,7 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
     # Setup KFold
     CV_split = 5
     kf = StratifiedKFold(n_splits=CV_split, shuffle=True, random_state=622)
-    train_log = np.zeros((CV_split, train_epoch, 4)) # loss train_fake train_real test_fake test_real
+    train_log = np.zeros((CV_split, train_epoch, 6)) # loss train_fake train_real test_fake test_real
     current_cv = 0
 
     """
@@ -144,6 +144,11 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
 
     # Start training
     for train_index, test_index in kf.split(X, zoneClass):
+        _X_train_shuffled = X[train_index, :].copy()
+        np.random.shuffle(_X_train_shuffled)
+        X_train_shuffled = torch.tensor(_X_train_shuffled, dtype=torch.float32, device=device, requires_grad=True)
+        X_test = torch.tensor(X[test_index, :], dtype=torch.float32, device=device, requires_grad=False)
+
         X_noace_train = torch.tensor(X_noace[train_index, :], dtype=torch.float32, device=device, requires_grad=True)
         X_noace_test = torch.tensor(X_noace[test_index, :], dtype=torch.float32, device=device, requires_grad=False)
 
@@ -153,22 +158,40 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
         y_train = torch.tensor(y[train_index, :], dtype=torch.float32, device=device, requires_grad=False)
         y_test = torch.tensor(y[test_index, :], dtype=torch.float32, device=device, requires_grad=False)
 
+        params = {'input_size': X_train_shuffled.shape[1], 'device': device, 'output_node': 1}
+        net_fake = dANN(params).to(device)
+
         params = {'input_size': X_noace_train.shape[1], 'device': device, 'output_node': 1}
         net_noace = dANN(params).to(device)
         net_control = dANN(params).to(device)
+
+        net_fake.init_weights()
         net_noace.init_weights()
         net_control.init_weights()
+
+        optimizer_fake = torch.optim.SGD(net_fake.parameters(), lr=init_lr, momentum=0.3, weight_decay=0.0)
         optimizer_noace = torch.optim.SGD(net_noace.parameters(), lr=init_lr, momentum=0.3, weight_decay=0.0)
         optimizer_control = torch.optim.SGD(net_control.parameters(), lr=init_lr, momentum=0.3, weight_decay=0.0)
+
+        scheduler_fake = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_fake, patience=300, cooldown=100)
         scheduler_noace = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_noace, patience=300, cooldown=100)
         scheduler_control = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_control, patience=300, cooldown=100)
-        earlyStopping = EarlyStopping(model=net_noace, model_control=net_control, tolerance=1000, save_best=True)
+
+        earlyStopping = EarlyStopping(model=net_control, model_control=net_noace, tolerance=1000, save_best=True)
 
 
         # Train
         pbar = tqdm(np.arange(train_epoch))
 
         for e in pbar:
+            # Update net_fake
+            net_fake.train()
+            loss_fake = F.mse_loss(net_fake.forward(X_train_shuffled), y_train)
+            optimizer_fake.zero_grad()
+            loss_fake.backward()
+            torch.nn.utils.clip_grad_norm_(net_fake.parameters(), 5)
+            optimizer_fake.step()
+
             # Update net_noace
             net_noace.train()
             loss_noace = F.mse_loss(net_noace.forward(X_noace_train), y_train)
@@ -189,45 +212,57 @@ def NeuralRegressor(tankPath, outputPath, dataset, device, neural_data_rate, tru
             lr = [group['lr'] for group in optimizer_noace.param_groups]
 
             # Update tqdm part
+            net_fake.eval()
             net_noace.eval()
             net_control.eval()
             with torch.no_grad():
+                loss_train_fake = F.mse_loss(net_fake.forward(X_train_shuffled), y_train)
                 loss_train_noace = F.mse_loss(net_noace.forward(X_noace_train), y_train)
                 loss_train_control = F.mse_loss(net_control.forward(X_control_train), y_train)
+
+                loss_test_fake = F.mse_loss(net_fake.forward(X_test), y_test)
                 loss_test_noace = F.mse_loss(net_noace.forward(X_noace_test), y_test)
                 loss_test_control = F.mse_loss(net_control.forward(X_control_test), y_test)
+
                 train_log[current_cv, e, :] = np.array([
+                    loss_train_fake.to('cpu'),
                     loss_train_control.to('cpu'),
                     loss_train_noace.to('cpu'),
+                    loss_test_fake.to('cpu'),
                     loss_test_control.to('cpu'),
                     loss_test_noace.to('cpu')])
 
 
             pbar.set_postfix_str(\
                     f'lr:{lr[0]:.0e} ' +
-                    f'ctl:{torch.mean(loss_control).item():.2f} ' +
-                    f'ace:{torch.mean(loss_noace).item():.2f} ' +
+                    f'fake:{torch.mean(loss_train_fake).item():.2f} ' +
+                    f'ctl:{torch.mean(loss_train_control).item():.2f} ' +
+                    f'ace:{torch.mean(loss_train_noace).item():.2f} ' +
                     f'ctl(Test):{torch.mean(loss_test_control).item():.2f} ' +
                     f'ace(Test):{torch.mean(loss_test_noace).item():.2f} ')
+            scheduler_fake.step(loss_fake)
             scheduler_noace.step(loss_noace)
             scheduler_control.step(loss_control)
 
             # EarlyStopping
-            if(earlyStopping(loss_test_noace)):
+            if(earlyStopping(loss_test_control)):
                 break
 
         earlyStopping.loadBest()
 
         # Generate Regression result for test data
+        net_fake.eval()
         net_noace.eval()
         net_control.eval()
         with torch.no_grad():
+            fakeFit = net_fake.forward(X_test)
             controlFit = net_control.forward(X_control_test)
             noaceFit = net_noace.forward(X_noace_test)
 
 
-        WholeTestResult[test_index, 3:4] = controlFit.to('cpu').numpy()
-        WholeTestResult[test_index, 4:5] = noaceFit.to('cpu').numpy()
+        WholeTestResult[test_index, 3:4] = fakeFit.to('cpu').numpy()
+        WholeTestResult[test_index, 4:5] = controlFit.to('cpu').numpy()
+        WholeTestResult[test_index, 5:6] = noaceFit.to('cpu').numpy()
 
         # start new CV
         current_cv += 1
@@ -246,7 +281,7 @@ else:
 
 
 InputFolder = BasePath / 'FineDistanceDataset'
-OutputFolder = BasePath / 'FineDistanceResult_syncFixed_240428'
+OutputFolder = BasePath / 'FineDistanceResult_syncFixed_240501'
 
 for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
     print(f'{i:02} {tank}')
