@@ -65,11 +65,13 @@ for session = 1 : numSession
 end
 
 %% Compare Error btw N, F, and E
-result2 = table(zeros(numSession,1), zeros(numSession,1), zeros(numSession,1), 'VariableNames', ["NestError", "ForagingError", "EncounterError"]);
+result2_original = table(zeros(numSession,1), zeros(numSession,1), zeros(numSession,1), 'VariableNames', ["NestError", "ForagingError", "EncounterError"]);
+result2_shuffled = table(zeros(numSession,1), zeros(numSession,1), zeros(numSession,1), 'VariableNames', ["NestError", "ForagingError", "EncounterError"]);
 result2_normalized = table(zeros(numSession,1), zeros(numSession,1), zeros(numSession,1), 'VariableNames', ["NestError", "ForagingError", "EncounterError"]);
 datapointNumber = table(zeros(numSession,1), zeros(numSession,1), zeros(numSession,1), 'VariableNames', ["Nest", "Foraging", "Encounter"]);
 for session = 1 : numSession
-    locError = abs(data{session}(:,3) - data{session}(:,5));
+    locError_original = abs(data{session}(:,3) - data{session}(:,5));
+    locError_shuffled = abs(data{session}(:,3) - data{session}(:,4));
     
     isNesting = data{session}(:,2) < 225;
     
@@ -88,9 +90,13 @@ for session = 1 : numSession
 
     fprintf("%2d session : N-%d, F-%d, E-%d\n", session, sum(isNesting), sum(isForaging), sum(isEncounter));
 
-    result2.NestError(session) = mean(locError(isNesting)) * px2cm;
-    result2.ForagingError(session) = mean(locError(isForaging)) * px2cm;
-    result2.EncounterError(session) = mean(locError(isEncounter)) * px2cm;
+    result2_original.NestError(session) = mean(locError_original(isNesting)) * px2cm;
+    result2_original.ForagingError(session) = mean(locError_original(isForaging)) * px2cm;
+    result2_original.EncounterError(session) = mean(locError_original(isEncounter)) * px2cm;
+    
+    result2_shuffled.NestError(session) = mean(locError_shuffled(isNesting)) * px2cm;
+    result2_shuffled.ForagingError(session) = mean(locError_shuffled(isForaging)) * px2cm;
+    result2_shuffled.EncounterError(session) = mean(locError_shuffled(isEncounter)) * px2cm;
     
     
     % Normalized error
@@ -98,9 +104,9 @@ for session = 1 : numSession
     std_foraging = std(data{session}(isForaging,3));
     std_encounter = std(data{session}(isEncounter,3));
     
-    result2_normalized.NestError(session) = mean(locError(isNesting)/std_nest) * px2cm;
-    result2_normalized.ForagingError(session) = mean(locError(isForaging)/std_foraging) * px2cm;
-    result2_normalized.EncounterError(session) = mean(locError(isEncounter)/std_encounter) * px2cm;
+    result2_normalized.NestError(session) = mean(locError_original(isNesting)/std_nest) * px2cm;
+    result2_normalized.ForagingError(session) = mean(locError_original(isForaging)/std_foraging) * px2cm;
+    result2_normalized.EncounterError(session) = mean(locError_original(isEncounter)/std_encounter) * px2cm;
     
     % Datapoint
     datapointNumber.Nest(session) = sum(isNesting);
@@ -112,7 +118,7 @@ end
 result3 = table(zeros(numSession,1), zeros(numSession,1), 'VariableNames', ["OutboundError", "InboundError"]);
 
 for session = 1 : numSession
-    locError = abs(data{session}(:,3) - data{session}(:,5));
+    locError_original = abs(data{session}(:,3) - data{session}(:,5));
     
     isNesting = data{session}(:,2) < 225;
     
@@ -147,8 +153,8 @@ for session = 1 : numSession
             midPointTimesData{session}' < data_behav{session}{trial+1, 1}(1));
     end
     
-    result3.OutboundError(session) = mean(locError(isForaging & isOutbound)) * px2cm;
-    result3.InboundError(session) = mean(locError(isForaging & isInbound)) * px2cm;
+    result3.OutboundError(session) = mean(locError_original(isForaging & isOutbound)) * px2cm;
+    result3.InboundError(session) = mean(locError_original(isForaging & isInbound)) * px2cm;
     
     fprintf("%2d session\n", session);
 end
@@ -157,11 +163,11 @@ end
 result4 = zeros(numSession,10000);
 
 for session = 1 : numSession
-    locError = abs(data{session}(:,3) - data{session}(:,5));
+    locError_original = abs(data{session}(:,3) - data{session}(:,5));
     
-    numDataPoint = size(locError,1);
+    numDataPoint = size(locError_original,1);
     
-    result4(session,:) = interp1(1:numDataPoint, locError .* px2cm, linspace(1, numDataPoint, 10000));
+    result4(session,:) = interp1(1:numDataPoint, locError_original .* px2cm, linspace(1, numDataPoint, 10000));
     
     fprintf("%2d session\n", session);
 end
@@ -250,10 +256,10 @@ accumLocationMatrix = zeros(apparatus.height, apparatus.width);
 
 % Run through all sessions
 for session = 1 : numSession
-    locError = abs(data{session}(:,3) - data{session}(:,5)) * px2cm;
-    for i = 1 : numel(locError)
+    locError_original = abs(data{session}(:,3) - data{session}(:,5)) * px2cm;
+    for i = 1 : numel(locError_original)
         accumErrorMatrix(round(data{session}(i,1)), round(data{session}(i,2))) = ...
-            accumErrorMatrix(round(data{session}(i,1)), round(data{session}(i,2))) + locError(i);
+            accumErrorMatrix(round(data{session}(i,1)), round(data{session}(i,2))) + locError_original(i);
         
         accumLocationMatrix(round(data{session}(i,1)), round(data{session}(i,2))) = ...
             accumLocationMatrix(round(data{session}(i,1)), round(data{session}(i,2))) + 1;

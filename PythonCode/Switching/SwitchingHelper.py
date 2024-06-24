@@ -58,6 +58,7 @@ def parseAllData(tankName):
 
     return {'neural_data': neural_data,
             'midPointTimes': midPointTimes,
+            'location_data': locationResult,
             'ParsedData': ParsedData,
             'Trials': Trials,
             'IRs': IRs,
