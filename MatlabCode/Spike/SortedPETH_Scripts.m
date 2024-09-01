@@ -75,7 +75,7 @@ for i = 1 : numel(responsiveUnits)
     line(ax_hm1, [82, 85], [i, i], 'Color', colors(PETH_units(i), :), 'LineWidth',1.8);
 end
 
-saveas(gcf, 'C:\Users\Knowblesse\Desktop\1.svg', 'svg');
+saveas(gcf, 'C:\Users\knowb\Desktop\1.svg', 'svg');
 
 figure('Name', 'SortedPETH_HW', 'Position', figureSize);
 ax_hm1 = subplot(4,1,1:3);
@@ -99,7 +99,7 @@ for i = 1 : numel(responsiveUnits)
     line(ax_hm1, [82, 85], [i, i], 'Color', colors(PETH_units(i), :), 'LineWidth',1.8);
 end
 
-saveas(gcf, 'C:\Users\Knowblesse\Desktop\2.svg', 'svg');
+saveas(gcf, 'C:\Users\knowb\Desktop\2.svg', 'svg');
 
 figure('Name', 'SortedPETH_AHW', 'Position', figureSize);
 ax_hm1 = subplot(4,1,1:3);
@@ -112,7 +112,7 @@ ax_hm1.Clipping = 'off';
 ylim(ax_hist1, [-.3, 3]);
 p = ylabel('Z');
 p.Position(1) = -4;
-saveas(gcf, 'C:\Users\Knowblesse\Desktop\3.svg', 'svg');
+saveas(gcf, 'C:\Users\knowb\Desktop\3.svg', 'svg');
 
 figure('Name', 'SortedPETH_EHW', 'Position', figureSize);
 ax_hm1 = subplot(4,1,1:3);
@@ -124,7 +124,62 @@ ax_hm1.Clipping = 'off';
 ylim(ax_hist1, [-.3, 3]);
 p = ylabel('Z');
 p.Position(1) = -4;
-saveas(gcf, 'C:\Users\Knowblesse\Desktop\4.svg', 'svg');
+saveas(gcf, 'C:\Users\knowb\Desktop\4.svg', 'svg');
+
+%% Draw Peak Sorted PETH of HE-HW1 and HE2-HW2 during AEW
+
+figure('Name', 'SortedPETH_AHW_Type1', 'Position', figureSize);
+ax_hm1 = subplot(4,1,1:3);
+ax_hist1 = subplot(4,1,4);
+
+drawPeakSortedPETH(valid_IROF_A_zscores(find(Unit.Group_HE==1 & Unit.Group_HW==1),:), [-2000, 2000], 50, ax_hm1, ax_hist1,...
+    'Name', 'AHW');
+ax_hm1.Clipping = 'off';
+
+ylim(ax_hist1, [-1, 3]);
+p = ylabel('Z');
+p.Position(1) = -4;
+saveas(gcf, 'C:\Users\knowb\Desktop\ahw_type1.svg', 'svg');
+
+figure('Name', 'SortedPETH_EHW_Type1', 'Position', figureSize);
+ax_hm1 = subplot(4,1,1:3);
+ax_hist1 = subplot(4,1,4);
+
+drawPeakSortedPETH(valid_IROF_E_zscores(find(Unit.Group_HE==1 & Unit.Group_HW==1),:), [-2000, 2000], 50, ax_hm1, ax_hist1,...
+    'Name', 'EHW');
+ax_hm1.Clipping = 'off';
+
+ylim(ax_hist1, [-1, 3]);
+p = ylabel('Z');
+p.Position(1) = -4;
+saveas(gcf, 'C:\Users\knowb\Desktop\ehw_type1.svg', 'svg');
+
+figure('Name', 'SortedPETH_AHW_Type2', 'Position', figureSize);
+ax_hm1 = subplot(4,1,1:3);
+ax_hist1 = subplot(4,1,4);
+
+drawPeakSortedPETH(valid_IROF_A_zscores(find(Unit.Group_HE==2 & Unit.Group_HW==2),:), [-2000, 2000], 50, ax_hm1, ax_hist1,...
+    'Name', 'AHW');
+ax_hm1.Clipping = 'off';
+
+ylim(ax_hist1, [-1, 3]);
+p = ylabel('Z');
+p.Position(1) = -4;
+saveas(gcf, 'C:\Users\knowb\Desktop\ahw_type2.svg', 'svg');
+
+figure('Name', 'SortedPETH_EHW_Type2', 'Position', figureSize);
+ax_hm1 = subplot(4,1,1:3);
+ax_hist1 = subplot(4,1,4);
+
+drawPeakSortedPETH(valid_IROF_E_zscores(find(Unit.Group_HE==2 & Unit.Group_HW==2),:), [-2000, 2000], 50, ax_hm1, ax_hist1,...
+    'Name', 'EHW');
+ax_hm1.Clipping = 'off';
+
+ylim(ax_hist1, [-1, 3]);
+p = ylabel('Z');
+p.Position(1) = -4;
+saveas(gcf, 'C:\Users\knowb\Desktop\ehw_type2.svg', 'svg');
+
 
 %% Draw HE1-HW1 & HE2-HW2
 
@@ -174,3 +229,4 @@ for event = ["first_LICK", "valid_IROF"]
     pos = get(gcf, 'Position');
     set(gcf, 'Position', [pos(1), pos(2), 288, 236]);
 end
+
