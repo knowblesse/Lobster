@@ -1,6 +1,6 @@
 %% AnalyzeEventClassifierData
 % Analyse event classification and draw graphs
-loadxkcd;
+%loadxkcd;
 load('D:\Data\Lobster\BNB_Result_unitshffle.mat'); %% HEC Result Data
 sessionNames = string(sessionNames);
 tankNames = string(tankNames);
@@ -216,7 +216,37 @@ title('Original');
 
 set(gca, 'FontName', 'Noto Sans');
 
+%% Check if Head Withdrawal time as correlation with Accuracy
+correct_HW_Time = [];
+wrong_HW_Time = [];
+for session = 1 : 40
+    % Get HW Time
+    behav_data = load(fullfile("D:\Data\Lobster\BehaviorData", strcat(sessionNames(session, :), '.mat')));
+    ParsedData = behav_data.ParsedData;
+    HW_Time = zeros(size(ParsedData,1), 1);
+    for trial = 1 : size(ParsedData,1)
+        attackTime = ParsedData{trial, 4}(1);
+        nearAttackIRindex = find(ParsedData{trial, 2}(:,1) < attackTime,1,'last');
+        HW_Time(trial) = ParsedData{trial, 2}(nearAttackIRindex, 2) - ParsedData{trial, 2}(1, 1);
+    end
 
+    classifier_result = result{session}.WholeTestResult_HWAE >= 0.5;
+    classifier_result = classifier_result(:,1) == classifier_result(:,3);
+
+    % Consider only 6s trials and AW
+    for trial = 1 : size(ParsedData,1)
+        % 6-sec trials
+        if ParsedData{trial, 4}(1) - ParsedData{trial, 2}(1) > 4.5
+            if HW_Time(trial) < 6  % AW
+                if classifier_result(trial)
+                    correct_HW_Time = [correct_HW_Time, HW_Time(trial)];
+                else
+                    wrong_HW_Time = [wrong_HW_Time, HW_Time(trial)];
+                end
+            end
+        end
+    end
+end
 % %% Load Number of Units vs Accuracy Data
 % 
 % % numSession = 40;

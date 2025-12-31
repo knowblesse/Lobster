@@ -6,6 +6,8 @@ arguments
     options.showGraph = false;
 end
 
+loadxkcd;
+
 Z_ = linkage(zscoreMatrix, 'average', 'correlation');
 
 unitClusterId = cluster(Z_, 'maxclust', options.numCluster);
@@ -23,11 +25,17 @@ for clt = 1 : options.numCluster
     end
 end
 
+
 if options.showGraph
     if numGroup == 2
-        colors_bw = [0, 0, 0; 0.5, 0.5, 0.5];
+        %colors_bw = [0, 0, 0; 0.5, 0.5, 0.5];
+        colors_bw = [xkcd.red_orange; xkcd.blue_green];
     elseif numGroup == 3
-        colors_bw = [0, 0, 0; 0.4, 0.4, 0.4; 0.8, 0.8, 0.8];
+        %colors_bw = [0, 0, 0; 0.4, 0.4, 0.4; 0.8, 0.8, 0.8];
+        colors_bw = [xkcd.red_orange; xkcd.blue_green; xkcd.pumpkin_orange];
+    elseif numGroup == 4
+        %colors_bw = [0, 0, 0; 1, 0.4, 0.4; 0.8, 1, 0.8; 0.8, 0.8, 1];
+        colors_bw = [xkcd.red_orange; xkcd.blue_green; xkcd.pumpkin_orange; xkcd.purple_blue];
     end
     fig = figure();
     axes();

@@ -88,34 +88,6 @@ def NeuralRegressor(tankPath, outputPath, dataset, device,
     else:
         raise(BaseException('Wrong dataset. use distance, row, or column'))
 
-    # use well-distributed y values
-    # bin y into 5 bins, label each datapoint with the bin, and use the bin label to equally distribute dataset during train/test split.
-    useEqualyBin = False
-    if useEqualyBin:
-        zoneClass = np.floor(np.argsort(np.squeeze(y)) / y.shape[0] * 5).astype(int)
-
-        datacount = np.bincount(zoneClass)
-
-        zoneClass = np.digitize(y, (np.max(y) - np.min(y)) * np.array([0.2, 0.4, 0.6, 0.8]) + np.min(y))
-
-        print(f'zoneCount 0 : {np.sum(zoneClass == 0)} 1 : {np.sum(zoneClass == 1)} 2 : {np.sum(zoneClass == 2)} 3 : {np.sum(zoneClass == 3)} 4 : {np.sum(zoneClass == 4)}')
-
-        datacount = np.bincount(np.squeeze(zoneClass))
-        selectedIndex = np.concatenate((rng.choice(np.where(zoneClass == 0)[0], np.min(datacount)),
-                        rng.choice(np.where(zoneClass == 1)[0], np.min(datacount)),
-                        rng.choice(np.where(zoneClass == 2)[0], np.min(datacount)),
-                        rng.choice(np.where(zoneClass == 3)[0], np.min(datacount)),
-                        rng.choice(np.where(zoneClass == 4)[0], np.min(datacount))))
-
-        X = X[selectedIndex,:]
-        y_r = y_r[selectedIndex]
-        y_c = y_c[selectedIndex]
-        y = y[selectedIndex]
-        midPointTimes = midPointTimes[selectedIndex]
-        zoneClass = np.squeeze(zoneClass[selectedIndex])
-
-        print(f'zoneCount(after) 0 : {np.sum(zoneClass == 0)} 1 : {np.sum(zoneClass == 1)} 2 : {np.sum(zoneClass == 2)} 3 : {np.sum(zoneClass == 3)} 4 : {np.sum(zoneClass == 4)}')
-
     # Prepare array to store regression result from the test dataset
     WholeTestResult = np.zeros([X.shape[0], 5])  # num data x [row, col, true, fake, predicted]
     WholeTestResult[:, :3] = np.hstack((y_r, y_c, y))
@@ -126,13 +98,16 @@ def NeuralRegressor(tankPath, outputPath, dataset, device,
     PFITestResult = np.zeros([X.shape[0], numUnit, PFI_numRepeat])
    
     # Setup KFold
-    CV_split = 5
-    kf = StratifiedKFold(n_splits=CV_split, shuffle=True, random_state=622)
+    CV_split = 2
     train_log = np.zeros((CV_split, train_epoch, 4)) # loss train_fake train_real test_fake test_real
     current_cv = 0
 
+    # For this script, divide dataset in to half, and use the first half for training
+    train_index_list = [np.arange(0, int(X.shape[0]/2)), np.arange(int(X.shape[0]/2), X.shape[0])]
+    test_index_list = [np.arange(int(X.shape[0]/2), X.shape[0]), np.arange(0, int(X.shape[0]/2))]
+
     # Start training
-    for train_index, test_index in kf.split(X, zoneClass):
+    for train_index, test_index in zip(train_index_list, test_index_list):
         X_train = torch.tensor(X[train_index, :], dtype=torch.float32, device=device, requires_grad=True)
         X_test = torch.tensor(X[test_index, :], dtype=torch.float32, device=device, requires_grad=False)
 
@@ -254,7 +229,7 @@ else:
 
 
 InputFolder = BasePath / 'FineDistanceDataset'
-OutputFolder = BasePath / 'FineDistanceResult_syncFixed_equal_data_each_zone'
+OutputFolder = BasePath / 'FineDistanceResult_syncFixed_first_half'
 
 for i, tank in enumerate(sorted([p for p in InputFolder.glob('#*')])):
     print(f'{i:02} {tank}')

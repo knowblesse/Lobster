@@ -116,7 +116,12 @@ def correctRotationOffset(rotationData):
         prev_head_direction = rotationData[i]
     return rotationData + degree_offset_value
 
-def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=False, removeEncounterData=False, removeWanderData=False, stratifyData=False):
+def loadData(tankPath, neural_data_rate, truncatedTime_s,
+             removeNestingData=False,
+             removeEncounterData=False,
+             removeWanderData=False,
+             stratifyData=False,
+             doorClosedOnly=False):
 
     default_rng = np.random.default_rng()
 
@@ -270,8 +275,23 @@ def loadData(tankPath, neural_data_rate, truncatedTime_s, removeNestingData=Fals
         y_deg = y_deg[selectedIndex]
         midPointTimes = midPointTimes[selectedIndex]
         zoneClass = zoneClass[selectedIndex]
-    
 
+    # filter data with door closed only
+    if doorClosedOnly:
+        print('filtering data with door closed only')
+        doorClosedIndex = np.ones(midPointTimes.shape, dtype=bool)
+        for trial in range(1, numTrial):
+            doorClosedIndex[
+                np.logical_and(ParsedData[trial,0][0,0] < midPointTimes, midPointTimes < ParsedData[trial,0][0,1])] = False
+
+        neural_data = neural_data[doorClosedIndex, :]
+        y_r = y_r[doorClosedIndex]
+        y_c = y_c[doorClosedIndex]
+        y_deg = y_deg[doorClosedIndex]
+        midPointTimes = midPointTimes[doorClosedIndex]
+        zoneClass = zoneClass[doorClosedIndex]
+
+        print(f"{np.sum(doorClosedIndex) / doorClosedIndex.shape[0] * 100:.2f}% data is used")
 
     return(neural_data, np.expand_dims(y_r, 1), np.expand_dims(y_c, 1), np.expand_dims(y_deg, 1), midPointTimes, zoneClass)
 
