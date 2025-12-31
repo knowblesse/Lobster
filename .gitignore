@@ -6,6 +6,8 @@ PythonCode/\.idea/
 Apparatus/OldVersions/
 *.lck
 *.swp
+__pycache__/
+
 
 Apparatus/Visual/OldVersions/
 
@@ -14,3 +16,7 @@ Apparatus/Lick/OldVersions/
 Apparatus/Robot/OldVersions/
 
 Apparatus/Arena/OldVersions/
+
+.obsidian/
+
+!MatlabCode/Apparatus.mat

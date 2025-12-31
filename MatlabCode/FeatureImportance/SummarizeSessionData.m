@@ -1,0 +1,83 @@
+%% SummarizeSessionData
+% load Unit data and summarized into session data
+
+ClassifyUnits;
+clearvars -except Unit
+
+%% Load Other Data
+
+BNBResult = load('D:\Data\Lobster\BNB_Result_fullshuffle.mat');
+DistanceResultPath = 'D:\Data\Lobster\FineDistanceResult_syncFixed_May';
+
+%% Make into a table
+
+Sessions = table(...
+    unique(Unit.Session),...
+    strings(40,1),...
+    zeros(40,1),...
+    zeros(40,1),...
+    zeros(40,1),...
+    zeros(40,1), zeros(40,1), zeros(40,1),...
+    zeros(40,1), zeros(40,1),...
+    zeros(40,1), zeros(40,1), zeros(40,1),...
+    zeros(40,1), zeros(40,1),...
+    zeros(40,1),...
+    'VariableNames',...
+        ["Session",...
+        "Area",...
+        "BNB_HW_Accuracy",...
+        "BNB_HW_CrossEntropy",...
+        "Location_Error",...
+        "N_A", "N_E", "ratio_A"...
+        "N_HE1", "N_HE2",...
+        "N_HW1", "N_HW2", "N_HW3",...
+        "N_Type1", "N_Type2",...
+        "NumCell"]...
+    );
+output = zeros(40,1);
+for i_session = 1 : 40
+    session = Sessions.Session(i_session);
+    % Area
+    if contains(session, "PL")
+        Sessions.Area(i_session) = "PL";
+    elseif contains(session, "IL")
+        Sessions.Area(i_session) = "IL";
+    end
+    % BNB
+    output(i_session) = BNBResult.result{i_session}.balanced_accuracy_HEHW(2);
+    Sessions.BNB_HW_Accuracy(i_session) = BNBResult.result{i_session}.balanced_accuracy_HWAE(2);
+    Sessions.BNB_HW_CrossEntropy(i_session) = BNBResult.result{i_session}.CrossEntropy_HWAE;
+
+    % FDR
+    LocationResult = load(fullfile(DistanceResultPath, strcat(session, 'result_distance.mat')), 'WholeTestResult');
+
+    % L1 Error of True / L1 Error of the shuffled
+    % 1 = No difference between original vs shuffled
+    % 0.5 = Half of the error compared to the shuffled
+    % 0 = Zero error
+%     Sessions.Location_Error(i_session) = ...
+%         mean(abs(LocationResult.WholeTestResult(:, 3) - LocationResult.WholeTestResult(:, 5)))...
+%         / mean(abs(LocationResult.WholeTestResult(:, 3) - LocationResult.WholeTestResult(:, 4))); 
+    Sessions.Location_Error(i_session) = ...
+        mean(abs(LocationResult.WholeTestResult(:, 3) - LocationResult.WholeTestResult(:, 5))) * 0.169;
+    
+    ae = Unit.AE(Unit.Session == session & Unit.Cell == 1);
+    
+    Sessions.N_A(i_session) = sum(ae{1} == 'A');
+    Sessions.N_E(i_session) = sum(ae{1} == 'E');
+    Sessions.ratio_A(i_session) = sum(ae{1} == 'A') / (sum(ae{1} == 'A') + sum(ae{1} == 'E'));
+    
+    Sessions.N_HE1(i_session) = sum(Unit.Session == session &  Unit.Group_HE == 1);
+    Sessions.N_HE2(i_session)= sum(Unit.Session == session &  Unit.Group_HE == 2);
+
+    Sessions.N_HW1(i_session) = sum(Unit.Session == session &  Unit.Group_HW == 1);
+    Sessions.N_HW2(i_session) = sum(Unit.Session == session &  Unit.Group_HW == 2);
+    Sessions.N_HW3(i_session) = sum(Unit.Session == session &  Unit.Group_HW == 3);
+    
+    Sessions.N_Type1(i_session) = sum(Unit.Session == session & Unit.Group_HE == 1 & Unit.Group_HW == 1);
+    Sessions.N_Type2(i_session) = sum(Unit.Session == session & Unit.Group_HE == 2 & Unit.Group_HW == 2);
+
+    Sessions.NumCell(i_session) = sum(Unit.Session == session);
+end
+
+%% Check correlation between N_Type2 vs 
