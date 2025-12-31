@@ -33,7 +33,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Ji Hoon Jeong  
 Korea University (~2023)  
-knowblesse@gmail.com
+knowblesse a.t. gmail.com
 
 ## Acknowledgments
 
